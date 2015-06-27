@@ -12,9 +12,8 @@ type Builder struct {
 	vPrime *big.Int
 	nonce2 *big.Int
 
-	pk         *PublicKey
-	attributes []*big.Int
-	context    *big.Int
+	pk      *PublicKey
+	context *big.Int
 }
 
 type IssueCommitmentMessage struct {
@@ -48,7 +47,7 @@ var (
 	IncorrectAttributeSignature          = errors.New("The Signature on the attributes is not correct.")
 )
 
-func (b *Builder) ConstructCredential(msg *IssueSignatureMessage) (*IdemixCredential, error) {
+func (b *Builder) ConstructCredential(msg *IssueSignatureMessage, attributes []*big.Int) (*IdemixCredential, error) {
 	if !msg.proof.Verify(b.pk, msg.signature, b.context, b.nonce2) {
 		return nil, IncorrectProofOfSignatureCorrectness
 	}
@@ -57,9 +56,9 @@ func (b *Builder) ConstructCredential(msg *IssueSignatureMessage) (*IdemixCreden
 	signature := &CLSignature{msg.signature.A, msg.signature.E, new(big.Int).Add(msg.signature.V, b.vPrime)}
 
 	// Verify signature
-	exponents := make([]*big.Int, len(b.attributes)+1)
+	exponents := make([]*big.Int, len(attributes)+1)
 	exponents[0] = b.secret
-	copy(exponents[1:], b.attributes)
+	copy(exponents[1:], attributes)
 
 	if !signature.Verify(b.pk, exponents) {
 		return nil, IncorrectAttributeSignature

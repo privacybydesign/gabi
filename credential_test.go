@@ -118,6 +118,7 @@ func TestProofU(t *testing.T) {
 }
 
 func TestProofULogged(t *testing.T) {
+
 	context := s2big("34911926065354700717429826907189165808787187263593066036316982805908526740809")
 	nonce1 := s2big("724811585564063105609243")
 	c := s2big("4184045431748299802782143929438273256345760339041229271411466459902660986200")
@@ -219,7 +220,7 @@ func TestFullIssuance(t *testing.T) {
 	nonce1, _ := randomBigInt(pk.Params.Lstatzk)
 	secret, _ := randomBigInt(pk.Params.Lm)
 
-	b := &Builder{pk: pk, attributes: testAttributes, context: context}
+	b := &Builder{pk: pk, context: context}
 	commitMsg := b.CommitToSecretAndProve(secret, nonce1)
 
 	issuer := &Issuer{pk: pk, sk: sk, context: context}
@@ -227,7 +228,7 @@ func TestFullIssuance(t *testing.T) {
 	if err != nil {
 		t.Error("Error in IssueSignature:", err)
 	}
-	b.ConstructCredential(msg)
+	b.ConstructCredential(msg, testAttributes)
 }
 
 func TestShowingProof(t *testing.T) {
@@ -292,7 +293,7 @@ func TestFullIssuanceAndShowing(t *testing.T) {
 	secret, _ := randomBigInt(pk.Params.Lm)
 
 	// Issuance
-	builder := &Builder{pk: pk, attributes: testAttributes, context: context}
+	builder := &Builder{pk: pk, context: context}
 	commitMsg := builder.CommitToSecretAndProve(secret, nonce1)
 	issuer := &Issuer{sk: sk, pk: pk, context: context}
 	sigMsg, err := issuer.IssueSignature(commitMsg, testAttributes, nonce1)
@@ -300,7 +301,7 @@ func TestFullIssuanceAndShowing(t *testing.T) {
 		t.Error("Error in IssueSignature:", err)
 	}
 
-	cred, err := builder.ConstructCredential(sigMsg)
+	cred, err := builder.ConstructCredential(sigMsg, testAttributes)
 	if err != nil {
 		t.Error("Error in credential construction:", err)
 	}
