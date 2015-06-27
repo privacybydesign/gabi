@@ -5,12 +5,12 @@ import (
 	"math/big"
 )
 
-// CLSignature is a datastructure for holding a Camenisch-Lysyanskaya signature.
+// CLSignature is a data structure for holding a Camenisch-Lysyanskaya signature.
 type CLSignature struct {
 	A, E, V *big.Int
 }
 
-// SignMessageBlock signs a message block (ms) and a commitment (U) using
+// SignMessageBlock signs a message block (ms) and a commitment (U) using the
 // Camenisch-Lysyanskaya signature scheme as used in the IdeMix system.
 func signMessageBlockAndCommitment(sk *SecretKey, pk *PublicKey, U *big.Int, ms []*big.Int, Rs []*big.Int) (*CLSignature, error) {
 	R := representToBases(Rs, ms, &pk.N)
@@ -43,7 +43,8 @@ func signMessageBlockAndCommitment(sk *SecretKey, pk *PublicKey, U *big.Int, ms 
 	return &CLSignature{A: A, E: e, V: v}, nil
 }
 
-// SignMessageBlock signs a message block (ms) using Camenisch-Lysyanskaya signature scheme as used in the IdeMix system.
+// SignMessageBlock signs a message block (ms) using the Camenisch-Lysyanskaya
+// signature scheme as used in the IdeMix system.
 func SignMessageBlock(sk *SecretKey, pk *PublicKey, ms []*big.Int) (*CLSignature, error) {
 	return signMessageBlockAndCommitment(sk, pk, big.NewInt(1), ms, pk.R)
 }
@@ -70,7 +71,7 @@ func (s *CLSignature) Verify(pk *PublicKey, ms []*big.Int) bool {
 	return pk.Z.Cmp(Q) == 0
 }
 
-// Randomize returns a randomized (copy) of the signature.
+// Randomize returns a randomized copy of the signature.
 func (s *CLSignature) Randomize(pk *PublicKey) *CLSignature {
 	r, _ := randomBigInt(pk.Params.LRA)
 	APrime := new(big.Int).Mul(s.A, new(big.Int).Exp(&pk.S, r, &pk.N))
