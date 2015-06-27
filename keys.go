@@ -9,8 +9,6 @@ type SecretKey struct {
 	PPrime, QPrime big.Int
 }
 
-var bigONE = big.NewInt(1)
-
 func NewSecretKey(p, q *big.Int) *SecretKey {
 	sk := SecretKey{P: *p, Q: *q}
 
