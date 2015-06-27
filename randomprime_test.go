@@ -10,7 +10,6 @@ func TestRandomPrimeInRange(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	t.Log(p)
 	if !p.ProbablyPrime(22) {
 		t.Error("p not prime!")
 	}
