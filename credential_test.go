@@ -107,7 +107,7 @@ func TestProofU(t *testing.T) {
 	nonce1, _ := randomBigInt(pk.Params.Lstatzk)
 	secret, _ := randomBigInt(pk.Params.Lm)
 
-	b := &Builder{pk: pk, context: context, s: secret}
+	b := &Builder{pk: pk, context: context, secret: secret}
 	U := b.commitmentToSecret()
 
 	proofU := b.proveCommitment(U, nonce1)
@@ -137,7 +137,7 @@ func TestCommitmentMessage(t *testing.T) {
 	nonce1, _ := randomBigInt(pk.Params.Lstatzk)
 	secret, _ := randomBigInt(pk.Params.Lm)
 
-	b := &Builder{pk: pk, context: context, s: secret}
+	b := &Builder{pk: pk, context: context, secret: secret}
 	msg := b.CommitToSecretAndProve(secret, nonce1)
 	if !msg.ProofU.Verify(pk, msg.U, context, nonce1) {
 		t.Error("Commitment message proof does not verify, whereas it should.")

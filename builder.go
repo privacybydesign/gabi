@@ -8,7 +8,7 @@ import (
 )
 
 type Builder struct {
-	s      *big.Int
+	secret *big.Int
 	vPrime *big.Int
 	nonce2 *big.Int
 
@@ -35,7 +35,7 @@ type IdemixCredential struct {
 }
 
 func (b *Builder) CommitToSecretAndProve(secret, nonce1 *big.Int) *IssueCommitmentMessage {
-	b.s = secret
+	b.secret = secret
 	U := b.commitmentToSecret()
 	proofU := b.proveCommitment(U, nonce1)
 	b.nonce2, _ = randomBigInt(b.pk.Params.Lstatzk)
@@ -58,7 +58,7 @@ func (b *Builder) ConstructCredential(msg *IssueSignatureMessage) (*IdemixCreden
 
 	// Verify signature
 	exponents := make([]*big.Int, len(b.attributes)+1)
-	exponents[0] = b.s
+	exponents[0] = b.secret
 	copy(exponents[1:], b.attributes)
 
 	if !signature.Verify(b.pk, exponents) {
@@ -72,7 +72,7 @@ func (b *Builder) commitmentToSecret() *big.Int {
 
 	// U = S^{vPrime} * R_0^{s}
 	Sv := new(big.Int).Exp(&b.pk.S, b.vPrime, &b.pk.N)
-	R0s := new(big.Int).Exp(b.pk.R[0], b.s, &b.pk.N)
+	R0s := new(big.Int).Exp(b.pk.R[0], b.secret, &b.pk.N)
 	U := new(big.Int).Mul(Sv, R0s)
 	U.Mod(U, &b.pk.N)
 	return U
@@ -109,7 +109,7 @@ func (b *Builder) proveCommitment(U, nonce1 *big.Int) *ProofU {
 	Ucommit.Mod(Ucommit, &b.pk.N)
 
 	c := hashCommit([]*big.Int{b.context, U, Ucommit, nonce1})
-	sResponse := new(big.Int).Mul(c, b.s)
+	sResponse := new(big.Int).Mul(c, b.secret)
 	sResponse.Add(sResponse, sCommit)
 
 	vPrimeResponse := new(big.Int).Mul(c, b.vPrime)
