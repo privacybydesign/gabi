@@ -16,6 +16,11 @@ var (
 	IncorrectCommitmentError = errors.New("The commitment proof is not correct.")
 )
 
+// NewIssuer creates a new credential issuer.
+func NewIssuer(sk *SecretKey, pk *PublicKey, context *big.Int) *Issuer {
+	return &Issuer{sk: sk, pk: pk, context: context}
+}
+
 func (i *Issuer) IssueSignature(msg *IssueCommitmentMessage, attributes []*big.Int, nonce1 *big.Int) (*IssueSignatureMessage, error) {
 	if !msg.ProofU.Verify(i.pk, msg.U, i.context, nonce1) {
 		return nil, IncorrectCommitmentError

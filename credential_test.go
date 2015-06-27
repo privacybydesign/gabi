@@ -156,7 +156,7 @@ func TestProofS(t *testing.T) {
 	// Nonce (normally from the credential recipient)
 	nonce, _ := randomBigInt(pk.Params.Lstatzk)
 
-	issuer := &Issuer{sk: sk, pk: pk, context: context}
+	issuer := NewIssuer(sk, pk, context)
 	sig, err := issuer.signCommitmentAndAttributes(U, testAttributes)
 	if err != nil {
 		t.Error(err)
@@ -208,7 +208,7 @@ func TestSignatureMessage(t *testing.T) {
 	b := NewBuilder(pk, context)
 	commitMsg := b.CommitToSecretAndProve(secret, nonce1)
 
-	issuer := &Issuer{pk: pk, sk: sk, context: context}
+	issuer := NewIssuer(sk, pk, context)
 	_, err := issuer.IssueSignature(commitMsg, testAttributes, nonce1)
 	if err != nil {
 		t.Error("Error in IssueSignature:", err)
@@ -223,7 +223,7 @@ func TestFullIssuance(t *testing.T) {
 	b := NewBuilder(pk, context)
 	commitMsg := b.CommitToSecretAndProve(secret, nonce1)
 
-	issuer := &Issuer{pk: pk, sk: sk, context: context}
+	issuer := NewIssuer(sk, pk, context)
 	msg, err := issuer.IssueSignature(commitMsg, testAttributes, nonce1)
 	if err != nil {
 		t.Error("Error in IssueSignature:", err)
@@ -295,7 +295,7 @@ func TestFullIssuanceAndShowing(t *testing.T) {
 	// Issuance
 	builder := NewBuilder(pk, context)
 	commitMsg := builder.CommitToSecretAndProve(secret, nonce1)
-	issuer := &Issuer{sk: sk, pk: pk, context: context}
+	issuer := NewIssuer(sk, pk, context)
 	sigMsg, err := issuer.IssueSignature(commitMsg, testAttributes, nonce1)
 	if err != nil {
 		t.Error("Error in IssueSignature:", err)
