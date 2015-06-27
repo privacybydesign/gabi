@@ -107,8 +107,8 @@ func TestProofU(t *testing.T) {
 	nonce1, _ := randomBigInt(pk.Params.Lstatzk)
 	secret, _ := randomBigInt(pk.Params.Lm)
 
-	b := &Builder{pk: pk, context: context, secret: secret}
-	U := b.commitmentToSecret()
+	b := NewBuilder(pk, context)
+	U := b.commitmentToSecret(secret)
 
 	proofU := b.proveCommitment(U, nonce1)
 
@@ -138,7 +138,7 @@ func TestCommitmentMessage(t *testing.T) {
 	nonce1, _ := randomBigInt(pk.Params.Lstatzk)
 	secret, _ := randomBigInt(pk.Params.Lm)
 
-	b := &Builder{pk: pk, context: context, secret: secret}
+	b := NewBuilder(pk, context)
 	msg := b.CommitToSecretAndProve(secret, nonce1)
 	if !msg.ProofU.Verify(pk, msg.U, context, nonce1) {
 		t.Error("Commitment message proof does not verify, whereas it should.")
@@ -205,7 +205,7 @@ func TestSignatureMessage(t *testing.T) {
 	nonce1, _ := randomBigInt(pk.Params.Lstatzk)
 	secret, _ := randomBigInt(pk.Params.Lm)
 
-	b := &Builder{pk: pk, context: context}
+	b := NewBuilder(pk, context)
 	commitMsg := b.CommitToSecretAndProve(secret, nonce1)
 
 	issuer := &Issuer{pk: pk, sk: sk, context: context}
@@ -220,7 +220,7 @@ func TestFullIssuance(t *testing.T) {
 	nonce1, _ := randomBigInt(pk.Params.Lstatzk)
 	secret, _ := randomBigInt(pk.Params.Lm)
 
-	b := &Builder{pk: pk, context: context}
+	b := NewBuilder(pk, context)
 	commitMsg := b.CommitToSecretAndProve(secret, nonce1)
 
 	issuer := &Issuer{pk: pk, sk: sk, context: context}
@@ -293,7 +293,7 @@ func TestFullIssuanceAndShowing(t *testing.T) {
 	secret, _ := randomBigInt(pk.Params.Lm)
 
 	// Issuance
-	builder := &Builder{pk: pk, context: context}
+	builder := NewBuilder(pk, context)
 	commitMsg := builder.CommitToSecretAndProve(secret, nonce1)
 	issuer := &Issuer{sk: sk, pk: pk, context: context}
 	sigMsg, err := issuer.IssueSignature(commitMsg, testAttributes, nonce1)

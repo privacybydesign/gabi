@@ -34,8 +34,7 @@ type IdemixCredential struct {
 }
 
 func (b *Builder) CommitToSecretAndProve(secret, nonce1 *big.Int) *IssueCommitmentMessage {
-	b.secret = secret
-	U := b.commitmentToSecret()
+	U := b.commitmentToSecret(secret)
 	proofU := b.proveCommitment(U, nonce1)
 	b.nonce2, _ = randomBigInt(b.pk.Params.Lstatzk)
 
@@ -46,6 +45,11 @@ var (
 	IncorrectProofOfSignatureCorrectness = errors.New("Proof of correctness on signature does not verify.")
 	IncorrectAttributeSignature          = errors.New("The Signature on the attributes is not correct.")
 )
+
+// NewBuilder creates a new credential builder.
+func NewBuilder(pk *PublicKey, context *big.Int) *Builder {
+	return &Builder{pk: pk, context: context}
+}
 
 func (b *Builder) ConstructCredential(msg *IssueSignatureMessage, attributes []*big.Int) (*IdemixCredential, error) {
 	if !msg.proof.Verify(b.pk, msg.signature, b.context, b.nonce2) {
@@ -66,7 +70,8 @@ func (b *Builder) ConstructCredential(msg *IssueSignatureMessage, attributes []*
 	return &IdemixCredential{issuerPK: b.pk, signature: signature, attributes: exponents}, nil
 }
 
-func (b *Builder) commitmentToSecret() *big.Int {
+func (b *Builder) commitmentToSecret(secret *big.Int) *big.Int {
+	b.secret = secret
 	b.vPrime, _ = randomBigInt(b.pk.Params.LvPrime)
 
 	// U = S^{vPrime} * R_0^{s}
