@@ -1,22 +1,23 @@
 package credential
 
 import (
-	"log"
 	"math/big"
 )
 
+// ProofU represents a proof of correctness of the commitment in the first phase
+// of the issuance protocol.
 type ProofU struct {
 	c              *big.Int
 	vPrimeResponse *big.Int
 	sResponse      *big.Int
 }
 
+// Verify verifies whether the proof is correct.
 func (p *ProofU) Verify(pk *PublicKey, U, context, nonce *big.Int) bool {
 	maximum := new(big.Int).Lsh(bigONE, pk.Params.LvPrimeCommit+1)
 	maximum.Sub(maximum, bigONE)
 	minimum := new(big.Int).Neg(maximum)
 	if !(p.vPrimeResponse.Cmp(minimum) >= 0 && p.vPrimeResponse.Cmp(maximum) <= 0) {
-		log.Println("Range check on vPrimeResponse failed.")
 		return false
 	}
 
@@ -33,11 +34,14 @@ func (p *ProofU) Verify(pk *PublicKey, U, context, nonce *big.Int) bool {
 	return p.c.Cmp(cPrime) == 0
 }
 
+// ProofS represents a proof.
 type ProofS struct {
 	c         *big.Int
 	eResponse *big.Int
 }
 
+// Verify verifies the proof agains the given public key, signature, context,
+// and nonce.
 func (p *ProofS) Verify(pk *PublicKey, signature *CLSignature, context, nonce *big.Int) bool {
 	// Reconstruct A_commit
 	// ACommit = A^{c + eResponse * e}
@@ -54,6 +58,7 @@ func (p *ProofS) Verify(pk *PublicKey, signature *CLSignature, context, nonce *b
 	return p.c.Cmp(cPrime) == 0
 }
 
+// ProofD represents a proof in the showing protocol.
 type ProofD struct {
 	c, A, eResponse, vResponse *big.Int
 	aResponses, aDisclosed     map[int]*big.Int
@@ -66,27 +71,24 @@ func (p *ProofD) checkSizeResponses(pk *PublicKey) bool {
 	minimum := new(big.Int).Neg(maximum)
 	for _, aResponse := range p.aResponses {
 		if aResponse.Cmp(minimum) < 0 || aResponse.Cmp(maximum) > 0 {
-			log.Println("One of aResponses of wrong size!")
 			return false
 		}
 	}
 
-	// Check range eReponse
+	// Check range eResponse
 	maximum.Lsh(bigONE, pk.Params.LeCommit+1)
 	maximum.Sub(maximum, bigONE)
 	minimum.Neg(maximum)
 
 	if p.eResponse.Cmp(minimum) < 0 || p.eResponse.Cmp(maximum) > 0 {
-		log.Println("eResponse of wrong size!")
-		log.Println("min:", minimum)
-		log.Println("max:", maximum)
-		log.Println("eResponse:", p.eResponse)
-
 		return false
 	}
 
 	return true
 }
+
+// reconstructZ reconstructs Z from the information in the proof and the
+// provided public key.
 func (p *ProofD) reconstructZ(pk *PublicKey) *big.Int {
 	// known = Z / ( prod_{disclosed} R_i^{a_i} * A^{2^{l_e - 1}} )
 	numerator := new(big.Int).Lsh(bigONE, pk.Params.Le-1)
@@ -111,6 +113,7 @@ func (p *ProofD) reconstructZ(pk *PublicKey) *big.Int {
 	return Z
 }
 
+// Verify verifies the proof agains the given public key, context, and nonce.
 func (p *ProofD) Verify(pk *PublicKey, context, nonce1 *big.Int) bool {
 	if !p.checkSizeResponses(pk) {
 		return false
@@ -120,9 +123,5 @@ func (p *ProofD) Verify(pk *PublicKey, context, nonce1 *big.Int) bool {
 
 	cPrime := hashCommit([]*big.Int{context, p.A, Z, nonce1})
 
-	matched := p.c.Cmp(cPrime) == 0
-	if !matched {
-		log.Println("Hashes do not match.")
-	}
-	return matched
+	return p.c.Cmp(cPrime) == 0
 }
