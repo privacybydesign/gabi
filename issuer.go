@@ -32,7 +32,7 @@ func (i *Issuer) IssueSignature(msg *IssueCommitmentMessage, attributes []*big.I
 	}
 	proof := i.proveSignature(signature, msg.Nonce2)
 
-	return &IssueSignatureMessage{signature: signature, proof: proof}, nil
+	return &IssueSignatureMessage{Signature: signature, Proof: proof}, nil
 }
 
 func (i *Issuer) ProofSignature(signature CLSignature, n2 big.Int) *ProofS {

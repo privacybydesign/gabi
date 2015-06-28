@@ -236,7 +236,7 @@ func TestShowingProof(t *testing.T) {
 	if err != nil {
 		t.Error("Error producing CL signaure.")
 	}
-	cred := &IdemixCredential{issuerPK: pk, attributes: testAttributes, signature: signature}
+	cred := &IdemixCredential{Pk: pk, Attributes: testAttributes, Signature: signature}
 	disclosed := []int{1, 2}
 
 	context, _ := randomBigInt(pk.Params.Lh)

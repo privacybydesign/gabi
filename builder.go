@@ -23,14 +23,14 @@ type IssueCommitmentMessage struct {
 }
 
 type IssueSignatureMessage struct {
-	proof     *ProofS
-	signature *CLSignature
+	Proof     *ProofS
+	Signature *CLSignature
 }
 
 type IdemixCredential struct {
-	signature  *CLSignature
-	issuerPK   *PublicKey
-	attributes []*big.Int
+	Signature  *CLSignature
+	Pk         *PublicKey
+	Attributes []*big.Int
 }
 
 func (b *Builder) CommitToSecretAndProve(secret, nonce1 *big.Int) *IssueCommitmentMessage {
@@ -52,12 +52,12 @@ func NewBuilder(pk *PublicKey, context *big.Int) *Builder {
 }
 
 func (b *Builder) ConstructCredential(msg *IssueSignatureMessage, attributes []*big.Int) (*IdemixCredential, error) {
-	if !msg.proof.Verify(b.pk, msg.signature, b.context, b.nonce2) {
+	if !msg.Proof.Verify(b.pk, msg.Signature, b.context, b.nonce2) {
 		return nil, IncorrectProofOfSignatureCorrectness
 	}
 
 	// Construct actual signature
-	signature := &CLSignature{msg.signature.A, msg.signature.E, new(big.Int).Add(msg.signature.V, b.vPrime)}
+	signature := &CLSignature{msg.Signature.A, msg.Signature.E, new(big.Int).Add(msg.Signature.V, b.vPrime)}
 
 	// Verify signature
 	exponents := make([]*big.Int, len(attributes)+1)
@@ -67,7 +67,7 @@ func (b *Builder) ConstructCredential(msg *IssueSignatureMessage, attributes []*
 	if !signature.Verify(b.pk, exponents) {
 		return nil, IncorrectAttributeSignature
 	}
-	return &IdemixCredential{issuerPK: b.pk, signature: signature, attributes: exponents}, nil
+	return &IdemixCredential{Pk: b.pk, Signature: signature, Attributes: exponents}, nil
 }
 
 func (b *Builder) commitmentToSecret(secret *big.Int) *big.Int {
@@ -137,33 +137,33 @@ func getUndisclosedAttributes(disclosedAttributes []int, numAttributes int) []in
 }
 
 func (ic *IdemixCredential) CreateDisclosureProof(disclosedAttributes []int, context, nonce1 *big.Int) *ProofD {
-	undisclosedAttributes := getUndisclosedAttributes(disclosedAttributes, len(ic.attributes))
+	undisclosedAttributes := getUndisclosedAttributes(disclosedAttributes, len(ic.Attributes))
 
-	randSig := ic.signature.Randomize(ic.issuerPK)
+	randSig := ic.Signature.Randomize(ic.Pk)
 
-	eCommit, _ := randomBigInt(ic.issuerPK.Params.LeCommit)
-	vCommit, _ := randomBigInt(ic.issuerPK.Params.LvCommit)
+	eCommit, _ := randomBigInt(ic.Pk.Params.LeCommit)
+	vCommit, _ := randomBigInt(ic.Pk.Params.LvCommit)
 
 	aCommits := make(map[int]*big.Int)
 	for _, v := range undisclosedAttributes {
-		aCommits[v], _ = randomBigInt(ic.issuerPK.Params.LmCommit)
+		aCommits[v], _ = randomBigInt(ic.Pk.Params.LmCommit)
 	}
 
 	// Z = A^{e_commit} * S^{v_commit}
 	//     PROD_{i \in undisclosed} ( R_i^{a_commits{i}} )
-	Ae := modPow(randSig.A, eCommit, &ic.issuerPK.N)
-	Sv := modPow(&ic.issuerPK.S, vCommit, &ic.issuerPK.N)
+	Ae := modPow(randSig.A, eCommit, &ic.Pk.N)
+	Sv := modPow(&ic.Pk.S, vCommit, &ic.Pk.N)
 	Z := new(big.Int).Mul(Ae, Sv)
-	Z.Mod(Z, &ic.issuerPK.N)
+	Z.Mod(Z, &ic.Pk.N)
 
 	for _, v := range undisclosedAttributes {
-		Z.Mul(Z, modPow(ic.issuerPK.R[v], aCommits[v], &ic.issuerPK.N))
-		Z.Mod(Z, &ic.issuerPK.N)
+		Z.Mul(Z, modPow(ic.Pk.R[v], aCommits[v], &ic.Pk.N))
+		Z.Mod(Z, &ic.Pk.N)
 	}
 
 	c := hashCommit([]*big.Int{context, randSig.A, Z, nonce1})
 
-	ePrime := new(big.Int).Sub(randSig.E, new(big.Int).Lsh(bigONE, ic.issuerPK.Params.Le-1))
+	ePrime := new(big.Int).Sub(randSig.E, new(big.Int).Lsh(bigONE, ic.Pk.Params.Le-1))
 	eResponse := new(big.Int).Mul(c, ePrime)
 	eResponse.Add(eCommit, eResponse)
 	vResponse := new(big.Int).Mul(c, randSig.V)
@@ -171,13 +171,13 @@ func (ic *IdemixCredential) CreateDisclosureProof(disclosedAttributes []int, con
 
 	aResponses := make(map[int]*big.Int)
 	for _, v := range undisclosedAttributes {
-		t := new(big.Int).Mul(c, ic.attributes[v])
+		t := new(big.Int).Mul(c, ic.Attributes[v])
 		aResponses[v] = t.Add(aCommits[v], t)
 	}
 
 	aDisclosed := make(map[int]*big.Int)
 	for _, v := range disclosedAttributes {
-		aDisclosed[v] = ic.attributes[v]
+		aDisclosed[v] = ic.Attributes[v]
 	}
 
 	return &ProofD{c: c, A: randSig.A, eResponse: eResponse, vResponse: vResponse, aResponses: aResponses, aDisclosed: aDisclosed}
