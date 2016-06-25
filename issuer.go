@@ -13,7 +13,7 @@ type Issuer struct {
 }
 
 var (
-	IncorrectCommitmentError = errors.New("The commitment proof is not correct.")
+	ErrIncorrectCommitment = errors.New("The commitment proof is not correct.")
 )
 
 // NewIssuer creates a new credential issuer.
@@ -21,10 +21,11 @@ func NewIssuer(sk *SecretKey, pk *PublicKey, context *big.Int) *Issuer {
 	return &Issuer{sk: sk, pk: pk, context: context}
 }
 
+// IssueSignature produces an IssueSignatureMessage for the attributes based on
+// the IssueCommitmentMessage provided. Note that this function DOES NOT check
+// the proofs containted in the IssueCommitmentMessage! That needs to be done at
+// a higher level!
 func (i *Issuer) IssueSignature(msg *IssueCommitmentMessage, attributes []*big.Int, nonce1 *big.Int) (*IssueSignatureMessage, error) {
-	if !msg.ProofU.Verify(i.pk, msg.U, i.context, nonce1) {
-		return nil, IncorrectCommitmentError
-	}
 
 	signature, err := i.signCommitmentAndAttributes(msg.U, attributes)
 	if err != nil {

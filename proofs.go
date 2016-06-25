@@ -1,37 +1,77 @@
 package credential
 
 import (
+	"errors"
 	"math/big"
 )
+
+// Proof represents a non-interactive zero-knowledge proof
+type Proof interface {
+	VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.Int) bool
+	SecretKeyResponse() *big.Int
+	ChallengeContribution(pk *PublicKey) []*big.Int
+}
+
+// createChallenge creates a challenge based on context, nonce and the
+// contributions.
+func createChallenge(context, nonce *big.Int, contributions []*big.Int) *big.Int {
+	// Basically, sandwich the contributions between context and nonce
+	input := make([]*big.Int, 2+len(contributions))
+	input[0] = context
+	copy(input[1:1+len(contributions)], contributions)
+	input[len(input)-1] = nonce
+	return hashCommit(input)
+}
 
 // ProofU represents a proof of correctness of the commitment in the first phase
 // of the issuance protocol.
 type ProofU struct {
+	u              *big.Int
 	c              *big.Int
 	vPrimeResponse *big.Int
 	sResponse      *big.Int
 }
 
 // Verify verifies whether the proof is correct.
-func (p *ProofU) Verify(pk *PublicKey, U, context, nonce *big.Int) bool {
+func (p *ProofU) Verify(pk *PublicKey, context, nonce *big.Int) bool {
+	return p.VerifyWithChallenge(pk, createChallenge(context, nonce, p.ChallengeContribution(pk)))
+}
+
+func (p *ProofU) correctResponseSizes(pk *PublicKey) bool {
 	maximum := new(big.Int).Lsh(bigONE, pk.Params.LvPrimeCommit+1)
 	maximum.Sub(maximum, bigONE)
 	minimum := new(big.Int).Neg(maximum)
-	if !(p.vPrimeResponse.Cmp(minimum) >= 0 && p.vPrimeResponse.Cmp(maximum) <= 0) {
-		return false
-	}
 
+	return p.vPrimeResponse.Cmp(minimum) >= 0 && p.vPrimeResponse.Cmp(maximum) <= 0
+}
+
+// Verify verifies whether the proof is correct.
+func (p *ProofU) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.Int) bool {
+	return p.correctResponseSizes(pk) && p.c.Cmp(reconstructedChallenge) == 0
+}
+
+func (p *ProofU) reconstructUcommit(pk *PublicKey) *big.Int {
 	// Reconstruct Ucommit
 	// U_commit = U^{-c} * S^{vPrimeResponse} * R_0^{sResponse}
-	Uc := modPow(U, new(big.Int).Neg(p.c), &pk.N)
+	Uc := modPow(p.u, new(big.Int).Neg(p.c), &pk.N)
 	Sv := modPow(&pk.S, p.vPrimeResponse, &pk.N)
 	R0s := modPow(pk.R[0], p.sResponse, &pk.N)
 	Ucommit := new(big.Int).Mul(Uc, Sv)
 	Ucommit.Mul(Ucommit, R0s).Mod(Ucommit, &pk.N)
 
-	cPrime := hashCommit([]*big.Int{context, U, Ucommit, nonce})
+	return Ucommit
+}
 
-	return p.c.Cmp(cPrime) == 0
+func (p *ProofU) SecretKeyResponse() *big.Int {
+	return p.sResponse
+}
+
+func (p *ProofU) Challenge() *big.Int {
+	return p.c
+}
+
+func (p *ProofU) ChallengeContribution(pk *PublicKey) []*big.Int {
+	return []*big.Int{p.u, p.reconstructUcommit(pk)}
 }
 
 // ProofS represents a proof.
@@ -64,7 +104,7 @@ type ProofD struct {
 	aResponses, aDisclosed     map[int]*big.Int
 }
 
-func (p *ProofD) checkSizeResponses(pk *PublicKey) bool {
+func (p *ProofD) correctResponseSizes(pk *PublicKey) bool {
 	// Check range on the aResponses
 	maximum := new(big.Int).Lsh(bigONE, pk.Params.LmCommit+1)
 	maximum.Sub(maximum, bigONE)
@@ -113,15 +153,113 @@ func (p *ProofD) reconstructZ(pk *PublicKey) *big.Int {
 	return Z
 }
 
-// Verify verifies the proof agains the given public key, context, and nonce.
+// Verify verifies the proof against the given public key, context, and nonce.
 func (p *ProofD) Verify(pk *PublicKey, context, nonce1 *big.Int) bool {
-	if !p.checkSizeResponses(pk) {
+	return p.VerifyWithChallenge(pk, createChallenge(context, nonce1, p.ChallengeContribution(pk)))
+}
+
+// Verify verifies the proof against the given public key and the reconstruted challenge.
+func (p *ProofD) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.Int) bool {
+	return p.correctResponseSizes(pk) && p.c.Cmp(reconstructedChallenge) == 0
+}
+
+func (p *ProofD) ChallengeContribution(pk *PublicKey) []*big.Int {
+	return []*big.Int{p.A, p.reconstructZ(pk)}
+}
+
+func (p *ProofD) SecretKeyResponse() *big.Int {
+	return p.aResponses[0]
+}
+
+func (p *ProofD) Challenge() *big.Int {
+	return p.c
+}
+
+type ProofBuilder interface {
+	Commit(skRandomizer *big.Int) []*big.Int
+	CreateProof(challenge *big.Int) Proof
+}
+
+type ProofList []Proof
+
+var (
+	ErrMissingProofU = errors.New("Missing ProofU in ProofList, has a CredentialBuilder been added?")
+)
+
+// GetProofU returns the n'th ProofU in this proof list.
+func (pl ProofList) GetProofU(n int) (*ProofU, error) {
+	count := 0
+	for _, proof := range pl {
+		switch proof.(type) {
+		case *ProofU:
+			if count == n {
+				return proof.(*ProofU), nil
+			}
+			count++
+		}
+	}
+	return nil, ErrMissingProofU
+}
+
+// GetFirstProofU returns the first ProofU in this proof list
+func (pl ProofList) GetFirstProofU() (*ProofU, error) {
+	return pl.GetProofU(0)
+}
+
+func (pl ProofList) challengeContributions(publicKeys []*PublicKey, context, nonce *big.Int) []*big.Int {
+	contributions := make([]*big.Int, 0, len(pl)*2)
+	for i, proof := range pl {
+		contributions = append(contributions, proof.ChallengeContribution(publicKeys[i])...)
+	}
+	return contributions
+}
+
+func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, shouldBeBound bool) bool {
+	if len(pl) == 0 {
+		return true
+	}
+
+	if len(pl) != len(publicKeys) {
 		return false
 	}
 
-	Z := p.reconstructZ(pk)
+	if shouldBeBound {
+		contributions := pl.challengeContributions(publicKeys, context, nonce)
+		expectedChallenge := createChallenge(context, nonce, contributions)
+		expectedSecretKeyResponse := pl[0].SecretKeyResponse()
+		for i, proof := range pl {
+			if expectedSecretKeyResponse.Cmp(proof.SecretKeyResponse()) != 0 ||
+				!proof.VerifyWithChallenge(publicKeys[i], expectedChallenge) {
+				return false
+			}
+		}
+	} else {
+		for i, proof := range pl {
+			// if !proof.Verify(publicKeys[i], context, nonce) {
+			if !proof.VerifyWithChallenge(publicKeys[i], createChallenge(context, nonce, proof.ChallengeContribution(publicKeys[i]))) {
+				return false
+			}
+		}
+	}
 
-	cPrime := hashCommit([]*big.Int{context, p.A, Z, nonce1})
+	return true
+}
 
-	return p.c.Cmp(cPrime) == 0
+func BuildProofList(params *SystemParameters, context, nonce *big.Int, proofBuilders []ProofBuilder) ProofList {
+	skCommitment, _ := randomBigInt(params.LmCommit)
+
+	commitmentValues := make([]*big.Int, 0, len(proofBuilders)*2)
+	for _, pb := range proofBuilders {
+		commitmentValues = append(commitmentValues, pb.Commit(skCommitment)...)
+	}
+
+	// Create a shared challenge
+	challenge := createChallenge(context, nonce, commitmentValues)
+
+	proofs := make([]Proof, len(proofBuilders))
+	// Now create proofs using this challenge
+	for i, v := range proofBuilders {
+		proofs[i] = v.CreateProof(challenge)
+	}
+	return proofs
 }

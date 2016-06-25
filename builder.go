@@ -7,19 +7,10 @@ import (
 	"math/big"
 )
 
-type Builder struct {
-	secret *big.Int
-	vPrime *big.Int
-	nonce2 *big.Int
-
-	pk      *PublicKey
-	context *big.Int
-}
-
 type IssueCommitmentMessage struct {
 	U      *big.Int
 	Nonce2 *big.Int
-	ProofU
+	Proofs ProofList
 }
 
 type IssueSignatureMessage struct {
@@ -27,33 +18,58 @@ type IssueSignatureMessage struct {
 	Signature *CLSignature
 }
 
-type IdemixCredential struct {
-	Signature  *CLSignature
-	Pk         *PublicKey
-	Attributes []*big.Int
+// TODO: this needs to be changed, too much state!
+// func (b *Builder) commitmentToSecret(secret *big.Int) *big.Int {
+// 	b.secret = secret
+// 	b.vPrime, _ = randomBigInt(b.pk.Params.LvPrime)
+
+// 	// U = S^{vPrime} * R_0^{s}
+// 	Sv := new(big.Int).Exp(&b.pk.S, b.vPrime, &b.pk.N)
+// 	R0s := new(big.Int).Exp(b.pk.R[0], b.secret, &b.pk.N)
+// 	U := new(big.Int).Mul(Sv, R0s)
+// 	U.Mod(U, &b.pk.N)
+// 	return U
+// }
+
+// TODO: needs checking!
+func commitmentToSecretNew(pk *PublicKey, secret *big.Int) (vPrime, U *big.Int) {
+
+	vPrime, _ = randomBigInt(pk.Params.LvPrime)
+	// U = S^{vPrime} * R_0^{s}
+	Sv := new(big.Int).Exp(&pk.S, vPrime, &pk.N)
+	R0s := new(big.Int).Exp(pk.R[0], secret, &pk.N)
+	U = new(big.Int).Mul(Sv, R0s)
+	U.Mod(U, &pk.N)
+	return
 }
 
-func (b *Builder) CommitToSecretAndProve(secret, nonce1 *big.Int) *IssueCommitmentMessage {
-	U := b.commitmentToSecret(secret)
-	proofU := b.proveCommitment(U, nonce1)
+func (b *Builder) CommitToSecretAndProve(nonce1 *big.Int) *IssueCommitmentMessage {
+	proofU := b.proveCommitment(b.u, nonce1)
 	b.nonce2, _ = randomBigInt(b.pk.Params.Lstatzk)
 
-	return &IssueCommitmentMessage{U: U, ProofU: *proofU, Nonce2: b.nonce2}
+	return &IssueCommitmentMessage{U: b.u, Proofs: ProofList{proofU}, Nonce2: b.nonce2}
+}
+
+func (b *Builder) CreateIssueCommitmentMessage(proofs ProofList) *IssueCommitmentMessage {
+	return &IssueCommitmentMessage{U: b.u, Proofs: proofs, Nonce2: b.nonce2}
 }
 
 var (
-	IncorrectProofOfSignatureCorrectness = errors.New("Proof of correctness on signature does not verify.")
-	IncorrectAttributeSignature          = errors.New("The Signature on the attributes is not correct.")
+	ErrIncorrectProofOfSignatureCorrectness = errors.New("Proof of correctness on signature does not verify.")
+	ErrIncorrectAttributeSignature          = errors.New("The Signature on the attributes is not correct.")
 )
 
-// NewBuilder creates a new credential builder.
-func NewBuilder(pk *PublicKey, context *big.Int) *Builder {
-	return &Builder{pk: pk, context: context}
+// NewBuilder creates a new credential builder. The resulting credential builder
+// is already committed to the provided secret.
+func NewBuilder(pk *PublicKey, context, secret *big.Int) *Builder {
+	vPrime, U := commitmentToSecretNew(pk, secret)
+
+	return &Builder{pk: pk, context: context, secret: secret, vPrime: vPrime, u: U}
 }
 
 func (b *Builder) ConstructCredential(msg *IssueSignatureMessage, attributes []*big.Int) (*IdemixCredential, error) {
 	if !msg.Proof.Verify(b.pk, msg.Signature, b.context, b.nonce2) {
-		return nil, IncorrectProofOfSignatureCorrectness
+		return nil, ErrIncorrectProofOfSignatureCorrectness
 	}
 
 	// Construct actual signature
@@ -65,21 +81,9 @@ func (b *Builder) ConstructCredential(msg *IssueSignatureMessage, attributes []*
 	copy(exponents[1:], attributes)
 
 	if !signature.Verify(b.pk, exponents) {
-		return nil, IncorrectAttributeSignature
+		return nil, ErrIncorrectAttributeSignature
 	}
 	return &IdemixCredential{Pk: b.pk, Signature: signature, Attributes: exponents}, nil
-}
-
-func (b *Builder) commitmentToSecret(secret *big.Int) *big.Int {
-	b.secret = secret
-	b.vPrime, _ = randomBigInt(b.pk.Params.LvPrime)
-
-	// U = S^{vPrime} * R_0^{s}
-	Sv := new(big.Int).Exp(&b.pk.S, b.vPrime, &b.pk.N)
-	R0s := new(big.Int).Exp(b.pk.R[0], b.secret, &b.pk.N)
-	U := new(big.Int).Mul(Sv, R0s)
-	U.Mod(U, &b.pk.N)
-	return U
 }
 
 func intHashSha256(input []byte) *big.Int {
@@ -106,6 +110,7 @@ func hashCommit(values []*big.Int) *big.Int {
 func (b *Builder) proveCommitment(U, nonce1 *big.Int) *ProofU {
 	sCommit, _ := randomBigInt(b.pk.Params.LsCommit)
 	vPrimeCommit, _ := randomBigInt(b.pk.Params.LvPrimeCommit)
+
 	// Ucommit = S^{vPrimeCommit} * R_0^{sCommit}
 	Sv := new(big.Int).Exp(&b.pk.S, vPrimeCommit, &b.pk.N)
 	R0s := new(big.Int).Exp(b.pk.R[0], sCommit, &b.pk.N)
@@ -119,66 +124,43 @@ func (b *Builder) proveCommitment(U, nonce1 *big.Int) *ProofU {
 	vPrimeResponse := new(big.Int).Mul(c, b.vPrime)
 	vPrimeResponse.Add(vPrimeResponse, vPrimeCommit)
 
-	return &ProofU{c: c, vPrimeResponse: vPrimeResponse, sResponse: sResponse}
+	return &ProofU{u: U, c: c, vPrimeResponse: vPrimeResponse, sResponse: sResponse}
 }
 
-func getUndisclosedAttributes(disclosedAttributes []int, numAttributes int) []int {
-	check := make([]bool, numAttributes)
-	for _, v := range disclosedAttributes {
-		check[v] = true
-	}
-	r := make([]int, 0, numAttributes)
-	for i, v := range check {
-		if !v {
-			r = append(r, i)
-		}
-	}
-	return r
+type Builder struct {
+	secret       *big.Int
+	vPrime       *big.Int
+	vPrimeCommit *big.Int
+	nonce2       *big.Int
+	u            *big.Int
+	uCommit      *big.Int
+	skCommitment *big.Int
+
+	pk      *PublicKey
+	context *big.Int
 }
 
-func (ic *IdemixCredential) CreateDisclosureProof(disclosedAttributes []int, context, nonce1 *big.Int) *ProofD {
-	undisclosedAttributes := getUndisclosedAttributes(disclosedAttributes, len(ic.Attributes))
+// TODO: rename skCommitment
+func (b *Builder) Commit(skCommitment *big.Int) []*big.Int {
+	// create receiver nonce (nonce2)
+	b.nonce2, _ = randomBigInt(b.pk.Params.Lstatzk)
 
-	randSig := ic.Signature.Randomize(ic.Pk)
+	b.skCommitment = skCommitment
+	// vPrimeCommit
+	b.vPrimeCommit, _ = randomBigInt(b.pk.Params.LvPrimeCommit)
 
-	eCommit, _ := randomBigInt(ic.Pk.Params.LeCommit)
-	vCommit, _ := randomBigInt(ic.Pk.Params.LvCommit)
+	// U_commit = S^{v_prime_commit} * R_0^{s_commit}
+	sv := new(big.Int).Exp(&b.pk.S, b.vPrimeCommit, &b.pk.N)
+	r0s := new(big.Int).Exp(b.pk.R[0], b.skCommitment, &b.pk.N)
+	b.uCommit = new(big.Int).Mul(sv, r0s)
+	b.uCommit.Mod(b.uCommit, &b.pk.N)
 
-	aCommits := make(map[int]*big.Int)
-	for _, v := range undisclosedAttributes {
-		aCommits[v], _ = randomBigInt(ic.Pk.Params.LmCommit)
-	}
+	return []*big.Int{b.u, b.uCommit}
+}
 
-	// Z = A^{e_commit} * S^{v_commit}
-	//     PROD_{i \in undisclosed} ( R_i^{a_commits{i}} )
-	Ae := modPow(randSig.A, eCommit, &ic.Pk.N)
-	Sv := modPow(&ic.Pk.S, vCommit, &ic.Pk.N)
-	Z := new(big.Int).Mul(Ae, Sv)
-	Z.Mod(Z, &ic.Pk.N)
+func (b *Builder) CreateProof(challenge *big.Int) Proof {
+	sResponse := new(big.Int).Add(b.skCommitment, new(big.Int).Mul(challenge, b.secret))
+	vPrimeResponse := new(big.Int).Add(b.vPrimeCommit, new(big.Int).Mul(challenge, b.vPrime))
 
-	for _, v := range undisclosedAttributes {
-		Z.Mul(Z, modPow(ic.Pk.R[v], aCommits[v], &ic.Pk.N))
-		Z.Mod(Z, &ic.Pk.N)
-	}
-
-	c := hashCommit([]*big.Int{context, randSig.A, Z, nonce1})
-
-	ePrime := new(big.Int).Sub(randSig.E, new(big.Int).Lsh(bigONE, ic.Pk.Params.Le-1))
-	eResponse := new(big.Int).Mul(c, ePrime)
-	eResponse.Add(eCommit, eResponse)
-	vResponse := new(big.Int).Mul(c, randSig.V)
-	vResponse.Add(vCommit, vResponse)
-
-	aResponses := make(map[int]*big.Int)
-	for _, v := range undisclosedAttributes {
-		t := new(big.Int).Mul(c, ic.Attributes[v])
-		aResponses[v] = t.Add(aCommits[v], t)
-	}
-
-	aDisclosed := make(map[int]*big.Int)
-	for _, v := range disclosedAttributes {
-		aDisclosed[v] = ic.Attributes[v]
-	}
-
-	return &ProofD{c: c, A: randSig.A, eResponse: eResponse, vResponse: vResponse, aResponses: aResponses, aDisclosed: aDisclosed}
+	return &ProofU{u: b.u, c: challenge, vPrimeResponse: vPrimeResponse, sResponse: sResponse}
 }
