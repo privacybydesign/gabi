@@ -19,22 +19,7 @@ type IssueSignatureMessage struct {
 	Signature *CLSignature
 }
 
-// TODO: this needs to be changed, too much state!
-// func (b *Builder) commitmentToSecret(secret *big.Int) *big.Int {
-// 	b.secret = secret
-// 	b.vPrime, _ = randomBigInt(b.pk.Params.LvPrime)
-
-// 	// U = S^{vPrime} * R_0^{s}
-// 	Sv := new(big.Int).Exp(&b.pk.S, b.vPrime, &b.pk.N)
-// 	R0s := new(big.Int).Exp(b.pk.R[0], b.secret, &b.pk.N)
-// 	U := new(big.Int).Mul(Sv, R0s)
-// 	U.Mod(U, &b.pk.N)
-// 	return U
-// }
-
-// TODO: needs checking!
-func commitmentToSecretNew(pk *PublicKey, secret *big.Int) (vPrime, U *big.Int) {
-
+func commitmentToSecret(pk *PublicKey, secret *big.Int) (vPrime, U *big.Int) {
 	vPrime, _ = randomBigInt(pk.Params.LvPrime)
 	// U = S^{vPrime} * R_0^{s}
 	Sv := new(big.Int).Exp(&pk.S, vPrime, &pk.N)
@@ -63,7 +48,7 @@ var (
 // NewBuilder creates a new credential builder. The resulting credential builder
 // is already committed to the provided secret.
 func NewBuilder(pk *PublicKey, context, secret *big.Int) *Builder {
-	vPrime, U := commitmentToSecretNew(pk, secret)
+	vPrime, U := commitmentToSecret(pk, secret)
 
 	return &Builder{pk: pk, context: context, secret: secret, vPrime: vPrime, u: U}
 }
@@ -135,24 +120,23 @@ type Builder struct {
 	nonce2       *big.Int
 	u            *big.Int
 	uCommit      *big.Int
-	skCommitment *big.Int
+	skRandomizer *big.Int
 
 	pk      *PublicKey
 	context *big.Int
 }
 
-// TODO: rename skCommitment
-func (b *Builder) Commit(skCommitment *big.Int) []*big.Int {
+func (b *Builder) Commit(skRandomizer *big.Int) []*big.Int {
 	// create receiver nonce (nonce2)
 	b.nonce2, _ = randomBigInt(b.pk.Params.Lstatzk)
 
-	b.skCommitment = skCommitment
+	b.skRandomizer = skRandomizer
 	// vPrimeCommit
 	b.vPrimeCommit, _ = randomBigInt(b.pk.Params.LvPrimeCommit)
 
 	// U_commit = S^{v_prime_commit} * R_0^{s_commit}
 	sv := new(big.Int).Exp(&b.pk.S, b.vPrimeCommit, &b.pk.N)
-	r0s := new(big.Int).Exp(b.pk.R[0], b.skCommitment, &b.pk.N)
+	r0s := new(big.Int).Exp(b.pk.R[0], b.skRandomizer, &b.pk.N)
 	b.uCommit = new(big.Int).Mul(sv, r0s)
 	b.uCommit.Mod(b.uCommit, &b.pk.N)
 
@@ -160,7 +144,7 @@ func (b *Builder) Commit(skCommitment *big.Int) []*big.Int {
 }
 
 func (b *Builder) CreateProof(challenge *big.Int) Proof {
-	sResponse := new(big.Int).Add(b.skCommitment, new(big.Int).Mul(challenge, b.secret))
+	sResponse := new(big.Int).Add(b.skRandomizer, new(big.Int).Mul(challenge, b.secret))
 	vPrimeResponse := new(big.Int).Add(b.vPrimeCommit, new(big.Int).Mul(challenge, b.vPrime))
 
 	return &ProofU{u: b.u, c: challenge, vPrimeResponse: vPrimeResponse, sResponse: sResponse}
