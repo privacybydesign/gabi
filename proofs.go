@@ -1,5 +1,6 @@
 package credential
 
+// TODO: properly comment all data structures and functions
 import (
 	"errors"
 	"math/big"
