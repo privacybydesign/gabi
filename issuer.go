@@ -8,7 +8,7 @@ import (
 )
 
 type Issuer struct {
-	sk      *SecretKey
+	sk      *PrivateKey
 	pk      *PublicKey
 	context *big.Int
 }
@@ -18,7 +18,7 @@ var (
 )
 
 // NewIssuer creates a new credential issuer.
-func NewIssuer(sk *SecretKey, pk *PublicKey, context *big.Int) *Issuer {
+func NewIssuer(sk *PrivateKey, pk *PublicKey, context *big.Int) *Issuer {
 	return &Issuer{sk: sk, pk: pk, context: context}
 }
 

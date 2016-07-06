@@ -11,8 +11,8 @@ const (
 	XMLHeader = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>"
 )
 
-// SecretKey represents an issuer's secret (private) key.
-type SecretKey struct {
+// PrivateKey represents an issuer's private key.
+type PrivateKey struct {
 	XMLName xml.Name `xml:"http://www.zurich.ibm.com/security/idemix IssuerPrivateKey"`
 	P       big.Int  `xml:"Elements>p"`
 	Q       big.Int  `xml:"Elements>q"`
@@ -20,9 +20,9 @@ type SecretKey struct {
 	QPrime  big.Int  `xml:"Elements>qPrime"`
 }
 
-// NewSecretKey creates a new issuer secret key using the provided parameters.
-func NewSecretKey(p, q *big.Int) *SecretKey {
-	sk := SecretKey{P: *p, Q: *q}
+// NewPrivateKey creates a new issuer private key using the provided parameters.
+func NewPrivateKey(p, q *big.Int) *PrivateKey {
+	sk := PrivateKey{P: *p, Q: *q}
 
 	sk.PPrime.Sub(p, bigONE)
 	sk.PPrime.Rsh(&sk.PPrime, 1)

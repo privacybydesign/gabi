@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	sk *SecretKey
+	sk *PrivateKey
 	pk *PublicKey
 )
 
@@ -39,7 +39,7 @@ func setupParameters() {
 		R[i], _ = new(big.Int).SetString(rv, 10)
 	}
 
-	sk = NewSecretKey(p, q)
+	sk = NewPrivateKey(p, q)
 	pk = NewPublicKey(n, Z, S, R)
 }
 
