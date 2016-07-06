@@ -388,6 +388,14 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 
 }
 
+// TODO: tests to add:
+// - creation of secret&public keys for issuers
+// - tests with *different* keys for issuers and with *different* attributes
+// - reusable credential creation for additional tests
+// - Wrongly Bound Proofs
+// - Reading/writing key files
+// - Tests with expiration dates?
+
 func TestMain(m *testing.M) {
 	setupParameters()
 	os.Exit(m.Run())
