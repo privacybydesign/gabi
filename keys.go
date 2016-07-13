@@ -2,13 +2,16 @@ package credential
 
 // TODO: properly comment all data structures and functions
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/xml"
 	"math/big"
+	"os"
 )
 
 const (
 	//XMLHeader can be a used as the XML header when writing keys in XML format.
-	XMLHeader = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>"
+	XMLHeader = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 )
 
 // PrivateKey represents an issuer's private key.
@@ -32,6 +35,34 @@ func NewPrivateKey(p, q *big.Int) *PrivateKey {
 
 	return &sk
 }
+
+// WriteToFile writes the private key to an xml file.
+func (privk *PrivateKey) WriteToFile(filename string) error {
+	f, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	// Write the standard XML header
+	_, err = f.Write([]byte(XMLHeader))
+	if err != nil {
+		return err
+	}
+
+	// And the actual xml body (with indentation)
+	b, err := xml.MarshalIndent(privk, "", "   ")
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(b)
+	return err
+}
+
+const (
+	MaxBases           = 6 // Atleast, currently?
+	DefaultEpochLength = 432000
+)
 
 // xmlBases is an auxiliary struct to encode/decode the odd way bases are
 // represented in the xml representation of public keys
@@ -100,19 +131,42 @@ func (el *EpochLength) MarshalXML(e *xml.Encoder, start xml.StartElement) error 
 
 // PublicKey represents an issuer's public key.
 type PublicKey struct {
-	XMLName     xml.Name    `xml:"http://www.zurich.ibm.com/security/idemix IssuerPublicKey"`
-	N           big.Int     `xml:"Elements>n"` // Modulus n
-	Z           big.Int     `xml:"Elements>Z"` // Generator Z
-	S           big.Int     `xml:"Elements>S"` // Generator S
-	R           Bases       `xml:"Elements>Bases"`
-	EpochLength EpochLength `xml:"Features"`
-	Params      *SystemParameters
+	XMLName     xml.Name          `xml:"http://www.zurich.ibm.com/security/idemix IssuerPublicKey"`
+	N           big.Int           `xml:"Elements>n"` // Modulus n
+	Z           big.Int           `xml:"Elements>Z"` // Generator Z
+	S           big.Int           `xml:"Elements>S"` // Generator S
+	R           Bases             `xml:"Elements>Bases"`
+	EpochLength EpochLength       `xml:"Features"`
+	Params      *SystemParameters `xml:"-"`
 }
 
 // NewPublicKey creates and returns a new public key based on the provided parameters.
 func NewPublicKey(N, Z, S *big.Int, R []*big.Int) *PublicKey {
-	pk := PublicKey{N: *N, Z: *Z, S: *S, R: R, Params: &DefaultSystemParameters}
+	pk := PublicKey{N: *N, Z: *Z, S: *S, R: R, Params: &DefaultSystemParameters, EpochLength: DefaultEpochLength}
 	return &pk
+}
+
+// WriteToFile writes the public key to an xml file.
+func (pubk *PublicKey) WriteToFile(filename string) error {
+	f, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	// Write the standard XML header
+	_, err = f.Write([]byte(XMLHeader))
+	if err != nil {
+		return err
+	}
+
+	// And the actual xml body (with indentation)
+	b, err := xml.MarshalIndent(pubk, "", "   ")
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(b)
+	return err
 }
 
 // BaseParameters holds the base system parameters
