@@ -1,6 +1,5 @@
 package credential
 
-// TODO: properly comment all data structures and functions
 import (
 	"crypto/sha256"
 	"encoding/asn1"
@@ -8,17 +7,22 @@ import (
 	"math/big"
 )
 
+// IssueCommitmentMessage encapsulates the messages sent by the receiver to the
+// issuer in the second step of the issuance protocol.
 type IssueCommitmentMessage struct {
 	U      *big.Int
 	Nonce2 *big.Int
 	Proofs ProofList
 }
 
+// IssueSignatureMessage encapsulates the messages sent from the issuer to the
+// reciver in the final step of the issuance protocol.
 type IssueSignatureMessage struct {
 	Proof     *ProofS
 	Signature *CLSignature
 }
 
+// commitmentToSecret produces a commitment to the provided secret
 func commitmentToSecret(pk *PublicKey, secret *big.Int) (vPrime, U *big.Int) {
 	vPrime, _ = randomBigInt(pk.Params.LvPrime)
 	// U = S^{vPrime} * R_0^{s}
@@ -29,22 +33,6 @@ func commitmentToSecret(pk *PublicKey, secret *big.Int) (vPrime, U *big.Int) {
 	return
 }
 
-func (b *Builder) CommitToSecretAndProve(nonce1 *big.Int) *IssueCommitmentMessage {
-	proofU := b.proveCommitment(b.u, nonce1)
-	b.nonce2, _ = randomBigInt(b.pk.Params.Lstatzk)
-
-	return &IssueCommitmentMessage{U: b.u, Proofs: ProofList{proofU}, Nonce2: b.nonce2}
-}
-
-func (b *Builder) CreateIssueCommitmentMessage(proofs ProofList) *IssueCommitmentMessage {
-	return &IssueCommitmentMessage{U: b.u, Proofs: proofs, Nonce2: b.nonce2}
-}
-
-var (
-	ErrIncorrectProofOfSignatureCorrectness = errors.New("Proof of correctness on signature does not verify.")
-	ErrIncorrectAttributeSignature          = errors.New("The Signature on the attributes is not correct.")
-)
-
 // NewBuilder creates a new credential builder. The resulting credential builder
 // is already committed to the provided secret.
 func NewBuilder(pk *PublicKey, context, secret *big.Int) *Builder {
@@ -53,6 +41,34 @@ func NewBuilder(pk *PublicKey, context, secret *big.Int) *Builder {
 	return &Builder{pk: pk, context: context, secret: secret, vPrime: vPrime, u: U}
 }
 
+// CommitToSecretAndProve creates the response to the initial challenge nonce
+// nonce1 sent by the issuer. The response consists of a commitment to the
+// secret (set on creation of the builder, see NewBuilder) and a proof of
+// correctness of this commitment.
+func (b *Builder) CommitToSecretAndProve(nonce1 *big.Int) *IssueCommitmentMessage {
+	proofU := b.proveCommitment(b.u, nonce1)
+	b.nonce2, _ = randomBigInt(b.pk.Params.Lstatzk)
+
+	return &IssueCommitmentMessage{U: b.u, Proofs: ProofList{proofU}, Nonce2: b.nonce2}
+}
+
+// CreateIssueCommitmentMessage creates the IssueCommitmentMessage based on the
+// provided prooflist, to be sent to the issuer.
+func (b *Builder) CreateIssueCommitmentMessage(proofs ProofList) *IssueCommitmentMessage {
+	return &IssueCommitmentMessage{U: b.u, Proofs: proofs, Nonce2: b.nonce2}
+}
+
+var (
+	// ErrIncorrectProofOfSignatureCorrectness is issued when the the proof of
+	// correctness on the signature does not verify.
+	ErrIncorrectProofOfSignatureCorrectness = errors.New("Proof of correctness on signature does not verify.")
+	// ErrIncorrectAttributeSignature is issued when the signature on the
+	// attributes is not correct.
+	ErrIncorrectAttributeSignature = errors.New("The Signature on the attributes is not correct.")
+)
+
+// ConstructCredential creates a credential using the IssueSignatureMessage from
+// the issuer and the content of the attributes.
 func (b *Builder) ConstructCredential(msg *IssueSignatureMessage, attributes []*big.Int) (*IdemixCredential, error) {
 	if !msg.Proof.Verify(b.pk, msg.Signature, b.context, b.nonce2) {
 		return nil, ErrIncorrectProofOfSignatureCorrectness
@@ -72,15 +88,17 @@ func (b *Builder) ConstructCredential(msg *IssueSignatureMessage, attributes []*
 	return &IdemixCredential{Pk: b.pk, Signature: signature, Attributes: exponents}, nil
 }
 
+// intHashSha256 is a utility function compute the sha256 hash over a byte array
+// and return this hash as a big.Int.
 func intHashSha256(input []byte) *big.Int {
 	h := sha256.New()
 	h.Write(input)
-	r := h.Sum(nil)
-	return new(big.Int).SetBytes(r)
+	return new(big.Int).SetBytes(h.Sum(nil))
 }
 
-// hashCommit computes the sha256 hash over the asn1 representation of a slice of big integers
-// and returns a positive big integer that can be represented with that hash.
+// hashCommit computes the sha256 hash over the asn1 representation of a slice
+// of big integers and returns a positive big integer that can be represented
+// with that hash.
 func hashCommit(values []*big.Int) *big.Int {
 	// The first element is the number of elements
 	tmp := make([]*big.Int, len(values)+1)
@@ -113,6 +131,9 @@ func (b *Builder) proveCommitment(U, nonce1 *big.Int) *ProofU {
 	return &ProofU{u: U, c: c, vPrimeResponse: vPrimeResponse, sResponse: sResponse}
 }
 
+// Builder is a temporary object to hold some state for the protocol that is
+// used to create (build) a credential. It also implements the ProofBuilder
+// interface.
 type Builder struct {
 	secret       *big.Int
 	vPrime       *big.Int
@@ -126,6 +147,7 @@ type Builder struct {
 	context *big.Int
 }
 
+// Commit commits to the secret (first) attribute using the provided randomizer.
 func (b *Builder) Commit(skRandomizer *big.Int) []*big.Int {
 	// create receiver nonce (nonce2)
 	b.nonce2, _ = randomBigInt(b.pk.Params.Lstatzk)
@@ -143,6 +165,7 @@ func (b *Builder) Commit(skRandomizer *big.Int) []*big.Int {
 	return []*big.Int{b.u, b.uCommit}
 }
 
+// CreateProof creates a (ProofU) Proof using the provided challenge.
 func (b *Builder) CreateProof(challenge *big.Int) Proof {
 	sResponse := new(big.Int).Add(b.skRandomizer, new(big.Int).Mul(challenge, b.secret))
 	vPrimeResponse := new(big.Int).Add(b.vPrimeCommit, new(big.Int).Mul(challenge, b.vPrime))
