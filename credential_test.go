@@ -438,42 +438,47 @@ func genRandomIssuer(t *testing.T, context *big.Int) *Issuer {
 	return NewIssuer(privk, pubk, context)
 }
 
-func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
-	// TODO: this test sometimes (!!) fails. Need to investigate why!
-	context, _ := randomBigInt(DefaultSystemParameters.Lh)
-	nonce1, _ := randomBigInt(DefaultSystemParameters.Lstatzk)
-	secret, _ := randomBigInt(DefaultSystemParameters.Lm)
-
-	issuer1 := genRandomIssuer(t, context)
-	issuer2 := genRandomIssuer(t, context)
-
+func createCredential(t *testing.T, context, secret *big.Int, issuer *Issuer) *IdemixCredential {
 	// First create a credential
-	cb1 := NewBuilder(issuer1.pk, context, secret)
-	commitMsg := cb1.CommitToSecretAndProve(nonce1)
+	cb := NewBuilder(issuer.pk, context, secret)
+	nonce1, _ := randomBigInt(DefaultSystemParameters.Lstatzk)
+	commitMsg := cb.CommitToSecretAndProve(nonce1)
 
-	ism, err := issuer1.IssueSignature(commitMsg, testAttributes1, nonce1)
+	ism, err := issuer.IssueSignature(commitMsg, testAttributes1, nonce1)
 	if err != nil {
 		t.Error("Error creating Issue Signature: ", err)
 	}
 
-	cred1, err := cb1.ConstructCredential(ism, testAttributes1)
+	cred, err := cb.ConstructCredential(ism, testAttributes1)
 	if err != nil {
 		t.Error("Error creating credential: ", err)
 	}
+	return cred
+}
+
+func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
+	context, _ := randomBigInt(DefaultSystemParameters.Lh)
+	secret, _ := randomBigInt(DefaultSystemParameters.Lm)
+
+	// First create a single credential for an issuer
+	issuer1 := genRandomIssuer(t, context)
+	cred1 := createCredential(t, context, secret, issuer1)
 
 	// Then create another credential based on the same credential with a partial
 	// disclosure of the first credential.
+	issuer2 := genRandomIssuer(t, context)
 	cb2 := NewBuilder(issuer2.pk, context, secret)
 
+	nonce1, _ := randomBigInt(DefaultSystemParameters.Lstatzk)
 	prooflist := BuildProofList(pk.Params, context, nonce1, []ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2})
 
-	commitMsg2 := cb2.CreateIssueCommitmentMessage(prooflist)
+	commitMsg := cb2.CreateIssueCommitmentMessage(prooflist)
 
-	if !commitMsg2.Proofs.Verify([]*PublicKey{issuer1.pk, issuer2.pk}, context, nonce1, true) {
+	if !commitMsg.Proofs.Verify([]*PublicKey{issuer1.pk, issuer2.pk}, context, nonce1, true) {
 		t.Error("Proofs in commit message do not verify!")
 	}
 
-	msg, err := issuer2.IssueSignature(commitMsg2, testAttributes2, nonce1)
+	msg, err := issuer2.IssueSignature(commitMsg, testAttributes2, nonce1)
 	if err != nil {
 		t.Error("Error creating Issue Signature: ", err)
 	}
@@ -488,6 +493,32 @@ func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 	proof := cred2.CreateDisclosureProof(disclosedAttributes, context, nonce1s)
 	if !proof.Verify(issuer2.pk, context, nonce1s) {
 		t.Error("Proof of disclosure did not verify, whereas it should.")
+	}
+
+}
+
+func TestWronglyBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
+	context, _ := randomBigInt(DefaultSystemParameters.Lh)
+	// Use two different secrets for the credentials, this should fail eventually
+	secret1, _ := randomBigInt(DefaultSystemParameters.Lm)
+	secret2, _ := randomBigInt(DefaultSystemParameters.Lm)
+
+	// First create a single credential for an issuer
+	issuer1 := genRandomIssuer(t, context)
+	cred1 := createCredential(t, context, secret1, issuer1)
+
+	// Then create another credential based on the same credential with a partial
+	// disclosure of the first credential.
+	issuer2 := genRandomIssuer(t, context)
+	cb2 := NewBuilder(issuer2.pk, context, secret2)
+
+	nonce1, _ := randomBigInt(DefaultSystemParameters.Lstatzk)
+	prooflist := BuildProofList(pk.Params, context, nonce1, []ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2})
+
+	commitMsg := cb2.CreateIssueCommitmentMessage(prooflist)
+
+	if commitMsg.Proofs.Verify([]*PublicKey{issuer1.pk, issuer2.pk}, context, nonce1, true) {
+		t.Error("Proofs in commit message verify, whereas they should not!")
 	}
 }
 
