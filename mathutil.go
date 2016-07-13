@@ -1,15 +1,15 @@
 package credential
 
-// TODO: properly comment all data structures and functions
 import (
 	"crypto/rand"
 	"math/big"
 )
 
 // Some utility code (mostly math stuff) useful in various places in this
-// package
+// package.
 
-// Often we need to refer to the same small constant big numbers.
+// Often we need to refer to the same small constant big numbers, no point in
+// creating them again and again.
 var (
 	bigZERO  = big.NewInt(0)
 	bigONE   = big.NewInt(1)
