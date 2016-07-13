@@ -264,22 +264,24 @@ func TestShowingProof(t *testing.T) {
 }
 
 func TestCombinedShowingProof(t *testing.T) {
-	// signature1, err := SignMessageBlock(sk, pk, testAttributes)
-	// if err != nil {
-	// 	t.Error("Error producing CL signature.")
-	// }
-	// cred1 := &IdemixCredential{Pk: pk, Attributes: testAttributes, Signature: signature1}
+	context, _ := randomBigInt(testPubK.Params.Lh)
+	nonce1, _ := randomBigInt(testPubK.Params.Lstatzk)
+	secret, _ := randomBigInt(testPubK.Params.Lm)
 
-	// signature2, err := SignMessageBlock(sk, pk, testAttributes)
-	// if err != nil {
-	// 	t.Error("Error producing CL signature.")
-	// }
-	// cred2 := &IdemixCredential{Pk: pk, Attributes: testAttributes, Signature: signature2}
+	issuer1 := genRandomIssuer(t, context)
+	cred1 := createCredential(t, context, secret, issuer1)
 
-	// context, _ := randomBigInt(pk.Params.Lh)
-	// nonce1, _ := randomBigInt(pk.Params.Lstatzk)
+	issuer2 := genRandomIssuer(t, context)
+	cred2 := createCredential(t, context, secret, issuer2)
 
-	// TODO: here should the ProofList stuff go.
+	prooflist := BuildProofList(&DefaultSystemParameters, context, nonce1,
+		[]ProofBuilder{
+			cred1.CreateDisclosureProofBuilder([]int{1, 2}),
+			cred2.CreateDisclosureProofBuilder([]int{1, 3})})
+
+	if !prooflist.Verify([]*PublicKey{issuer1.pk, issuer2.pk}, context, nonce1, true) {
+		t.Error("Prooflist does not verify whereas it should!")
+	}
 
 }
 
