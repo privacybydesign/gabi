@@ -1,6 +1,5 @@
 package credential
 
-// TODO: properly comment all data structures and functions
 import (
 	"crypto/rand"
 	"crypto/rsa"
@@ -12,6 +11,10 @@ import (
 const (
 	//XMLHeader can be a used as the XML header when writing keys in XML format.
 	XMLHeader = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
+	// MaxNumAttributes holds the (current) maximum number of attributes.
+	MaxNumAttributes = 6
+	// DefaultEpochLength is the default epoch length for public keys.
+	DefaultEpochLength = 432000
 )
 
 // PrivateKey represents an issuer's private key.
@@ -58,11 +61,6 @@ func (privk *PrivateKey) WriteToFile(filename string) error {
 	_, err = f.Write(b)
 	return err
 }
-
-const (
-	MaxBases           = 6 // Atleast, currently?
-	DefaultEpochLength = 432000
-)
 
 // xmlBases is an auxiliary struct to encode/decode the odd way bases are
 // represented in the xml representation of public keys
@@ -142,8 +140,14 @@ type PublicKey struct {
 
 // NewPublicKey creates and returns a new public key based on the provided parameters.
 func NewPublicKey(N, Z, S *big.Int, R []*big.Int) *PublicKey {
-	pk := PublicKey{N: *N, Z: *Z, S: *S, R: R, Params: &DefaultSystemParameters, EpochLength: DefaultEpochLength}
-	return &pk
+	return &PublicKey{
+		N:           *N,
+		Z:           *Z,
+		S:           *S,
+		R:           R,
+		EpochLength: DefaultEpochLength,
+		Params:      &DefaultSystemParameters,
+	}
 }
 
 // WriteToFile writes the public key to an xml file.
@@ -167,6 +171,80 @@ func (pubk *PublicKey) WriteToFile(filename string) error {
 	}
 	_, err = f.Write(b)
 	return err
+}
+
+// GenerateKeyPair generates a private/public keypair for an Issuer
+func GenerateKeyPair(param *SystemParameters) (*PrivateKey, *PublicKey, error) {
+	primeSize := param.Ln / 2
+	// Let's just piggy-back on Go's own RSA key generation to generate our Issuer
+	// keys.
+	rsaPrivateKey, err := rsa.GenerateKey(rand.Reader, int(param.Ln))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	priv := &PrivateKey{P: *rsaPrivateKey.Primes[0], Q: *rsaPrivateKey.Primes[1]}
+
+	// compute p' and q'
+	priv.PPrime.Sub(&priv.P, bigONE)
+	priv.PPrime.Rsh(&priv.PPrime, 1)
+
+	priv.QPrime.Sub(&priv.Q, bigONE)
+	priv.QPrime.Rsh(&priv.QPrime, 1)
+
+	// compute n
+	pubk := &PublicKey{Params: param, EpochLength: DefaultEpochLength}
+	pubk.N.Mul(&priv.P, &priv.Q)
+
+	// Find an acceptable value for S; we follow lead of the Silvia code here:
+	// Pick a random l_n value and check whether it is a quadratic residue modulo n
+
+	var s *big.Int
+	for {
+		s, err = randomBigInt(param.Ln)
+		if err != nil {
+			return nil, nil, err
+		}
+		// check if S \elem Z_n
+		if s.Cmp(&pubk.N) > 0 {
+			continue
+		}
+		if legendreSymbol(s, &priv.P) == 1 && legendreSymbol(s, &priv.Q) == 1 {
+			break
+		}
+	}
+
+	pubk.S = *s
+
+	// Derive Z from S
+	var x *big.Int
+	for {
+		x, _ = randomBigInt(primeSize)
+		if x.Cmp(bigTWO) > 0 && x.Cmp(&pubk.N) < 0 {
+			break
+		}
+	}
+
+	// Compute Z = S^x mod n
+	pubk.Z.Exp(&pubk.S, x, &pubk.N)
+
+	// Derive R_i for i = 0...MaxNumAttributes from S
+	pubk.R = make([]*big.Int, MaxNumAttributes)
+	for i := 0; i < MaxNumAttributes; i++ {
+		pubk.R[i] = new(big.Int)
+
+		var x *big.Int
+		for {
+			x, _ = randomBigInt(primeSize)
+			if x.Cmp(bigTWO) > 0 && x.Cmp(&pubk.N) < 0 {
+				break
+			}
+		}
+		// Compute R_i = S^x mod n
+		pubk.R[i].Exp(&pubk.S, x, &pubk.N)
+	}
+
+	return priv, pubk, nil
 }
 
 // BaseParameters holds the base system parameters
@@ -228,80 +306,4 @@ var DefaultSystemParameters = SystemParameters{defaultBaseParameters, makeDerive
 // ParamSize computes the size of a parameter in bytes given the size in bits.
 func ParamSize(a int) int {
 	return (a + 8 - 1) / 8
-}
-
-// GenerateKeyPair generates a private/public keypair for an Issuer
-func GenerateKeyPair(param *SystemParameters) (*PrivateKey, *PublicKey, error) {
-
-	primeSize := param.Ln / 2
-	// Let's see whether we can just piggy-back on Go's own RSA key generation
-	// to generate our Issuer keys
-	rsaPrivateKey, err := rsa.GenerateKey(rand.Reader, int(param.Ln))
-	if err != nil {
-		// TODO: maybe special error value?
-		return nil, nil, err
-	}
-
-	priv := &PrivateKey{P: *rsaPrivateKey.Primes[0], Q: *rsaPrivateKey.Primes[1]}
-
-	// compute p' and q'
-	priv.PPrime.Sub(&priv.P, bigONE)
-	priv.PPrime.Rsh(&priv.PPrime, 1)
-
-	priv.QPrime.Sub(&priv.Q, bigONE)
-	priv.QPrime.Rsh(&priv.QPrime, 1)
-
-	// compute n
-	pubk := &PublicKey{Params: param, EpochLength: DefaultEpochLength}
-	pubk.N.Mul(&priv.P, &priv.Q)
-
-	// Find an acceptable value for S; we follow lead of the Silvia code here:
-	// Pick a random l_n value and check whether it is a quadratic residue modulo n
-
-	var s *big.Int
-	for {
-		s, err = randomBigInt(param.Ln)
-		if err != nil {
-			return nil, nil, err
-		}
-		// check if S \elem Z_n
-		if s.Cmp(&pubk.N) > 0 {
-			continue
-		}
-		if legendreSymbol(s, &priv.P) == 1 && legendreSymbol(s, &priv.Q) == 1 {
-			break
-		}
-	}
-
-	pubk.S = *s
-
-	var x *big.Int
-	// Derive Z from S
-	for {
-		x, _ = randomBigInt(primeSize)
-		if x.Cmp(bigTWO) > 0 && x.Cmp(&pubk.N) < 0 {
-			break
-		}
-	}
-
-	// Compute Z = S^x mod n
-	pubk.Z.Exp(&pubk.S, x, &pubk.N)
-
-	// Derive R_i for i = 0...MaxBases from S
-	pubk.R = make([]*big.Int, MaxBases)
-	for i := 0; i < MaxBases; i++ {
-		pubk.R[i] = new(big.Int)
-
-		var x *big.Int
-		for {
-			x, _ = randomBigInt(primeSize)
-			if x.Cmp(bigTWO) > 0 && x.Cmp(&pubk.N) < 0 {
-				break
-			}
-		}
-		// Compute R_i = S^x mod n
-		pubk.R[i].Exp(&pubk.S, x, &pubk.N)
-	}
-
-	return priv, pubk, nil
 }
