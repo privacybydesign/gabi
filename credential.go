@@ -1,16 +1,18 @@
 package credential
 
-// TODO: properly comment all data structures and functions
 import (
 	"math/big"
 )
 
+// IdemixCredential represents an Idemix credential.
 type IdemixCredential struct {
 	Signature  *CLSignature
 	Pk         *PublicKey
 	Attributes []*big.Int
 }
 
+// DisclosureProofBuilder is an object that holds the state for the protocol to
+// produce a disclosure proof.
 type DisclosureProofBuilder struct {
 	randomizedSignature   *CLSignature
 	eCommit, vCommit      *big.Int
@@ -22,6 +24,8 @@ type DisclosureProofBuilder struct {
 	attributes            []*big.Int
 }
 
+// getUndisclosedAttributes computes, given a list of (indices of) disclosed
+// attributes, a list of undisclosed attributes.
 func getUndisclosedAttributes(disclosedAttributes []int, numAttributes int) []int {
 	check := make([]bool, numAttributes)
 	for _, v := range disclosedAttributes {
@@ -36,6 +40,8 @@ func getUndisclosedAttributes(disclosedAttributes []int, numAttributes int) []in
 	return r
 }
 
+// CreateDisclosureProof creates a disclosure proof (ProofD) voor the provided
+// indices of disclosed attributes.
 func (ic *IdemixCredential) CreateDisclosureProof(disclosedAttributes []int, context, nonce1 *big.Int) *ProofD {
 	undisclosedAttributes := getUndisclosedAttributes(disclosedAttributes, len(ic.Attributes))
 
@@ -83,6 +89,9 @@ func (ic *IdemixCredential) CreateDisclosureProof(disclosedAttributes []int, con
 	return &ProofD{c: c, A: randSig.A, eResponse: eResponse, vResponse: vResponse, aResponses: aResponses, aDisclosed: aDisclosed}
 }
 
+// CreateDisclosureProofBuilder produces a DisclosureProofBuilder, an object to
+// hold the state in the protocol for producing a disclosure proof that is
+// linked to other proofs.
 func (ic *IdemixCredential) CreateDisclosureProofBuilder(disclosedAttributes []int) *DisclosureProofBuilder {
 	d := &DisclosureProofBuilder{}
 	d.pk = ic.Pk
@@ -102,6 +111,9 @@ func (ic *IdemixCredential) CreateDisclosureProofBuilder(disclosedAttributes []i
 }
 
 // TODO: Eventually replace skRandomizer with an array
+
+// Commit commits to the first attribute (the secret) using the provided
+// randomizer.
 func (d *DisclosureProofBuilder) Commit(skRandomizer *big.Int) []*big.Int {
 	d.attrRandomizers[0] = skRandomizer
 
@@ -120,6 +132,7 @@ func (d *DisclosureProofBuilder) Commit(skRandomizer *big.Int) []*big.Int {
 	return []*big.Int{d.randomizedSignature.A, d.z}
 }
 
+// CreateProof creates a (disclosure) proof with the provided challenge.
 func (d *DisclosureProofBuilder) CreateProof(challenge *big.Int) Proof {
 	ePrime := new(big.Int).Sub(d.randomizedSignature.E, new(big.Int).Lsh(bigONE, d.pk.Params.Le-1))
 	eResponse := new(big.Int).Mul(challenge, ePrime)
