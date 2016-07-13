@@ -119,17 +119,16 @@ func TestClSignatureRandomize(t *testing.T) {
 }
 
 func TestProofU(t *testing.T) {
-	// context, _ := randomBigInt(pk.Params.Lh)
-	// nonce1, _ := randomBigInt(pk.Params.Lstatzk)
-	// secret, _ := randomBigInt(pk.Params.Lm)
+	context, _ := randomBigInt(DefaultSystemParameters.Lh)
+	nonce1, _ := randomBigInt(DefaultSystemParameters.Lstatzk)
+	secret, _ := randomBigInt(DefaultSystemParameters.Lm)
 
-	// b := NewBuilder2(pk, context, secret)
-	// proofU := b.CreateProof(createChallenge(context, nonce1, b.Commit(secret)))
+	b := NewBuilder(testPubK, context, secret)
+	proofU := b.CreateProof(createChallenge(context, nonce1, b.Commit(secret)))
 
-	// TODO: fix this! (Can we return a ProofU? Or add a Verify function to the interface?)
-	// if !proofU.Verify(pk, context, nonce1) {
-	// 	t.Error("ProofU does not verify, whereas it should.")
-	// }
+	if !proofU.VerifyWithChallenge(testPubK, createChallenge(context, nonce1, proofU.ChallengeContribution(testPubK))) {
+		t.Error("ProofU does not verify, whereas it should.")
+	}
 }
 
 func TestProofULogged(t *testing.T) {
