@@ -1,21 +1,16 @@
 package credential
 
-// TODO: properly comment all data structures and functions
 import (
 	"crypto/rand"
-	"errors"
 	"math/big"
 )
 
+// Issuer holds the key material for a credential issuer.
 type Issuer struct {
 	sk      *PrivateKey
 	pk      *PublicKey
 	context *big.Int
 }
-
-var (
-	ErrIncorrectCommitment = errors.New("The commitment proof is not correct.")
-)
 
 // NewIssuer creates a new credential issuer.
 func NewIssuer(sk *PrivateKey, pk *PublicKey, context *big.Int) *Issuer {
@@ -37,10 +32,10 @@ func (i *Issuer) IssueSignature(msg *IssueCommitmentMessage, attributes []*big.I
 	return &IssueSignatureMessage{Signature: signature, Proof: proof}, nil
 }
 
-func (i *Issuer) ProofSignature(signature CLSignature, n2 big.Int) *ProofS {
-	return nil
-}
-
+// signCommitmentAndAttributes produces a (partial) signature on the commitment
+// and the attributes. The signature by itself does not verify because the
+// commitment contains a blinding factor that needs to be taken into account
+// when verifying the signature.
 func (i *Issuer) signCommitmentAndAttributes(U *big.Int, attributes []*big.Int) (*CLSignature, error) {
 	// Skip the first generator
 	return signMessageBlockAndCommitment(i.sk, i.pk, U, attributes, i.pk.R[1:])
@@ -59,6 +54,7 @@ func randomElementMultiplicativeGroup(modulus *big.Int) *big.Int {
 	return r
 }
 
+// proveSignature returns a proof of knowledge of $e^{-1}$ in the signature.
 func (i *Issuer) proveSignature(signature *CLSignature, nonce2 *big.Int) *ProofS {
 	Q := new(big.Int).Exp(signature.A, signature.E, &i.pk.N)
 	groupModulus := new(big.Int).Mul(&i.sk.PPrime, &i.sk.QPrime)
