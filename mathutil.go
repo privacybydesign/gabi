@@ -8,10 +8,16 @@ import (
 
 // Some utility code (mostly math stuff) useful in various places in this
 // package
+
+// Often we need to refer to the same small constant big numbers.
 var (
-	bigZERO = big.NewInt(0)
-	bigONE  = big.NewInt(1)
-	bigTWO  = big.NewInt(2)
+	bigZERO  = big.NewInt(0)
+	bigONE   = big.NewInt(1)
+	bigTWO   = big.NewInt(2)
+	bigTHREE = big.NewInt(3)
+	bigFOUR  = big.NewInt(4)
+	bigFIVE  = big.NewInt(5)
+	bigEIGHT = big.NewInt(8)
 )
 
 // modInverse returns ia, the inverse of a in the multiplicative group of prime
@@ -71,4 +77,45 @@ func representToBases(bases, exps []*big.Int, modulus *big.Int) *big.Int {
 func randomBigInt(numBits uint) (*big.Int, error) {
 	t := new(big.Int).Lsh(bigONE, numBits)
 	return rand.Int(rand.Reader, t)
+}
+
+// legendreSymbol calculates the Legendre symbol (a/p).
+func legendreSymbol(a, p *big.Int) int {
+	// Adapted from: https://programmingpraxis.com/2012/05/01/legendres-symbol/
+	// Probably needs more extensive checking? Also, no optimization has been applied.
+	j := 1
+
+	// Make a copy of the arguments
+
+	// rule 5
+	n := new(big.Int).Mod(a, p)
+	m := new(big.Int)
+	*m = *p // copy value
+
+	tmp := new(big.Int)
+	for n.Cmp(bigZERO) != 0 {
+		// rules 3 and 4
+		t := 0
+		for n.Bit(0) == 0 {
+			n.Rsh(n, 1)
+			t++
+		}
+		tmp.Mod(m, bigEIGHT)
+		if t&1 == 1 && (tmp.Cmp(bigTHREE) == 0 || tmp.Cmp(bigFIVE) == 0) {
+			j = -j
+		}
+
+		// rule 6
+		if tmp.Mod(m, bigFOUR).Cmp(bigTHREE) == 0 && tmp.Mod(n, bigFOUR).Cmp(bigTHREE) == 0 {
+			j = -j
+		}
+
+		// rules 5 and 6
+		m.Mod(m, n)
+		n, m = m, n
+	}
+	if m.Cmp(bigONE) == 0 {
+		return j
+	}
+	return 0
 }

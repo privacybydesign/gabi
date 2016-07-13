@@ -18,11 +18,16 @@ var (
 		"86332479314886130384736453625287798589955409703988059270766965934046079318379171635950761546707334446554224830120982622431968575935564538920183267389540869023066259053290969633312602549379541830869908306681500988364676409365226731817777230916908909465129739617379202974851959354453994729819170838277127986187",
 		"68324072803453545276056785581824677993048307928855083683600441649711633245772441948750253858697288489650767258385115035336890900077233825843691912005645623751469455288422721175655533702255940160761555155932357171848703103682096382578327888079229101354304202688749783292577993444026613580092677609916964914513",
 		"65082646756773276491139955747051924146096222587013375084161255582716233287172212541454173762000144048198663356249316446342046266181487801411025319914616581971563024493732489885161913779988624732795125008562587549337253757085766106881836850538709151996387829026336509064994632876911986826959512297657067426387"}
-	testAttributes = []*big.Int{
+	testAttributes1 = []*big.Int{
 		new(big.Int).SetBytes([]byte("one")),
 		new(big.Int).SetBytes([]byte("two")),
 		new(big.Int).SetBytes([]byte("three")),
 		new(big.Int).SetBytes([]byte("four"))}
+	testAttributes2 = []*big.Int{
+		new(big.Int).SetBytes([]byte("one'")),
+		new(big.Int).SetBytes([]byte("two'")),
+		new(big.Int).SetBytes([]byte("three'")),
+		new(big.Int).SetBytes([]byte("four'"))}
 )
 
 func setupParameters() {
@@ -157,7 +162,7 @@ func TestProofS(t *testing.T) {
 	nonce, _ := randomBigInt(pk.Params.Lstatzk)
 
 	issuer := NewIssuer(sk, pk, context)
-	sig, err := issuer.signCommitmentAndAttributes(U, testAttributes)
+	sig, err := issuer.signCommitmentAndAttributes(U, testAttributes1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -209,7 +214,7 @@ func TestSignatureMessage(t *testing.T) {
 	commitMsg := b.CommitToSecretAndProve(nonce1)
 
 	issuer := NewIssuer(sk, pk, context)
-	_, err := issuer.IssueSignature(commitMsg, testAttributes, nonce1)
+	_, err := issuer.IssueSignature(commitMsg, testAttributes1, nonce1)
 	if err != nil {
 		t.Error("Error in IssueSignature:", err)
 	}
@@ -224,19 +229,19 @@ func TestFullIssuance(t *testing.T) {
 	commitMsg := b.CommitToSecretAndProve(nonce1)
 
 	issuer := NewIssuer(sk, pk, context)
-	msg, err := issuer.IssueSignature(commitMsg, testAttributes, nonce1)
+	msg, err := issuer.IssueSignature(commitMsg, testAttributes1, nonce1)
 	if err != nil {
 		t.Error("Error in IssueSignature:", err)
 	}
-	b.ConstructCredential(msg, testAttributes)
+	b.ConstructCredential(msg, testAttributes1)
 }
 
 func TestShowingProof(t *testing.T) {
-	signature, err := SignMessageBlock(sk, pk, testAttributes)
+	signature, err := SignMessageBlock(sk, pk, testAttributes1)
 	if err != nil {
 		t.Error("Error producing CL signature.")
 	}
-	cred := &IdemixCredential{Pk: pk, Attributes: testAttributes, Signature: signature}
+	cred := &IdemixCredential{Pk: pk, Attributes: testAttributes1, Signature: signature}
 	disclosed := []int{1, 2}
 
 	context, _ := randomBigInt(pk.Params.Lh)
@@ -316,12 +321,12 @@ func TestFullIssuanceAndShowing(t *testing.T) {
 	builder := NewBuilder(pk, context, secret)
 	commitMsg := builder.CommitToSecretAndProve(nonce1)
 	issuer := NewIssuer(sk, pk, context)
-	sigMsg, err := issuer.IssueSignature(commitMsg, testAttributes, nonce1)
+	sigMsg, err := issuer.IssueSignature(commitMsg, testAttributes1, nonce1)
 	if err != nil {
 		t.Error("Error in IssueSignature:", err)
 	}
 
-	cred, err := builder.ConstructCredential(sigMsg, testAttributes)
+	cred, err := builder.ConstructCredential(sigMsg, testAttributes1)
 	if err != nil {
 		t.Error("Error in credential construction:", err)
 	}
@@ -346,12 +351,12 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 	commitMsg := cb1.CommitToSecretAndProve(nonce1)
 
 	issuer1 := NewIssuer(sk, pk, context)
-	ism, err := issuer1.IssueSignature(commitMsg, testAttributes, nonce1)
+	ism, err := issuer1.IssueSignature(commitMsg, testAttributes1, nonce1)
 	if err != nil {
 		t.Error("Error creating Issue Signature: ", err)
 	}
 
-	cred1, err := cb1.ConstructCredential(ism, testAttributes)
+	cred1, err := cb1.ConstructCredential(ism, testAttributes1)
 	if err != nil {
 		t.Error("Error creating credential: ", err)
 	}
@@ -369,11 +374,11 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 		t.Error("Proofs in commit message do not verify!")
 	}
 
-	msg, err := issuer2.IssueSignature(commitMsg2, testAttributes, nonce1)
+	msg, err := issuer2.IssueSignature(commitMsg2, testAttributes1, nonce1)
 	if err != nil {
 		t.Error("Error creating Issue Signature: ", err)
 	}
-	cred2, err := cb2.ConstructCredential(msg, testAttributes)
+	cred2, err := cb2.ConstructCredential(msg, testAttributes1)
 	if err != nil {
 		t.Error("Error creating credential:", err)
 	}
@@ -388,8 +393,107 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 
 }
 
+func TestLegendreSymbol(t *testing.T) {
+	if legendreSymbol(big.NewInt(30), big.NewInt(23)) != -1 {
+		t.Error("Wrong legendre symbol")
+	}
+	if legendreSymbol(big.NewInt(30), big.NewInt(57)) != 0 {
+		t.Error("Wrong legendre symbol")
+	}
+}
+
+func TestGenerateKeyPair(t *testing.T) {
+	privk, pubk, err := GenerateKeyPair(&DefaultSystemParameters)
+	if err != nil {
+		t.Error("Error generating key pair: ", err)
+	}
+	if !privk.P.ProbablyPrime(20) {
+		t.Error("p in secret key is not prime!")
+	}
+	if !privk.Q.ProbablyPrime(20) {
+		t.Error("q in secret key is not prime!")
+	}
+	tmpP := new(big.Int).Mul(&privk.PPrime, bigTWO)
+	tmpP.Add(tmpP, bigONE)
+	if tmpP.Cmp(&privk.P) != 0 {
+		t.Error("p = 2p' + 1 does not hold!")
+	}
+	tmpQ := new(big.Int).Mul(&privk.QPrime, bigTWO)
+	tmpQ.Add(tmpQ, bigONE)
+	if tmpQ.Cmp(&privk.Q) != 0 {
+		t.Error("q = 2q' + 1 does not hold!")
+	}
+	r := new(big.Int).Mul(&privk.P, &privk.Q)
+	if r.Cmp(&pubk.N) != 0 {
+		t.Error("p*q != n")
+	}
+
+}
+
+func genRandomIssuer(t *testing.T, context *big.Int) *Issuer {
+	privk, pubk, err := GenerateKeyPair(&DefaultSystemParameters)
+	if err != nil {
+		t.Error("Error generating key pair: ", err)
+	}
+	return NewIssuer(privk, pubk, context)
+}
+
+func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
+	// TODO: this test sometimes (!!) fails. Need to investigate why!
+	context, _ := randomBigInt(DefaultSystemParameters.Lh)
+	nonce1, _ := randomBigInt(DefaultSystemParameters.Lstatzk)
+	secret, _ := randomBigInt(DefaultSystemParameters.Lm)
+
+	issuer1 := genRandomIssuer(t, context)
+	issuer2 := genRandomIssuer(t, context)
+
+	// First create a credential
+	cb1 := NewBuilder(issuer1.pk, context, secret)
+	commitMsg := cb1.CommitToSecretAndProve(nonce1)
+
+	ism, err := issuer1.IssueSignature(commitMsg, testAttributes1, nonce1)
+	if err != nil {
+		t.Error("Error creating Issue Signature: ", err)
+	}
+
+	cred1, err := cb1.ConstructCredential(ism, testAttributes1)
+	if err != nil {
+		t.Error("Error creating credential: ", err)
+	}
+
+	// Then create another credential based on the same credential with a partial
+	// disclosure of the first credential.
+	cb2 := NewBuilder(issuer2.pk, context, secret)
+
+	prooflist := BuildProofList(pk.Params, context, nonce1, []ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2})
+
+	commitMsg2 := cb2.CreateIssueCommitmentMessage(prooflist)
+
+	if !commitMsg2.Proofs.Verify([]*PublicKey{issuer1.pk, issuer2.pk}, context, nonce1, true) {
+		t.Error("Proofs in commit message do not verify!")
+	}
+
+	msg, err := issuer2.IssueSignature(commitMsg2, testAttributes2, nonce1)
+	if err != nil {
+		t.Error("Error creating Issue Signature: ", err)
+	}
+	cred2, err := cb2.ConstructCredential(msg, testAttributes2)
+	if err != nil {
+		t.Error("Error creating credential:", err)
+	}
+
+	// Showing
+	nonce1s, _ := randomBigInt(issuer2.pk.Params.Lstatzk)
+	disclosedAttributes := []int{1, 3}
+	proof := cred2.CreateDisclosureProof(disclosedAttributes, context, nonce1s)
+	if !proof.Verify(issuer2.pk, context, nonce1s) {
+		t.Error("Proof of disclosure did not verify, whereas it should.")
+	}
+}
+
 // TODO: tests to add:
 // - creation of secret&public keys for issuers
+// - tests with issuance & verification using generated key pairs
 // - tests with *different* keys for issuers and with *different* attributes
 // - reusable credential creation for additional tests
 // - Wrongly Bound Proofs

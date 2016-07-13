@@ -229,3 +229,79 @@ var DefaultSystemParameters = SystemParameters{defaultBaseParameters, makeDerive
 func ParamSize(a int) int {
 	return (a + 8 - 1) / 8
 }
+
+// GenerateKeyPair generates a private/public keypair for an Issuer
+func GenerateKeyPair(param *SystemParameters) (*PrivateKey, *PublicKey, error) {
+
+	primeSize := param.Ln / 2
+	// Let's see whether we can just piggy-back on Go's own RSA key generation
+	// to generate our Issuer keys
+	rsaPrivateKey, err := rsa.GenerateKey(rand.Reader, int(param.Ln))
+	if err != nil {
+		// TODO: maybe special error value?
+		return nil, nil, err
+	}
+
+	priv := &PrivateKey{P: *rsaPrivateKey.Primes[0], Q: *rsaPrivateKey.Primes[1]}
+
+	// compute p' and q'
+	priv.PPrime.Sub(&priv.P, bigONE)
+	priv.PPrime.Rsh(&priv.PPrime, 1)
+
+	priv.QPrime.Sub(&priv.Q, bigONE)
+	priv.QPrime.Rsh(&priv.QPrime, 1)
+
+	// compute n
+	pubk := &PublicKey{Params: param, EpochLength: DefaultEpochLength}
+	pubk.N.Mul(&priv.P, &priv.Q)
+
+	// Find an acceptable value for S; we follow lead of the Silvia code here:
+	// Pick a random l_n value and check whether it is a quadratic residue modulo n
+
+	var s *big.Int
+	for {
+		s, err = randomBigInt(param.Ln)
+		if err != nil {
+			return nil, nil, err
+		}
+		// check if S \elem Z_n
+		if s.Cmp(&pubk.N) > 0 {
+			continue
+		}
+		if legendreSymbol(s, &priv.P) == 1 && legendreSymbol(s, &priv.Q) == 1 {
+			break
+		}
+	}
+
+	pubk.S = *s
+
+	var x *big.Int
+	// Derive Z from S
+	for {
+		x, _ = randomBigInt(primeSize)
+		if x.Cmp(bigTWO) > 0 && x.Cmp(&pubk.N) < 0 {
+			break
+		}
+	}
+
+	// Compute Z = S^x mod n
+	pubk.Z.Exp(&pubk.S, x, &pubk.N)
+
+	// Derive R_i for i = 0...MaxBases from S
+	pubk.R = make([]*big.Int, MaxBases)
+	for i := 0; i < MaxBases; i++ {
+		pubk.R[i] = new(big.Int)
+
+		var x *big.Int
+		for {
+			x, _ = randomBigInt(primeSize)
+			if x.Cmp(bigTWO) > 0 && x.Cmp(&pubk.N) < 0 {
+				break
+			}
+		}
+		// Compute R_i = S^x mod n
+		pubk.R[i].Exp(&pubk.S, x, &pubk.N)
+	}
+
+	return priv, pubk, nil
+}
