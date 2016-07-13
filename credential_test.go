@@ -251,7 +251,7 @@ func TestShowingProof(t *testing.T) {
 	if err != nil {
 		t.Error("Error producing CL signature.")
 	}
-	cred := &IdemixCredential{Pk: testPubK, Attributes: testAttributes1, Signature: signature}
+	cred := &Credential{Pk: testPubK, Attributes: testAttributes1, Signature: signature}
 	disclosed := []int{1, 2}
 
 	context, _ := randomBigInt(testPubK.Params.Lh)
@@ -443,7 +443,7 @@ func genRandomIssuer(t *testing.T, context *big.Int) *Issuer {
 	return NewIssuer(privk, pubk, context)
 }
 
-func createCredential(t *testing.T, context, secret *big.Int, issuer *Issuer) *IdemixCredential {
+func createCredential(t *testing.T, context, secret *big.Int, issuer *Issuer) *Credential {
 	// First create a credential
 	cb := NewBuilder(issuer.pk, context, secret)
 	nonce1, _ := randomBigInt(DefaultSystemParameters.Lstatzk)

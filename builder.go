@@ -69,7 +69,7 @@ var (
 
 // ConstructCredential creates a credential using the IssueSignatureMessage from
 // the issuer and the content of the attributes.
-func (b *Builder) ConstructCredential(msg *IssueSignatureMessage, attributes []*big.Int) (*IdemixCredential, error) {
+func (b *Builder) ConstructCredential(msg *IssueSignatureMessage, attributes []*big.Int) (*Credential, error) {
 	if !msg.Proof.Verify(b.pk, msg.Signature, b.context, b.nonce2) {
 		return nil, ErrIncorrectProofOfSignatureCorrectness
 	}
@@ -85,7 +85,7 @@ func (b *Builder) ConstructCredential(msg *IssueSignatureMessage, attributes []*
 	if !signature.Verify(b.pk, exponents) {
 		return nil, ErrIncorrectAttributeSignature
 	}
-	return &IdemixCredential{Pk: b.pk, Signature: signature, Attributes: exponents}, nil
+	return &Credential{Pk: b.pk, Signature: signature, Attributes: exponents}, nil
 }
 
 // intHashSha256 is a utility function compute the sha256 hash over a byte array

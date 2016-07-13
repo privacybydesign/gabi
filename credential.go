@@ -4,8 +4,8 @@ import (
 	"math/big"
 )
 
-// IdemixCredential represents an Idemix credential.
-type IdemixCredential struct {
+// Credential represents an Idemix credential.
+type Credential struct {
 	Signature  *CLSignature
 	Pk         *PublicKey
 	Attributes []*big.Int
@@ -42,7 +42,7 @@ func getUndisclosedAttributes(disclosedAttributes []int, numAttributes int) []in
 
 // CreateDisclosureProof creates a disclosure proof (ProofD) voor the provided
 // indices of disclosed attributes.
-func (ic *IdemixCredential) CreateDisclosureProof(disclosedAttributes []int, context, nonce1 *big.Int) *ProofD {
+func (ic *Credential) CreateDisclosureProof(disclosedAttributes []int, context, nonce1 *big.Int) *ProofD {
 	undisclosedAttributes := getUndisclosedAttributes(disclosedAttributes, len(ic.Attributes))
 
 	randSig := ic.Signature.Randomize(ic.Pk)
@@ -92,7 +92,7 @@ func (ic *IdemixCredential) CreateDisclosureProof(disclosedAttributes []int, con
 // CreateDisclosureProofBuilder produces a DisclosureProofBuilder, an object to
 // hold the state in the protocol for producing a disclosure proof that is
 // linked to other proofs.
-func (ic *IdemixCredential) CreateDisclosureProofBuilder(disclosedAttributes []int) *DisclosureProofBuilder {
+func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int) *DisclosureProofBuilder {
 	d := &DisclosureProofBuilder{}
 	d.pk = ic.Pk
 	d.randomizedSignature = ic.Signature.Randomize(ic.Pk)
