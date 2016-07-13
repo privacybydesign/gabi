@@ -1,6 +1,5 @@
 package credential
 
-// TODO: properly comment all data structures and functions
 import (
 	"errors"
 	"math/big"
@@ -38,6 +37,7 @@ func (p *ProofU) Verify(pk *PublicKey, context, nonce *big.Int) bool {
 	return p.VerifyWithChallenge(pk, createChallenge(context, nonce, p.ChallengeContribution(pk)))
 }
 
+// correctResponseSizes checks the sizes of the elements in the ProofU proof.
 func (p *ProofU) correctResponseSizes(pk *PublicKey) bool {
 	maximum := new(big.Int).Lsh(bigONE, pk.Params.LvPrimeCommit+1)
 	maximum.Sub(maximum, bigONE)
@@ -46,11 +46,13 @@ func (p *ProofU) correctResponseSizes(pk *PublicKey) bool {
 	return p.vPrimeResponse.Cmp(minimum) >= 0 && p.vPrimeResponse.Cmp(maximum) <= 0
 }
 
-// Verify verifies whether the proof is correct.
+// VerifyWithChallenge verifies whether the proof is correct.
 func (p *ProofU) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.Int) bool {
 	return p.correctResponseSizes(pk) && p.c.Cmp(reconstructedChallenge) == 0
 }
 
+// reconstructUcommit reconstructs U from the information in the proof and the
+// provided public key.
 func (p *ProofU) reconstructUcommit(pk *PublicKey) *big.Int {
 	// Reconstruct Ucommit
 	// U_commit = U^{-c} * S^{vPrimeResponse} * R_0^{sResponse}
@@ -63,14 +65,19 @@ func (p *ProofU) reconstructUcommit(pk *PublicKey) *big.Int {
 	return Ucommit
 }
 
+// SecretKeyResponse returns the secret key response (as part of Proof
+// interface).
 func (p *ProofU) SecretKeyResponse() *big.Int {
 	return p.sResponse
 }
 
+// Challenge returns the challenge in the proof (part of the Proof interface).
 func (p *ProofU) Challenge() *big.Int {
 	return p.c
 }
 
+// ChallengeContribution returns the contribution of this proof to the
+// challenge.
 func (p *ProofU) ChallengeContribution(pk *PublicKey) []*big.Int {
 	return []*big.Int{p.u, p.reconstructUcommit(pk)}
 }
@@ -105,6 +112,7 @@ type ProofD struct {
 	aResponses, aDisclosed     map[int]*big.Int
 }
 
+// correctResponseSizes checks the sizes of the elements in the ProofD proof.
 func (p *ProofD) correctResponseSizes(pk *PublicKey) bool {
 	// Check range on the aResponses
 	maximum := new(big.Int).Lsh(bigONE, pk.Params.LmCommit+1)
@@ -159,31 +167,42 @@ func (p *ProofD) Verify(pk *PublicKey, context, nonce1 *big.Int) bool {
 	return p.VerifyWithChallenge(pk, createChallenge(context, nonce1, p.ChallengeContribution(pk)))
 }
 
-// Verify verifies the proof against the given public key and the reconstruted challenge.
+// Verify verifies the proof against the given public key and the provided
+// reconstruted challenge.
 func (p *ProofD) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.Int) bool {
 	return p.correctResponseSizes(pk) && p.c.Cmp(reconstructedChallenge) == 0
 }
 
+// ChallengeContribution returns the contribution of this proof to the
+// challenge.
 func (p *ProofD) ChallengeContribution(pk *PublicKey) []*big.Int {
 	return []*big.Int{p.A, p.reconstructZ(pk)}
 }
 
+// SecretKeyResponse returns the secret key response (as part of Proof
+// interface).
 func (p *ProofD) SecretKeyResponse() *big.Int {
 	return p.aResponses[0]
 }
 
+// Challenge returns the challenge in the proof (part of the Proof interface).
 func (p *ProofD) Challenge() *big.Int {
 	return p.c
 }
 
+// ProofBuilder is an interface for a prof builder. That is, an object to hold
+// the state to build a list of bounded proofs (see ProofList).
 type ProofBuilder interface {
 	Commit(skRandomizer *big.Int) []*big.Int
 	CreateProof(challenge *big.Int) Proof
 }
 
+// ProofList represents a list of (typically bounded) proofs.
 type ProofList []Proof
 
 var (
+	// ErrMissingProofU is returned when a ProofU proof is missing in a prooflist
+	// when this is expected.
 	ErrMissingProofU = errors.New("Missing ProofU in ProofList, has a CredentialBuilder been added?")
 )
 
@@ -207,6 +226,8 @@ func (pl ProofList) GetFirstProofU() (*ProofU, error) {
 	return pl.GetProofU(0)
 }
 
+// challengeContributions collects and returns all the challenge contributions
+// of the proofs contained in the proof list.
 func (pl ProofList) challengeContributions(publicKeys []*PublicKey, context, nonce *big.Int) []*big.Int {
 	contributions := make([]*big.Int, 0, len(pl)*2)
 	for i, proof := range pl {
@@ -215,6 +236,8 @@ func (pl ProofList) challengeContributions(publicKeys []*PublicKey, context, non
 	return contributions
 }
 
+// Verify returns true when all the proofs inside verify and if shouldBeBound is
+// set to true whether all proofs are properly bound.
 func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, shouldBeBound bool) bool {
 	if len(pl) == 0 {
 		return true
@@ -246,6 +269,9 @@ func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, sho
 	return true
 }
 
+// BuildProofList builds a list of bounded proofs. For this it is given a list
+// of ProofBuilders. Examples of proof builders are Builder and
+// DisclosureProofBuilder.
 func BuildProofList(params *SystemParameters, context, nonce *big.Int, proofBuilders []ProofBuilder) ProofList {
 	skCommitment, _ := randomBigInt(params.LmCommit)
 
