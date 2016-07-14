@@ -33,19 +33,19 @@ func commitmentToSecret(pk *PublicKey, secret *big.Int) (vPrime, U *big.Int) {
 	return
 }
 
-// NewBuilder creates a new credential builder. The resulting credential builder
+// NewCredentialBuilder creates a new credential builder. The resulting credential builder
 // is already committed to the provided secret.
-func NewBuilder(pk *PublicKey, context, secret *big.Int) *Builder {
+func NewCredentialBuilder(pk *PublicKey, context, secret *big.Int) *CredentialBuilder {
 	vPrime, U := commitmentToSecret(pk, secret)
 
-	return &Builder{pk: pk, context: context, secret: secret, vPrime: vPrime, u: U}
+	return &CredentialBuilder{pk: pk, context: context, secret: secret, vPrime: vPrime, u: U}
 }
 
 // CommitToSecretAndProve creates the response to the initial challenge nonce
 // nonce1 sent by the issuer. The response consists of a commitment to the
 // secret (set on creation of the builder, see NewBuilder) and a proof of
 // correctness of this commitment.
-func (b *Builder) CommitToSecretAndProve(nonce1 *big.Int) *IssueCommitmentMessage {
+func (b *CredentialBuilder) CommitToSecretAndProve(nonce1 *big.Int) *IssueCommitmentMessage {
 	proofU := b.proveCommitment(b.u, nonce1)
 	b.nonce2, _ = randomBigInt(b.pk.Params.Lstatzk)
 
@@ -54,7 +54,7 @@ func (b *Builder) CommitToSecretAndProve(nonce1 *big.Int) *IssueCommitmentMessag
 
 // CreateIssueCommitmentMessage creates the IssueCommitmentMessage based on the
 // provided prooflist, to be sent to the issuer.
-func (b *Builder) CreateIssueCommitmentMessage(proofs ProofList) *IssueCommitmentMessage {
+func (b *CredentialBuilder) CreateIssueCommitmentMessage(proofs ProofList) *IssueCommitmentMessage {
 	return &IssueCommitmentMessage{U: b.u, Proofs: proofs, Nonce2: b.nonce2}
 }
 
@@ -69,7 +69,7 @@ var (
 
 // ConstructCredential creates a credential using the IssueSignatureMessage from
 // the issuer and the content of the attributes.
-func (b *Builder) ConstructCredential(msg *IssueSignatureMessage, attributes []*big.Int) (*Credential, error) {
+func (b *CredentialBuilder) ConstructCredential(msg *IssueSignatureMessage, attributes []*big.Int) (*Credential, error) {
 	if !msg.Proof.Verify(b.pk, msg.Signature, b.context, b.nonce2) {
 		return nil, ErrIncorrectProofOfSignatureCorrectness
 	}
@@ -111,7 +111,7 @@ func hashCommit(values []*big.Int) *big.Int {
 	return new(big.Int).SetBytes(h.Sum(nil))
 }
 
-func (b *Builder) proveCommitment(U, nonce1 *big.Int) *ProofU {
+func (b *CredentialBuilder) proveCommitment(U, nonce1 *big.Int) *ProofU {
 	sCommit, _ := randomBigInt(b.pk.Params.LsCommit)
 	vPrimeCommit, _ := randomBigInt(b.pk.Params.LvPrimeCommit)
 
@@ -131,10 +131,10 @@ func (b *Builder) proveCommitment(U, nonce1 *big.Int) *ProofU {
 	return &ProofU{u: U, c: c, vPrimeResponse: vPrimeResponse, sResponse: sResponse}
 }
 
-// Builder is a temporary object to hold some state for the protocol that is
-// used to create (build) a credential. It also implements the ProofBuilder
-// interface.
-type Builder struct {
+// CredentialBuilder is a temporary object to hold some state for the protocol
+// that is used to create (build) a credential. It also implements the
+// ProofBuilder interface.
+type CredentialBuilder struct {
 	secret       *big.Int
 	vPrime       *big.Int
 	vPrimeCommit *big.Int
@@ -148,7 +148,7 @@ type Builder struct {
 }
 
 // Commit commits to the secret (first) attribute using the provided randomizer.
-func (b *Builder) Commit(skRandomizer *big.Int) []*big.Int {
+func (b *CredentialBuilder) Commit(skRandomizer *big.Int) []*big.Int {
 	// create receiver nonce (nonce2)
 	b.nonce2, _ = randomBigInt(b.pk.Params.Lstatzk)
 
@@ -166,7 +166,7 @@ func (b *Builder) Commit(skRandomizer *big.Int) []*big.Int {
 }
 
 // CreateProof creates a (ProofU) Proof using the provided challenge.
-func (b *Builder) CreateProof(challenge *big.Int) Proof {
+func (b *CredentialBuilder) CreateProof(challenge *big.Int) Proof {
 	sResponse := new(big.Int).Add(b.skRandomizer, new(big.Int).Mul(challenge, b.secret))
 	vPrimeResponse := new(big.Int).Add(b.vPrimeCommit, new(big.Int).Mul(challenge, b.vPrime))
 
