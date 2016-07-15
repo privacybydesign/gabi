@@ -1,4 +1,4 @@
-package credential
+package gabi
 
 import (
 	"crypto/sha256"

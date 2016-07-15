@@ -1,4 +1,4 @@
-package credential
+package gabi
 
 // BaseParameters holds the base system parameters
 type BaseParameters struct {

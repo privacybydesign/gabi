@@ -1,4 +1,4 @@
-package credential
+package gabi
 
 import (
 	"math/big"
