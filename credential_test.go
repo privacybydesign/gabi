@@ -279,7 +279,7 @@ func TestCombinedShowingProof(t *testing.T) {
 			cred1.CreateDisclosureProofBuilder([]int{1, 2}),
 			cred2.CreateDisclosureProofBuilder([]int{1, 3})})
 
-	if !prooflist.Verify([]*PublicKey{issuer1.pk, issuer2.pk}, context, nonce1, true) {
+	if !prooflist.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, true) {
 		t.Error("Prooflist does not verify whereas it should!")
 	}
 
@@ -445,7 +445,7 @@ func genRandomIssuer(t *testing.T, context *big.Int) *Issuer {
 
 func createCredential(t *testing.T, context, secret *big.Int, issuer *Issuer) *Credential {
 	// First create a credential
-	cb := NewCredentialBuilder(issuer.pk, context, secret)
+	cb := NewCredentialBuilder(issuer.Pk, context, secret)
 	nonce1, _ := randomBigInt(DefaultSystemParameters.Lstatzk)
 	commitMsg := cb.CommitToSecretAndProve(nonce1)
 
@@ -472,14 +472,14 @@ func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 	// Then create another credential based on the same credential with a partial
 	// disclosure of the first credential.
 	issuer2 := genRandomIssuer(t, context)
-	cb2 := NewCredentialBuilder(issuer2.pk, context, secret)
+	cb2 := NewCredentialBuilder(issuer2.Pk, context, secret)
 
 	nonce1, _ := randomBigInt(DefaultSystemParameters.Lstatzk)
 	prooflist := BuildProofList(testPubK.Params, context, nonce1, []ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2})
 
 	commitMsg := cb2.CreateIssueCommitmentMessage(prooflist)
 
-	if !commitMsg.Proofs.Verify([]*PublicKey{issuer1.pk, issuer2.pk}, context, nonce1, true) {
+	if !commitMsg.Proofs.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, true) {
 		t.Error("Proofs in commit message do not verify!")
 	}
 
@@ -493,10 +493,10 @@ func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 	}
 
 	// Showing
-	nonce1s, _ := randomBigInt(issuer2.pk.Params.Lstatzk)
+	nonce1s, _ := randomBigInt(issuer2.Pk.Params.Lstatzk)
 	disclosedAttributes := []int{1, 3}
 	proof := cred2.CreateDisclosureProof(disclosedAttributes, context, nonce1s)
-	if !proof.Verify(issuer2.pk, context, nonce1s) {
+	if !proof.Verify(issuer2.Pk, context, nonce1s) {
 		t.Error("Proof of disclosure did not verify, whereas it should.")
 	}
 
@@ -515,14 +515,14 @@ func TestWronglyBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 	// Then create another credential based on the same credential with a partial
 	// disclosure of the first credential.
 	issuer2 := genRandomIssuer(t, context)
-	cb2 := NewCredentialBuilder(issuer2.pk, context, secret2)
+	cb2 := NewCredentialBuilder(issuer2.Pk, context, secret2)
 
 	nonce1, _ := randomBigInt(DefaultSystemParameters.Lstatzk)
 	prooflist := BuildProofList(testPubK.Params, context, nonce1, []ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2})
 
 	commitMsg := cb2.CreateIssueCommitmentMessage(prooflist)
 
-	if commitMsg.Proofs.Verify([]*PublicKey{issuer1.pk, issuer2.pk}, context, nonce1, true) {
+	if commitMsg.Proofs.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, true) {
 		t.Error("Proofs in commit message verify, whereas they should not!")
 	}
 }

@@ -7,14 +7,14 @@ import (
 
 // Issuer holds the key material for a credential issuer.
 type Issuer struct {
-	sk      *PrivateKey
-	pk      *PublicKey
-	context *big.Int
+	Sk      *PrivateKey
+	Pk      *PublicKey
+	Context *big.Int
 }
 
 // NewIssuer creates a new credential issuer.
 func NewIssuer(sk *PrivateKey, pk *PublicKey, context *big.Int) *Issuer {
-	return &Issuer{sk: sk, pk: pk, context: context}
+	return &Issuer{Sk: sk, Pk: pk, Context: context}
 }
 
 // IssueSignature produces an IssueSignatureMessage for the attributes based on
@@ -38,7 +38,7 @@ func (i *Issuer) IssueSignature(msg *IssueCommitmentMessage, attributes []*big.I
 // when verifying the signature.
 func (i *Issuer) signCommitmentAndAttributes(U *big.Int, attributes []*big.Int) (*CLSignature, error) {
 	// Skip the first generator
-	return signMessageBlockAndCommitment(i.sk, i.pk, U, attributes, i.pk.R[1:])
+	return signMessageBlockAndCommitment(i.Sk, i.Pk, U, attributes, i.Pk.R[1:])
 }
 
 // randomElementMultiplicativeGroup returns a random element in the
@@ -56,14 +56,14 @@ func randomElementMultiplicativeGroup(modulus *big.Int) *big.Int {
 
 // proveSignature returns a proof of knowledge of $e^{-1}$ in the signature.
 func (i *Issuer) proveSignature(signature *CLSignature, nonce2 *big.Int) *ProofS {
-	Q := new(big.Int).Exp(signature.A, signature.E, &i.pk.N)
-	groupModulus := new(big.Int).Mul(&i.sk.PPrime, &i.sk.QPrime)
+	Q := new(big.Int).Exp(signature.A, signature.E, &i.Pk.N)
+	groupModulus := new(big.Int).Mul(&i.Sk.PPrime, &i.Sk.QPrime)
 	d := new(big.Int).ModInverse(signature.E, groupModulus)
 
 	eCommit := randomElementMultiplicativeGroup(groupModulus)
-	ACommit := new(big.Int).Exp(Q, eCommit, &i.pk.N)
+	ACommit := new(big.Int).Exp(Q, eCommit, &i.Pk.N)
 
-	c := hashCommit([]*big.Int{i.context, Q, signature.A, nonce2, ACommit})
+	c := hashCommit([]*big.Int{i.Context, Q, signature.A, nonce2, ACommit})
 	eResponse := new(big.Int).Mul(c, d)
 	eResponse.Sub(eCommit, eResponse).Mod(eResponse, groupModulus)
 
