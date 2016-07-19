@@ -57,14 +57,14 @@ func (ic *Credential) CreateDisclosureProof(disclosedAttributes []int, context, 
 
 	// Z = A^{e_commit} * S^{v_commit}
 	//     PROD_{i \in undisclosed} ( R_i^{a_commits{i}} )
-	Ae := modPow(randSig.A, eCommit, &ic.Pk.N)
-	Sv := modPow(&ic.Pk.S, vCommit, &ic.Pk.N)
+	Ae := modPow(randSig.A, eCommit, ic.Pk.N)
+	Sv := modPow(ic.Pk.S, vCommit, ic.Pk.N)
 	Z := new(big.Int).Mul(Ae, Sv)
-	Z.Mod(Z, &ic.Pk.N)
+	Z.Mod(Z, ic.Pk.N)
 
 	for _, v := range undisclosedAttributes {
-		Z.Mul(Z, modPow(ic.Pk.R[v], aCommits[v], &ic.Pk.N))
-		Z.Mod(Z, &ic.Pk.N)
+		Z.Mul(Z, modPow(ic.Pk.R[v], aCommits[v], ic.Pk.N))
+		Z.Mod(Z, ic.Pk.N)
 	}
 
 	c := hashCommit([]*big.Int{context, randSig.A, Z, nonce1})
@@ -119,14 +119,14 @@ func (d *DisclosureProofBuilder) Commit(skRandomizer *big.Int) []*big.Int {
 
 	// Z = A^{e_commit} * S^{v_commit}
 	//     PROD_{i \in undisclosed} ( R_i^{a_commits{i}} )
-	Ae := modPow(d.randomizedSignature.A, d.eCommit, &d.pk.N)
-	Sv := modPow(&d.pk.S, d.vCommit, &d.pk.N)
+	Ae := modPow(d.randomizedSignature.A, d.eCommit, d.pk.N)
+	Sv := modPow(d.pk.S, d.vCommit, d.pk.N)
 	d.z = new(big.Int).Mul(Ae, Sv)
-	d.z.Mod(d.z, &d.pk.N)
+	d.z.Mod(d.z, d.pk.N)
 
 	for _, v := range d.undisclosedAttributes {
-		d.z.Mul(d.z, modPow(d.pk.R[v], d.attrRandomizers[v], &d.pk.N))
-		d.z.Mod(d.z, &d.pk.N)
+		d.z.Mul(d.z, modPow(d.pk.R[v], d.attrRandomizers[v], d.pk.N))
+		d.z.Mod(d.z, d.pk.N)
 	}
 
 	return []*big.Int{d.randomizedSignature.A, d.z}

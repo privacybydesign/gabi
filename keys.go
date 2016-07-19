@@ -130,9 +130,9 @@ func (el *EpochLength) MarshalXML(e *xml.Encoder, start xml.StartElement) error 
 // PublicKey represents an issuer's public key.
 type PublicKey struct {
 	XMLName     xml.Name          `xml:"http://www.zurich.ibm.com/security/idemix IssuerPublicKey"`
-	N           big.Int           `xml:"Elements>n"` // Modulus n
-	Z           big.Int           `xml:"Elements>Z"` // Generator Z
-	S           big.Int           `xml:"Elements>S"` // Generator S
+	N           *big.Int          `xml:"Elements>n"` // Modulus n
+	Z           *big.Int          `xml:"Elements>Z"` // Generator Z
+	S           *big.Int          `xml:"Elements>S"` // Generator S
 	R           Bases             `xml:"Elements>Bases"`
 	EpochLength EpochLength       `xml:"Features"`
 	Params      *SystemParameters `xml:"-"`
@@ -141,9 +141,9 @@ type PublicKey struct {
 // NewPublicKey creates and returns a new public key based on the provided parameters.
 func NewPublicKey(N, Z, S *big.Int, R []*big.Int) *PublicKey {
 	return &PublicKey{
-		N:           *N,
-		Z:           *Z,
-		S:           *S,
+		N:           N,
+		Z:           Z,
+		S:           S,
 		R:           R,
 		EpochLength: DefaultEpochLength,
 		Params:      &DefaultSystemParameters,
@@ -194,7 +194,7 @@ func GenerateKeyPair(param *SystemParameters) (*PrivateKey, *PublicKey, error) {
 
 	// compute n
 	pubk := &PublicKey{Params: param, EpochLength: DefaultEpochLength}
-	pubk.N.Mul(priv.P, priv.Q)
+	pubk.N = new(big.Int).Mul(priv.P, priv.Q)
 
 	// Find an acceptable value for S; we follow lead of the Silvia code here:
 	// Pick a random l_n value and check whether it is a quadratic residue modulo n
@@ -206,7 +206,7 @@ func GenerateKeyPair(param *SystemParameters) (*PrivateKey, *PublicKey, error) {
 			return nil, nil, err
 		}
 		// check if S \elem Z_n
-		if s.Cmp(&pubk.N) > 0 {
+		if s.Cmp(pubk.N) > 0 {
 			continue
 		}
 		if legendreSymbol(s, priv.P) == 1 && legendreSymbol(s, priv.Q) == 1 {
@@ -214,19 +214,19 @@ func GenerateKeyPair(param *SystemParameters) (*PrivateKey, *PublicKey, error) {
 		}
 	}
 
-	pubk.S = *s
+	pubk.S = s
 
 	// Derive Z from S
 	var x *big.Int
 	for {
 		x, _ = randomBigInt(primeSize)
-		if x.Cmp(bigTWO) > 0 && x.Cmp(&pubk.N) < 0 {
+		if x.Cmp(bigTWO) > 0 && x.Cmp(pubk.N) < 0 {
 			break
 		}
 	}
 
 	// Compute Z = S^x mod n
-	pubk.Z.Exp(&pubk.S, x, &pubk.N)
+	pubk.Z = new(big.Int).Exp(pubk.S, x, pubk.N)
 
 	// Derive R_i for i = 0...MaxNumAttributes from S
 	pubk.R = make([]*big.Int, MaxNumAttributes)
@@ -236,12 +236,12 @@ func GenerateKeyPair(param *SystemParameters) (*PrivateKey, *PublicKey, error) {
 		var x *big.Int
 		for {
 			x, _ = randomBigInt(primeSize)
-			if x.Cmp(bigTWO) > 0 && x.Cmp(&pubk.N) < 0 {
+			if x.Cmp(bigTWO) > 0 && x.Cmp(pubk.N) < 0 {
 				break
 			}
 		}
 		// Compute R_i = S^x mod n
-		pubk.R[i].Exp(&pubk.S, x, &pubk.N)
+		pubk.R[i].Exp(pubk.S, x, pubk.N)
 	}
 
 	return priv, pubk, nil

@@ -13,7 +13,7 @@ type CLSignature struct {
 // SignMessageBlock signs a message block (ms) and a commitment (U) using the
 // Camenisch-Lysyanskaya signature scheme as used in the IdeMix system.
 func signMessageBlockAndCommitment(sk *PrivateKey, pk *PublicKey, U *big.Int, ms []*big.Int, Rs []*big.Int) (*CLSignature, error) {
-	R := representToBases(Rs, ms, &pk.N)
+	R := representToBases(Rs, ms, pk.N)
 
 	vTilde, _ := randomBigInt(pk.Params.Lv - 1)
 	twoLv := new(big.Int).Lsh(bigONE, pk.Params.Lv-1)
@@ -21,12 +21,12 @@ func signMessageBlockAndCommitment(sk *PrivateKey, pk *PublicKey, U *big.Int, ms
 
 	// Q = inv( S^v * R * U) * Z
 
-	numerator := new(big.Int).Exp(&pk.S, v, &pk.N)
-	numerator.Mul(numerator, R).Mul(numerator, U).Mod(numerator, &pk.N)
+	numerator := new(big.Int).Exp(pk.S, v, pk.N)
+	numerator.Mul(numerator, R).Mul(numerator, U).Mod(numerator, pk.N)
 
-	invNumerator, _ := modInverse(numerator, &pk.N)
-	Q := new(big.Int).Mul(&pk.Z, invNumerator)
-	Q.Mod(Q, &pk.N)
+	invNumerator, _ := modInverse(numerator, pk.N)
+	Q := new(big.Int).Mul(pk.Z, invNumerator)
+	Q.Mod(Q, pk.N)
 
 	e, err := randomPrimeInRange(rand.Reader, pk.Params.Le-1, pk.Params.LePrime-1)
 	if err != nil {
@@ -35,7 +35,7 @@ func signMessageBlockAndCommitment(sk *PrivateKey, pk *PublicKey, U *big.Int, ms
 
 	order := new(big.Int).Mul(sk.PPrime, sk.QPrime)
 	d, _ := modInverse(e, order)
-	A := new(big.Int).Exp(Q, d, &pk.N)
+	A := new(big.Int).Exp(Q, d, pk.N)
 
 	// TODO: this is probably open to side channel attacks, maybe use a
 	// safe (raw) RSA signature?
@@ -61,11 +61,11 @@ func (s *CLSignature) Verify(pk *PublicKey, ms []*big.Int) bool {
 	}
 
 	// Q = A^e * R * S^v
-	Ae := new(big.Int).Exp(s.A, s.E, &pk.N)
-	R := representToBases(pk.R, ms, &pk.N)
-	Sv := modPow(&pk.S, s.V, &pk.N)
+	Ae := new(big.Int).Exp(s.A, s.E, pk.N)
+	R := representToBases(pk.R, ms, pk.N)
+	Sv := modPow(pk.S, s.V, pk.N)
 	Q := new(big.Int).Mul(Ae, R)
-	Q.Mul(Q, Sv).Mod(Q, &pk.N)
+	Q.Mul(Q, Sv).Mod(Q, pk.N)
 
 	// Signature verifies if Q == Z
 	return pk.Z.Cmp(Q) == 0
@@ -74,8 +74,8 @@ func (s *CLSignature) Verify(pk *PublicKey, ms []*big.Int) bool {
 // Randomize returns a randomized copy of the signature.
 func (s *CLSignature) Randomize(pk *PublicKey) *CLSignature {
 	r, _ := randomBigInt(pk.Params.LRA)
-	APrime := new(big.Int).Mul(s.A, new(big.Int).Exp(&pk.S, r, &pk.N))
-	APrime.Mod(APrime, &pk.N)
+	APrime := new(big.Int).Mul(s.A, new(big.Int).Exp(pk.S, r, pk.N))
+	APrime.Mod(APrime, pk.N)
 	t := new(big.Int).Mul(s.E, r)
 	VPrime := new(big.Int).Sub(s.V, t)
 	return &CLSignature{A: APrime, E: new(big.Int).Set(s.E), V: VPrime}

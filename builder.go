@@ -26,10 +26,10 @@ type IssueSignatureMessage struct {
 func commitmentToSecret(pk *PublicKey, secret *big.Int) (vPrime, U *big.Int) {
 	vPrime, _ = randomBigInt(pk.Params.LvPrime)
 	// U = S^{vPrime} * R_0^{s}
-	Sv := new(big.Int).Exp(&pk.S, vPrime, &pk.N)
-	R0s := new(big.Int).Exp(pk.R[0], secret, &pk.N)
+	Sv := new(big.Int).Exp(pk.S, vPrime, pk.N)
+	R0s := new(big.Int).Exp(pk.R[0], secret, pk.N)
 	U = new(big.Int).Mul(Sv, R0s)
-	U.Mod(U, &pk.N)
+	U.Mod(U, pk.N)
 	return
 }
 
@@ -116,10 +116,10 @@ func (b *CredentialBuilder) proveCommitment(U, nonce1 *big.Int) *ProofU {
 	vPrimeCommit, _ := randomBigInt(b.pk.Params.LvPrimeCommit)
 
 	// Ucommit = S^{vPrimeCommit} * R_0^{sCommit}
-	Sv := new(big.Int).Exp(&b.pk.S, vPrimeCommit, &b.pk.N)
-	R0s := new(big.Int).Exp(b.pk.R[0], sCommit, &b.pk.N)
+	Sv := new(big.Int).Exp(b.pk.S, vPrimeCommit, b.pk.N)
+	R0s := new(big.Int).Exp(b.pk.R[0], sCommit, b.pk.N)
 	Ucommit := new(big.Int).Mul(Sv, R0s)
-	Ucommit.Mod(Ucommit, &b.pk.N)
+	Ucommit.Mod(Ucommit, b.pk.N)
 
 	c := hashCommit([]*big.Int{b.context, U, Ucommit, nonce1})
 	sResponse := new(big.Int).Mul(c, b.secret)
@@ -157,10 +157,10 @@ func (b *CredentialBuilder) Commit(skRandomizer *big.Int) []*big.Int {
 	b.vPrimeCommit, _ = randomBigInt(b.pk.Params.LvPrimeCommit)
 
 	// U_commit = S^{v_prime_commit} * R_0^{s_commit}
-	sv := new(big.Int).Exp(&b.pk.S, b.vPrimeCommit, &b.pk.N)
-	r0s := new(big.Int).Exp(b.pk.R[0], b.skRandomizer, &b.pk.N)
+	sv := new(big.Int).Exp(b.pk.S, b.vPrimeCommit, b.pk.N)
+	r0s := new(big.Int).Exp(b.pk.R[0], b.skRandomizer, b.pk.N)
 	b.uCommit = new(big.Int).Mul(sv, r0s)
-	b.uCommit.Mod(b.uCommit, &b.pk.N)
+	b.uCommit.Mod(b.uCommit, b.pk.N)
 
 	return []*big.Int{b.u, b.uCommit}
 }
