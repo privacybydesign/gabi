@@ -33,7 +33,7 @@ func signMessageBlockAndCommitment(sk *PrivateKey, pk *PublicKey, U *big.Int, ms
 		return nil, err
 	}
 
-	order := new(big.Int).Mul(&sk.PPrime, &sk.QPrime)
+	order := new(big.Int).Mul(sk.PPrime, sk.QPrime)
 	d, _ := modInverse(e, order)
 	A := new(big.Int).Exp(Q, d, &pk.N)
 

@@ -55,27 +55,27 @@ func testPrivateKey(t *testing.T, privk *PrivateKey) {
 	if !privk.Q.ProbablyPrime(20) {
 		t.Error("q in secret key is not prime!")
 	}
-	tmpP := new(big.Int).Mul(&privk.PPrime, bigTWO)
+	tmpP := new(big.Int).Mul(privk.PPrime, bigTWO)
 	tmpP.Add(tmpP, bigONE)
-	if tmpP.Cmp(&privk.P) != 0 {
+	if tmpP.Cmp(privk.P) != 0 {
 		t.Error("p = 2p' + 1 does not hold!")
 	}
-	tmpQ := new(big.Int).Mul(&privk.QPrime, bigTWO)
+	tmpQ := new(big.Int).Mul(privk.QPrime, bigTWO)
 	tmpQ.Add(tmpQ, bigONE)
-	if tmpQ.Cmp(&privk.Q) != 0 {
+	if tmpQ.Cmp(privk.Q) != 0 {
 		t.Error("q = 2q' + 1 does not hold!")
 	}
 }
 
 func testPublicKey(t *testing.T, pubk *PublicKey, privk *PrivateKey) {
-	r := new(big.Int).Mul(&privk.P, &privk.Q)
+	r := new(big.Int).Mul(privk.P, privk.Q)
 	if r.Cmp(&pubk.N) != 0 {
 		t.Error("p*q != n")
 	}
-	if legendreSymbol(&pubk.S, &privk.P) != 1 {
+	if legendreSymbol(&pubk.S, privk.P) != 1 {
 		t.Error("S \notin QR_p")
 	}
-	if legendreSymbol(&pubk.S, &privk.Q) != 1 {
+	if legendreSymbol(&pubk.S, privk.Q) != 1 {
 		t.Error("S \notin QR_q")
 	}
 }
@@ -415,8 +415,8 @@ func TestLegendreSymbol(t *testing.T) {
 		{big.NewInt(28), big.NewInt(55), 1},
 		{s2big("120567422773271477355736570949008495838563053707948503865496543401556073640359251802074724569581730875929260027496777788057157018774844493782617608416083158200499434405335785459168671686133613000185852866284484792120896546591747003597473925949437927506500843016369829879812643202318141301999974341721061899407"), s2big("10081623199657828324376343366809453358437559295255845251936401190895787407186296178275845571433532607558964794229309528127907617140159040217132395339392137"), -1},
 		{s2big("105878163698280660110888466652097535916687465611111576106176905877150374138910442768678634516927223961780370321686931770425843416322974676216250417627401183361009783057565157684769110212432099898936413921173832522537816098479555382252890282429726874156063647841447515205988065173539077417577690690964366031827"), s2big("12068480243344717677229417744719977222905953162787318652957714137579792958858463398943120303998730505158703022444367980634366645715971224580814228085805223"), 1},
-		{&testPubK.S, &testPrivK.P, 1},
-		{&testPubK.S, &testPrivK.Q, 1},
+		{&testPubK.S, testPrivK.P, 1},
+		{&testPubK.S, testPrivK.Q, 1},
 	}
 	for _, tv := range testValues {
 		s := legendreSymbol(tv.a, tv.b)

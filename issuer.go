@@ -57,7 +57,7 @@ func randomElementMultiplicativeGroup(modulus *big.Int) *big.Int {
 // proveSignature returns a proof of knowledge of $e^{-1}$ in the signature.
 func (i *Issuer) proveSignature(signature *CLSignature, nonce2 *big.Int) *ProofS {
 	Q := new(big.Int).Exp(signature.A, signature.E, &i.Pk.N)
-	groupModulus := new(big.Int).Mul(&i.Sk.PPrime, &i.Sk.QPrime)
+	groupModulus := new(big.Int).Mul(i.Sk.PPrime, i.Sk.QPrime)
 	d := new(big.Int).ModInverse(signature.E, groupModulus)
 
 	eCommit := randomElementMultiplicativeGroup(groupModulus)

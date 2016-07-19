@@ -20,21 +20,21 @@ const (
 // PrivateKey represents an issuer's private key.
 type PrivateKey struct {
 	XMLName xml.Name `xml:"http://www.zurich.ibm.com/security/idemix IssuerPrivateKey"`
-	P       big.Int  `xml:"Elements>p"`
-	Q       big.Int  `xml:"Elements>q"`
-	PPrime  big.Int  `xml:"Elements>pPrime"`
-	QPrime  big.Int  `xml:"Elements>qPrime"`
+	P       *big.Int `xml:"Elements>p"`
+	Q       *big.Int `xml:"Elements>q"`
+	PPrime  *big.Int `xml:"Elements>pPrime"`
+	QPrime  *big.Int `xml:"Elements>qPrime"`
 }
 
 // NewPrivateKey creates a new issuer private key using the provided parameters.
 func NewPrivateKey(p, q *big.Int) *PrivateKey {
-	sk := PrivateKey{P: *p, Q: *q}
+	sk := PrivateKey{P: p, Q: q, PPrime: new(big.Int), QPrime: new(big.Int)}
 
 	sk.PPrime.Sub(p, bigONE)
-	sk.PPrime.Rsh(&sk.PPrime, 1)
+	sk.PPrime.Rsh(sk.PPrime, 1)
 
 	sk.QPrime.Sub(q, bigONE)
-	sk.QPrime.Rsh(&sk.QPrime, 1)
+	sk.QPrime.Rsh(sk.QPrime, 1)
 
 	return &sk
 }
@@ -183,18 +183,18 @@ func GenerateKeyPair(param *SystemParameters) (*PrivateKey, *PublicKey, error) {
 		return nil, nil, err
 	}
 
-	priv := &PrivateKey{P: *rsaPrivateKey.Primes[0], Q: *rsaPrivateKey.Primes[1]}
+	priv := &PrivateKey{P: rsaPrivateKey.Primes[0], Q: rsaPrivateKey.Primes[1], PPrime: new(big.Int), QPrime: new(big.Int)}
 
 	// compute p' and q'
-	priv.PPrime.Sub(&priv.P, bigONE)
-	priv.PPrime.Rsh(&priv.PPrime, 1)
+	priv.PPrime.Sub(priv.P, bigONE)
+	priv.PPrime.Rsh(priv.PPrime, 1)
 
-	priv.QPrime.Sub(&priv.Q, bigONE)
-	priv.QPrime.Rsh(&priv.QPrime, 1)
+	priv.QPrime.Sub(priv.Q, bigONE)
+	priv.QPrime.Rsh(priv.QPrime, 1)
 
 	// compute n
 	pubk := &PublicKey{Params: param, EpochLength: DefaultEpochLength}
-	pubk.N.Mul(&priv.P, &priv.Q)
+	pubk.N.Mul(priv.P, priv.Q)
 
 	// Find an acceptable value for S; we follow lead of the Silvia code here:
 	// Pick a random l_n value and check whether it is a quadratic residue modulo n
@@ -209,7 +209,7 @@ func GenerateKeyPair(param *SystemParameters) (*PrivateKey, *PublicKey, error) {
 		if s.Cmp(&pubk.N) > 0 {
 			continue
 		}
-		if legendreSymbol(s, &priv.P) == 1 && legendreSymbol(s, &priv.Q) == 1 {
+		if legendreSymbol(s, priv.P) == 1 && legendreSymbol(s, priv.Q) == 1 {
 			break
 		}
 	}
