@@ -1,3 +1,5 @@
+[![GoDoc](https://godoc.org/github.com/mhe/gabi?status.svg)](https://godoc.org/github.com/mhe/gabi)
+
 Gabi
 ====
 
