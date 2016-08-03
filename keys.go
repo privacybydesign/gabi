@@ -6,7 +6,6 @@ package gabi
 
 import (
 	"crypto/rand"
-	"crypto/rsa"
 	"encoding/xml"
 	"math/big"
 	"os"
@@ -177,17 +176,37 @@ func (pubk *PublicKey) WriteToFile(filename string) error {
 	return err
 }
 
+// randomSafePrime produces a safe prime of the requested number of bits
+func randomSafePrime(bits int) (*big.Int, error) {
+	p2 := new(big.Int)
+	for {
+		p, err := rand.Prime(rand.Reader, bits)
+		if err != nil {
+			return nil, err
+		}
+		p2.Rsh(p, 1) // p2 = (p - 1)/2
+		if p2.ProbablyPrime(20) {
+			return p, nil
+		}
+	}
+}
+
 // GenerateKeyPair generates a private/public keypair for an Issuer
 func GenerateKeyPair(param *SystemParameters) (*PrivateKey, *PublicKey, error) {
 	primeSize := param.Ln / 2
-	// Let's just piggy-back on Go's own RSA key generation to generate our Issuer
-	// keys.
-	rsaPrivateKey, err := rsa.GenerateKey(rand.Reader, int(param.Ln))
+
+	// p and q need to be safe primes
+	p, err := randomSafePrime(int(primeSize))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	priv := &PrivateKey{P: rsaPrivateKey.Primes[0], Q: rsaPrivateKey.Primes[1], PPrime: new(big.Int), QPrime: new(big.Int)}
+	q, err := randomSafePrime(int(primeSize))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	priv := &PrivateKey{P: p, Q: q, PPrime: new(big.Int), QPrime: new(big.Int)}
 
 	// compute p' and q'
 	priv.PPrime.Sub(priv.P, bigONE)
