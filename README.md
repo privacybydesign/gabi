@@ -18,3 +18,9 @@ To install:
 
     go get -v github.com/mhe/gabi
 
+Test
+----
+
+To run tests:
+
+    go test -v ./... 
