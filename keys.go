@@ -7,6 +7,7 @@ package gabi
 import (
 	"crypto/rand"
 	"encoding/xml"
+	"io/ioutil"
 	"math/big"
 	"os"
 )
@@ -40,6 +41,38 @@ func NewPrivateKey(p, q *big.Int) *PrivateKey {
 	sk.QPrime.Rsh(sk.QPrime, 1)
 
 	return &sk
+}
+
+// NewPrivateKeyFromXML creates a new issuer private key using the xml data
+// provided.
+func NewPrivateKeyFromXML(xmlInput string) (*PrivateKey, error) {
+	privk := &PrivateKey{}
+	err := xml.Unmarshal([]byte(xmlInput), privk)
+	if err != nil {
+		return nil, err
+	}
+	return privk, nil
+}
+
+// NewPrivateKeyFromFile create a new issuer private key from an xml file.
+func NewPrivateKeyFromFile(filename string) (*PrivateKey, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	privk := &PrivateKey{}
+
+	b, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+
+	err = xml.Unmarshal(b, privk)
+	if err != nil {
+		return nil, err
+	}
+	return privk, nil
 }
 
 // WriteToFile writes the private key to an xml file.
@@ -151,6 +184,40 @@ func NewPublicKey(N, Z, S *big.Int, R []*big.Int) *PublicKey {
 		EpochLength: DefaultEpochLength,
 		Params:      &DefaultSystemParameters,
 	}
+}
+
+// NewPublicKeyFromXML creates a new issuer public key using the xml data
+// provided.
+func NewPublicKeyFromXML(xmlInput string) (*PublicKey, error) {
+	// TODO: this might fail in the future. The DefaultSystemParameters and the
+	// public key might not match!
+	pubk := &PublicKey{Params: &DefaultSystemParameters}
+	err := xml.Unmarshal([]byte(xmlInput), pubk)
+	if err != nil {
+		return nil, err
+	}
+	return pubk, nil
+}
+
+// NewPublicKeyFromFile create a new issuer public key from an xml file.
+func NewPublicKeyFromFile(filename string) (*PublicKey, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	pubk := &PublicKey{}
+
+	b, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+
+	err = xml.Unmarshal(b, pubk)
+	if err != nil {
+		return nil, err
+	}
+	return pubk, nil
 }
 
 // WriteToFile writes the public key to an xml file.
