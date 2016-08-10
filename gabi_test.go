@@ -440,6 +440,7 @@ func TestGenerateKeyPair(t *testing.T) {
 }
 
 func genRandomIssuer(t *testing.T, context *big.Int) *Issuer {
+	// TODO: key pair generation is slow, consider caching or providing key material
 	privk, pubk, err := GenerateKeyPair(&DefaultSystemParameters)
 	if err != nil {
 		t.Error("Error generating key pair: ", err)
