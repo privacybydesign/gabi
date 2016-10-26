@@ -11,6 +11,8 @@ import (
 	"io/ioutil"
 	"math/big"
 	"os"
+
+	"github.com/credentials/safeprime"
 )
 
 const (
@@ -284,12 +286,12 @@ func GenerateKeyPair(param *SystemParameters) (*PrivateKey, *PublicKey, error) {
 	primeSize := param.Ln / 2
 
 	// p and q need to be safe primes
-	p, err := randomSafePrime(int(primeSize))
+	p, err := safeprime.Generate(int(primeSize))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	q, err := randomSafePrime(int(primeSize))
+	q, err := safeprime.Generate(int(primeSize))
 	if err != nil {
 		return nil, nil, err
 	}
