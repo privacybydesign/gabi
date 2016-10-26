@@ -7,6 +7,7 @@ package gabi
 import (
 	"crypto/rand"
 	"encoding/xml"
+	"io"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -75,16 +76,15 @@ func NewPrivateKeyFromFile(filename string) (*PrivateKey, error) {
 	return privk, nil
 }
 
-// WriteToFile writes the private key to an xml file.
-func (privk *PrivateKey) WriteToFile(filename string) error {
-	f, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
+// Print prints the key to stdout.
+func (privk *PrivateKey) Print() error {
+	return privk.WriteTo(os.Stdout)
+}
 
+// WriteTo writes the XML-serialized public key to the given writer.
+func (privk *PrivateKey) WriteTo(writer io.Writer) error {
 	// Write the standard XML header
-	_, err = f.Write([]byte(XMLHeader))
+	_, err := writer.Write([]byte(XMLHeader))
 	if err != nil {
 		return err
 	}
@@ -94,8 +94,19 @@ func (privk *PrivateKey) WriteToFile(filename string) error {
 	if err != nil {
 		return err
 	}
-	_, err = f.Write(b)
+	_, err = writer.Write(b)
 	return err
+}
+
+// WriteToFile writes the private key to an xml file.
+func (privk *PrivateKey) WriteToFile(filename string) error {
+	f, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	return privk.WriteTo(f)
 }
 
 // xmlBases is an auxiliary struct to encode/decode the odd way bases are
@@ -220,16 +231,15 @@ func NewPublicKeyFromFile(filename string) (*PublicKey, error) {
 	return pubk, nil
 }
 
-// WriteToFile writes the public key to an xml file.
-func (pubk *PublicKey) WriteToFile(filename string) error {
-	f, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
+// Print prints the key to stdout.
+func (pubk *PublicKey) Print() error {
+	return pubk.WriteTo(os.Stdout)
+}
 
+// WriteTo writes the XML-serialized public key to the given writer.
+func (pubk *PublicKey) WriteTo(writer io.Writer) error {
 	// Write the standard XML header
-	_, err = f.Write([]byte(XMLHeader))
+	_, err := writer.Write([]byte(XMLHeader))
 	if err != nil {
 		return err
 	}
@@ -239,8 +249,19 @@ func (pubk *PublicKey) WriteToFile(filename string) error {
 	if err != nil {
 		return err
 	}
-	_, err = f.Write(b)
+	_, err = writer.Write(b)
 	return err
+}
+
+// WriteToFile writes the public key to an xml file.
+func (pubk *PublicKey) WriteToFile(filename string) error {
+	f, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	return pubk.WriteTo(f)
 }
 
 // randomSafePrime produces a safe prime of the requested number of bits
