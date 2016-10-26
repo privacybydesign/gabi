@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"os"
+	"strconv"
 
 	"github.com/credentials/safeprime"
 )
@@ -18,8 +19,6 @@ import (
 const (
 	//XMLHeader can be a used as the XML header when writing keys in XML format.
 	XMLHeader = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
-	// MaxNumAttributes holds the (current) maximum number of attributes.
-	MaxNumAttributes = 6
 	// DefaultEpochLength is the default epoch length for public keys.
 	DefaultEpochLength = 432000
 )
@@ -114,13 +113,13 @@ func (privk *PrivateKey) WriteToFile(filename string) error {
 // xmlBases is an auxiliary struct to encode/decode the odd way bases are
 // represented in the xml representation of public keys
 type xmlBases struct {
-	Num   int      `xml:"num,attr"`
-	Base0 *big.Int `xml:"Base_0"`
-	Base1 *big.Int `xml:"Base_1"`
-	Base2 *big.Int `xml:"Base_2"`
-	Base3 *big.Int `xml:"Base_3"`
-	Base4 *big.Int `xml:"Base_4"`
-	Base5 *big.Int `xml:"Base_5"`
+	Num   int `xml:"num,attr"`
+	Bases []*xmlBase
+}
+
+type xmlBase struct {
+	XMLName xml.Name
+	Bigint  string `xml:",innerxml"` // Has to be a string for ",innerxml" to work
 }
 
 // xmlFeatures is an auxiliary struct to make the XML encoding/decoding a bit
@@ -143,13 +142,32 @@ func (bl *Bases) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	if err := d.DecodeElement(&t, &start); err != nil {
 		return err
 	}
-	*bl = Bases{t.Base0, t.Base1, t.Base2, t.Base3, t.Base4, t.Base5}
+
+	arr := make([]*big.Int, t.Num)
+	for i := range arr {
+		arr[i], _ = new(big.Int).SetString(t.Bases[i].Bigint, 10)
+	}
+
+	*bl = Bases(arr)
 	return nil
 }
 
 // MarshalXML is an internal function to simplify encoding a PublicKey to XML.
 func (bl *Bases) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
-	t := xmlBases{Num: len(*bl), Base0: (*bl)[0], Base1: (*bl)[1], Base2: (*bl)[2], Base3: (*bl)[3], Base4: (*bl)[4], Base5: (*bl)[5]}
+	l := len(*bl)
+	bases := make([]*xmlBase, l)
+
+	for i := range bases {
+		bases[i] = &xmlBase{
+			XMLName: xml.Name{Local: "Base_" + strconv.Itoa(i)},
+			Bigint:  (*bl)[i].String(),
+		}
+	}
+
+	t := xmlBases{
+		Num:   l,
+		Bases: bases,
+	}
 	return e.EncodeElement(t, start)
 }
 
@@ -282,7 +300,7 @@ func randomSafePrime(bits int) (*big.Int, error) {
 }
 
 // GenerateKeyPair generates a private/public keypair for an Issuer
-func GenerateKeyPair(param *SystemParameters) (*PrivateKey, *PublicKey, error) {
+func GenerateKeyPair(param *SystemParameters, attrsAmount int) (*PrivateKey, *PublicKey, error) {
 	primeSize := param.Ln / 2
 
 	// p and q need to be safe primes
@@ -341,9 +359,9 @@ func GenerateKeyPair(param *SystemParameters) (*PrivateKey, *PublicKey, error) {
 	// Compute Z = S^x mod n
 	pubk.Z = new(big.Int).Exp(pubk.S, x, pubk.N)
 
-	// Derive R_i for i = 0...MaxNumAttributes from S
-	pubk.R = make([]*big.Int, MaxNumAttributes)
-	for i := 0; i < MaxNumAttributes; i++ {
+	// Derive R_i for i = 0...attrsAmount from S
+	pubk.R = make([]*big.Int, attrsAmount)
+	for i := 0; i < attrsAmount; i++ {
 		pubk.R[i] = new(big.Int)
 
 		var x *big.Int
