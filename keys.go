@@ -116,8 +116,8 @@ func (privk *PrivateKey) WriteToFile(filename string) error {
 // xmlBases is an auxiliary struct to encode/decode the odd way bases are
 // represented in the xml representation of public keys
 type xmlBases struct {
-	Num   int `xml:"num,attr"`
-	Bases []*xmlBase
+	Num   int        `xml:"num,attr"`
+	Bases []*xmlBase `xml:",any"`
 }
 
 type xmlBase struct {
