@@ -37,8 +37,8 @@ type DerivedParameters struct {
 	LvPrimeCommit uint
 }
 
-// makeDerivedParameters computes the derived system parameters
-func makeDerivedParameters(base BaseParameters) DerivedParameters {
+// MakeDerivedParameters computes the derived system parameters
+func MakeDerivedParameters(base BaseParameters) DerivedParameters {
 	return DerivedParameters{
 		LeCommit:      base.LePrime + base.Lstatzk + base.Lh,
 		LmCommit:      base.Lm + base.Lstatzk + base.Lh,
@@ -58,7 +58,7 @@ type SystemParameters struct {
 
 // DefaultSystemParameters holds the default parameters as are currently in use
 // at the moment. This might (and probably will) change in the future.
-var DefaultSystemParameters = SystemParameters{defaultBaseParameters, makeDerivedParameters(defaultBaseParameters)}
+var DefaultSystemParameters = SystemParameters{defaultBaseParameters, MakeDerivedParameters(defaultBaseParameters)}
 
 // ParamSize computes the size of a parameter in bytes given the size in bits.
 func ParamSize(a int) int {
