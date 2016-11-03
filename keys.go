@@ -26,18 +26,18 @@ const (
 
 // PrivateKey represents an issuer's private key.
 type PrivateKey struct {
-	XMLName xml.Name `xml:"http://www.zurich.ibm.com/security/idemix IssuerPrivateKey"`
-	Counter uint     `xml:"Counter"`
-	Expiry  int64    `xml:"ExpiryDate"`
-	P       *big.Int `xml:"Elements>p"`
-	Q       *big.Int `xml:"Elements>q"`
-	PPrime  *big.Int `xml:"Elements>pPrime"`
-	QPrime  *big.Int `xml:"Elements>qPrime"`
+	XMLName    xml.Name `xml:"http://www.zurich.ibm.com/security/idemix IssuerPrivateKey"`
+	Counter    uint     `xml:"Counter"`
+	ExpiryDate int64    `xml:"ExpiryDate"`
+	P          *big.Int `xml:"Elements>p"`
+	Q          *big.Int `xml:"Elements>q"`
+	PPrime     *big.Int `xml:"Elements>pPrime"`
+	QPrime     *big.Int `xml:"Elements>qPrime"`
 }
 
 // NewPrivateKey creates a new issuer private key using the provided parameters.
-func NewPrivateKey(p, q *big.Int, counter uint, expiry time.Time) *PrivateKey {
-	sk := PrivateKey{P: p, Q: q, PPrime: new(big.Int), QPrime: new(big.Int), Counter: counter, Expiry: expiry.Unix()}
+func NewPrivateKey(p, q *big.Int, counter uint, expiryDate time.Time) *PrivateKey {
+	sk := PrivateKey{P: p, Q: q, PPrime: new(big.Int), QPrime: new(big.Int), Counter: counter, ExpiryDate: expiryDate.Unix()}
 
 	sk.PPrime.Sub(p, bigONE)
 	sk.PPrime.Rsh(sk.PPrime, 1)
@@ -201,7 +201,7 @@ func (el *EpochLength) MarshalXML(e *xml.Encoder, start xml.StartElement) error 
 type PublicKey struct {
 	XMLName     xml.Name          `xml:"http://www.zurich.ibm.com/security/idemix IssuerPublicKey"`
 	Counter     uint              `xml:"Counter"`
-	Expiry      int64             `xml:"ExpiryDate"`
+	ExpiryDate  int64             `xml:"ExpiryDate"`
 	N           *big.Int          `xml:"Elements>n"` // Modulus n
 	Z           *big.Int          `xml:"Elements>Z"` // Generator Z
 	S           *big.Int          `xml:"Elements>S"` // Generator S
@@ -214,7 +214,7 @@ type PublicKey struct {
 func NewPublicKey(N, Z, S *big.Int, R []*big.Int, counter uint, expiry time.Time) *PublicKey {
 	return &PublicKey{
 		Counter:     counter,
-		Expiry:      expiry.Unix(),
+		ExpiryDate:  expiry.Unix(),
 		N:           N,
 		Z:           Z,
 		S:           S,
@@ -307,7 +307,7 @@ func randomSafePrime(bits int) (*big.Int, error) {
 }
 
 // GenerateKeyPair generates a private/public keypair for an Issuer
-func GenerateKeyPair(param *SystemParameters, attrsAmount int, counter uint, expiry time.Time) (*PrivateKey, *PublicKey, error) {
+func GenerateKeyPair(param *SystemParameters, attrsAmount int, counter uint, expiryDate time.Time) (*PrivateKey, *PublicKey, error) {
 	primeSize := param.Ln / 2
 
 	// p and q need to be safe primes
@@ -321,7 +321,7 @@ func GenerateKeyPair(param *SystemParameters, attrsAmount int, counter uint, exp
 		return nil, nil, err
 	}
 
-	priv := &PrivateKey{P: p, Q: q, PPrime: new(big.Int), QPrime: new(big.Int), Counter: counter, Expiry: expiry.Unix()}
+	priv := &PrivateKey{P: p, Q: q, PPrime: new(big.Int), QPrime: new(big.Int), Counter: counter, ExpiryDate: expiryDate.Unix()}
 
 	// compute p' and q'
 	priv.PPrime.Sub(priv.P, bigONE)
@@ -331,7 +331,7 @@ func GenerateKeyPair(param *SystemParameters, attrsAmount int, counter uint, exp
 	priv.QPrime.Rsh(priv.QPrime, 1)
 
 	// compute n
-	pubk := &PublicKey{Params: param, EpochLength: DefaultEpochLength, Counter: counter, Expiry: expiry.Unix()}
+	pubk := &PublicKey{Params: param, EpochLength: DefaultEpochLength, Counter: counter, ExpiryDate: expiryDate.Unix()}
 	pubk.N = new(big.Int).Mul(priv.P, priv.Q)
 
 	// Find an acceptable value for S; we follow lead of the Silvia code here:
