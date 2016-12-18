@@ -221,6 +221,7 @@ type PublicKey struct {
 
 // NewPublicKey creates and returns a new public key based on the provided parameters.
 func NewPublicKey(N, Z, S *big.Int, R []*big.Int, counter uint, expiry time.Time) *PublicKey {
+	// TODO: make keylength a parameter
 	return &PublicKey{
 		Counter:     counter,
 		ExpiryDate:  expiry.Unix(),
@@ -229,7 +230,7 @@ func NewPublicKey(N, Z, S *big.Int, R []*big.Int, counter uint, expiry time.Time
 		S:           S,
 		R:           R,
 		EpochLength: DefaultEpochLength,
-		Params:      &DefaultSystemParameters,
+		Params:      DefaultSystemParameters[1024],
 	}
 }
 
@@ -238,7 +239,8 @@ func NewPublicKey(N, Z, S *big.Int, R []*big.Int, counter uint, expiry time.Time
 func NewPublicKeyFromXML(xmlInput string) (*PublicKey, error) {
 	// TODO: this might fail in the future. The DefaultSystemParameters and the
 	// public key might not match!
-	pubk := &PublicKey{Params: &DefaultSystemParameters}
+	// TODO: Also: the 1024 should be derived from the XML file.
+	pubk := &PublicKey{Params: DefaultSystemParameters[1024]}
 	err := xml.Unmarshal([]byte(xmlInput), pubk)
 	if err != nil {
 		return nil, err

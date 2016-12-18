@@ -15,14 +15,35 @@ type BaseParameters struct {
 	Lv      uint
 }
 
-var defaultBaseParameters = BaseParameters{
-	Le:      597,
-	LePrime: 120,
-	Lh:      256,
-	Lm:      256,
-	Ln:      1024,
-	Lstatzk: 80,
-	Lv:      1700,
+// defaultBaseParameters holds per keylength the base parameters.
+var defaultBaseParameters = map[int]BaseParameters{
+	1024: BaseParameters{
+		Le:      597,
+		LePrime: 120,
+		Lh:      256,
+		Lm:      256,
+		Ln:      1024,
+		Lstatzk: 80,
+		Lv:      1700,
+	},
+	2048: BaseParameters{
+		Le:      597,
+		LePrime: 120,
+		Lh:      256,
+		Lm:      256,
+		Ln:      2048,
+		Lstatzk: 128,
+		Lv:      1700,
+	},
+	4096: BaseParameters{
+		Le:      597,
+		LePrime: 120,
+		Lh:      256,
+		Lm:      512,
+		Ln:      4096,
+		Lstatzk: 128,
+		Lv:      1700,
+	},
 }
 
 // DerivedParameters holds system parameters that can be drived from base
@@ -56,9 +77,14 @@ type SystemParameters struct {
 	DerivedParameters
 }
 
-// DefaultSystemParameters holds the default parameters as are currently in use
-// at the moment. This might (and probably will) change in the future.
-var DefaultSystemParameters = SystemParameters{defaultBaseParameters, MakeDerivedParameters(defaultBaseParameters)}
+// DefaultSystemParameters holds per keylength the default parameters as are
+// currently in use at the moment. This might (and probably will) change in the
+// future.
+var DefaultSystemParameters = map[int]*SystemParameters{
+	1024: &SystemParameters{defaultBaseParameters[1024], MakeDerivedParameters(defaultBaseParameters[1024])},
+	2048: &SystemParameters{defaultBaseParameters[2048], MakeDerivedParameters(defaultBaseParameters[2048])},
+	4096: &SystemParameters{defaultBaseParameters[4096], MakeDerivedParameters(defaultBaseParameters[4096])},
+}
 
 // ParamSize computes the size of a parameter in bytes given the size in bits.
 func ParamSize(a int) int {
