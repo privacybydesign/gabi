@@ -103,9 +103,17 @@ func (privk *PrivateKey) WriteTo(writer io.Writer) (int64, error) {
 	return int64(numHeaderBytes + numBodyBytes), err
 }
 
-// WriteToFile writes the private key to an xml file.
-func (privk *PrivateKey) WriteToFile(filename string) (int64, error) {
-	f, err := os.Create(filename)
+// WriteToFile writes the private key to an xml file. If any existing file with
+// the same filename should be overwritten, set forceOverwrite to true.
+func (privk *PrivateKey) WriteToFile(filename string, forceOverwrite bool) (int64, error) {
+	var f *os.File
+	var err error
+	if forceOverwrite {
+		f, err = os.Create(filename)
+	} else {
+		// This should return an error if the file already exists
+		f, err = os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0666)
+	}
 	if err != nil {
 		return 0, err
 	}
@@ -282,9 +290,17 @@ func (pubk *PublicKey) WriteTo(writer io.Writer) (int64, error) {
 	return int64(numHeaderBytes + numBodyBytes), err
 }
 
-// WriteToFile writes the public key to an xml file.
-func (pubk *PublicKey) WriteToFile(filename string) (int64, error) {
-	f, err := os.Create(filename)
+// WriteToFile writes the public key to an xml file. If any existing file with
+// the same filename should be overwritten, set forceOverwrite to true.
+func (pubk *PublicKey) WriteToFile(filename string, forceOverwrite bool) (int64, error) {
+	var f *os.File
+	var err error
+	if forceOverwrite {
+		f, err = os.Create(filename)
+	} else {
+		// This should return an error if the file already exists
+		f, err = os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0666)
+	}
 	if err != nil {
 		return 0, err
 	}
