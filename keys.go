@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"time"
 
+	"errors"
 	"github.com/credentials/safeprime"
 )
 
@@ -221,7 +222,6 @@ type PublicKey struct {
 
 // NewPublicKey creates and returns a new public key based on the provided parameters.
 func NewPublicKey(N, Z, S *big.Int, R []*big.Int, counter uint, expiryDate time.Time) *PublicKey {
-	// TODO: make keylength a parameter
 	return &PublicKey{
 		Counter:     counter,
 		ExpiryDate:  expiryDate.Unix(),
@@ -230,7 +230,7 @@ func NewPublicKey(N, Z, S *big.Int, R []*big.Int, counter uint, expiryDate time.
 		S:           S,
 		R:           R,
 		EpochLength: DefaultEpochLength,
-		Params:      DefaultSystemParameters[1024],
+		Params:      DefaultSystemParameters[N.BitLen()],
 	}
 }
 
@@ -239,11 +239,16 @@ func NewPublicKey(N, Z, S *big.Int, R []*big.Int, counter uint, expiryDate time.
 func NewPublicKeyFromXML(xmlInput string) (*PublicKey, error) {
 	// TODO: this might fail in the future. The DefaultSystemParameters and the
 	// public key might not match!
-	// TODO: Also: the 1024 should be derived from the XML file.
-	pubk := &PublicKey{Params: DefaultSystemParameters[1024]}
+	pubk := &PublicKey{}
 	err := xml.Unmarshal([]byte(xmlInput), pubk)
 	if err != nil {
 		return nil, err
+	}
+	keylength := pubk.N.BitLen()
+	if sysparam, ok := DefaultSystemParameters[keylength]; ok {
+		pubk.Params = sysparam
+	} else {
+		return nil, errors.New("Unknown keylength")
 	}
 	return pubk, nil
 }
