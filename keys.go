@@ -82,31 +82,32 @@ func NewPrivateKeyFromFile(filename string) (*PrivateKey, error) {
 
 // Print prints the key to stdout.
 func (privk *PrivateKey) Print() error {
-	return privk.WriteTo(os.Stdout)
+	_, err := privk.WriteTo(os.Stdout)
+	return err
 }
 
 // WriteTo writes the XML-serialized public key to the given writer.
-func (privk *PrivateKey) WriteTo(writer io.Writer) error {
+func (privk *PrivateKey) WriteTo(writer io.Writer) (int64, error) {
 	// Write the standard XML header
-	_, err := writer.Write([]byte(XMLHeader))
+	numHeaderBytes, err := writer.Write([]byte(XMLHeader))
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	// And the actual xml body (with indentation)
 	b, err := xml.MarshalIndent(privk, "", "   ")
 	if err != nil {
-		return err
+		return int64(numHeaderBytes), err
 	}
-	_, err = writer.Write(b)
-	return err
+	numBodyBytes, err := writer.Write(b)
+	return int64(numHeaderBytes + numBodyBytes), err
 }
 
 // WriteToFile writes the private key to an xml file.
-func (privk *PrivateKey) WriteToFile(filename string) error {
+func (privk *PrivateKey) WriteToFile(filename string) (int64, error) {
 	f, err := os.Create(filename)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer f.Close()
 
@@ -260,31 +261,32 @@ func NewPublicKeyFromFile(filename string) (*PublicKey, error) {
 
 // Print prints the key to stdout.
 func (pubk *PublicKey) Print() error {
-	return pubk.WriteTo(os.Stdout)
+	_, err := pubk.WriteTo(os.Stdout)
+	return err
 }
 
 // WriteTo writes the XML-serialized public key to the given writer.
-func (pubk *PublicKey) WriteTo(writer io.Writer) error {
+func (pubk *PublicKey) WriteTo(writer io.Writer) (int64, error) {
 	// Write the standard XML header
-	_, err := writer.Write([]byte(XMLHeader))
+	numHeaderBytes, err := writer.Write([]byte(XMLHeader))
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	// And the actual xml body (with indentation)
 	b, err := xml.MarshalIndent(pubk, "", "   ")
 	if err != nil {
-		return err
+		return int64(numHeaderBytes), err
 	}
-	_, err = writer.Write(b)
-	return err
+	numBodyBytes, err := writer.Write(b)
+	return int64(numHeaderBytes + numBodyBytes), err
 }
 
 // WriteToFile writes the public key to an xml file.
-func (pubk *PublicKey) WriteToFile(filename string) error {
+func (pubk *PublicKey) WriteToFile(filename string) (int64, error) {
 	f, err := os.Create(filename)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer f.Close()
 
