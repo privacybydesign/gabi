@@ -332,7 +332,7 @@ func randomSafePrime(bits int) (*big.Int, error) {
 }
 
 // GenerateKeyPair generates a private/public keypair for an Issuer
-func GenerateKeyPair(param *SystemParameters, attrsAmount int, counter uint, expiryDate time.Time) (*PrivateKey, *PublicKey, error) {
+func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, expiryDate time.Time) (*PrivateKey, *PublicKey, error) {
 	primeSize := param.Ln / 2
 
 	// p and q need to be safe primes
@@ -391,9 +391,9 @@ func GenerateKeyPair(param *SystemParameters, attrsAmount int, counter uint, exp
 	// Compute Z = S^x mod n
 	pubk.Z = new(big.Int).Exp(pubk.S, x, pubk.N)
 
-	// Derive R_i for i = 0...attrsAmount from S
-	pubk.R = make([]*big.Int, attrsAmount)
-	for i := 0; i < attrsAmount; i++ {
+	// Derive R_i for i = 0...numAttributes from S
+	pubk.R = make([]*big.Int, numAttributes)
+	for i := 0; i < numAttributes; i++ {
 		pubk.R[i] = new(big.Int)
 
 		var x *big.Int
