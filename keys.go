@@ -220,11 +220,11 @@ type PublicKey struct {
 }
 
 // NewPublicKey creates and returns a new public key based on the provided parameters.
-func NewPublicKey(N, Z, S *big.Int, R []*big.Int, counter uint, expiry time.Time) *PublicKey {
+func NewPublicKey(N, Z, S *big.Int, R []*big.Int, counter uint, expiryDate time.Time) *PublicKey {
 	// TODO: make keylength a parameter
 	return &PublicKey{
 		Counter:     counter,
-		ExpiryDate:  expiry.Unix(),
+		ExpiryDate:  expiryDate.Unix(),
 		N:           N,
 		Z:           Z,
 		S:           S,
