@@ -4,6 +4,10 @@
 
 package gabi
 
+import (
+	"sort"
+)
+
 // BaseParameters holds the base system parameters
 type BaseParameters struct {
 	Le      uint
@@ -85,6 +89,21 @@ var DefaultSystemParameters = map[int]*SystemParameters{
 	2048: &SystemParameters{defaultBaseParameters[2048], MakeDerivedParameters(defaultBaseParameters[2048])},
 	4096: &SystemParameters{defaultBaseParameters[4096], MakeDerivedParameters(defaultBaseParameters[4096])},
 }
+
+// getAvailableKeyLengths returns the keylengths for the provided map of system
+// parameters.
+func getAvailableKeyLengths(sysParamsMap map[int]*SystemParameters) []int {
+	lengths := make([]int, 0, len(sysParamsMap))
+	for k := range sysParamsMap {
+		lengths = append(lengths, k)
+	}
+	sort.Ints(lengths)
+	return lengths
+}
+
+// DefaultKeyLengths is a slice of integers holding the keylengths for which
+// system parameters are available.
+var DefaultKeyLengths = getAvailableKeyLengths(DefaultSystemParameters)
 
 // ParamSize computes the size of a parameter in bytes given the size in bits.
 func ParamSize(a int) int {
