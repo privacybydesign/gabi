@@ -51,12 +51,12 @@ func (ic *Credential) CreateDisclosureProof(disclosedAttributes []int, context, 
 
 	randSig := ic.Signature.Randomize(ic.Pk)
 
-	eCommit, _ := randomBigInt(ic.Pk.Params.LeCommit)
-	vCommit, _ := randomBigInt(ic.Pk.Params.LvCommit)
+	eCommit, _ := RandomBigInt(ic.Pk.Params.LeCommit)
+	vCommit, _ := RandomBigInt(ic.Pk.Params.LvCommit)
 
 	aCommits := make(map[int]*big.Int)
 	for _, v := range undisclosedAttributes {
-		aCommits[v], _ = randomBigInt(ic.Pk.Params.LmCommit)
+		aCommits[v], _ = RandomBigInt(ic.Pk.Params.LmCommit)
 	}
 
 	// Z = A^{e_commit} * S^{v_commit}
@@ -100,15 +100,15 @@ func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int) *D
 	d := &DisclosureProofBuilder{}
 	d.pk = ic.Pk
 	d.randomizedSignature = ic.Signature.Randomize(ic.Pk)
-	d.eCommit, _ = randomBigInt(ic.Pk.Params.LeCommit)
-	d.vCommit, _ = randomBigInt(ic.Pk.Params.LvCommit)
+	d.eCommit, _ = RandomBigInt(ic.Pk.Params.LeCommit)
+	d.vCommit, _ = RandomBigInt(ic.Pk.Params.LvCommit)
 
 	d.attrRandomizers = make(map[int]*big.Int)
 	d.disclosedAttributes = disclosedAttributes
 	d.undisclosedAttributes = getUndisclosedAttributes(disclosedAttributes, len(ic.Attributes))
 	d.attributes = ic.Attributes
 	for _, v := range d.undisclosedAttributes {
-		d.attrRandomizers[v], _ = randomBigInt(ic.Pk.Params.LmCommit)
+		d.attrRandomizers[v], _ = RandomBigInt(ic.Pk.Params.LmCommit)
 	}
 
 	return d

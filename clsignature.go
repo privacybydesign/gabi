@@ -21,7 +21,7 @@ type CLSignature struct {
 func signMessageBlockAndCommitment(sk *PrivateKey, pk *PublicKey, U *big.Int, ms []*big.Int, Rs []*big.Int) (*CLSignature, error) {
 	R := representToBases(Rs, ms, pk.N)
 
-	vTilde, _ := randomBigInt(pk.Params.Lv - 1)
+	vTilde, _ := RandomBigInt(pk.Params.Lv - 1)
 	twoLv := new(big.Int).Lsh(bigONE, pk.Params.Lv-1)
 	v := new(big.Int).Add(twoLv, vTilde)
 
@@ -79,7 +79,7 @@ func (s *CLSignature) Verify(pk *PublicKey, ms []*big.Int) bool {
 
 // Randomize returns a randomized copy of the signature.
 func (s *CLSignature) Randomize(pk *PublicKey) *CLSignature {
-	r, _ := randomBigInt(pk.Params.LRA)
+	r, _ := RandomBigInt(pk.Params.LRA)
 	APrime := new(big.Int).Mul(s.A, new(big.Int).Exp(pk.S, r, pk.N))
 	APrime.Mod(APrime, pk.N)
 	t := new(big.Int).Mul(s.E, r)

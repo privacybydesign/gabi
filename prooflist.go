@@ -92,7 +92,7 @@ func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, sho
 // of ProofBuilders. Examples of proof builders are Builder and
 // DisclosureProofBuilder.
 func BuildProofList(params *SystemParameters, context, nonce *big.Int, proofBuilders []ProofBuilder) ProofList {
-	skCommitment, _ := randomBigInt(params.LmCommit)
+	skCommitment, _ := RandomBigInt(params.LmCommit)
 
 	commitmentValues := make([]*big.Int, 0, len(proofBuilders)*2)
 	for _, pb := range proofBuilders {

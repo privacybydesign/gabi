@@ -28,7 +28,7 @@ type IssueSignatureMessage struct {
 
 // commitmentToSecret produces a commitment to the provided secret
 func commitmentToSecret(pk *PublicKey, secret *big.Int) (vPrime, U *big.Int) {
-	vPrime, _ = randomBigInt(pk.Params.LvPrime)
+	vPrime, _ = RandomBigInt(pk.Params.LvPrime)
 	// U = S^{vPrime} * R_0^{s}
 	Sv := new(big.Int).Exp(pk.S, vPrime, pk.N)
 	R0s := new(big.Int).Exp(pk.R[0], secret, pk.N)
@@ -51,7 +51,7 @@ func NewCredentialBuilder(pk *PublicKey, context, secret *big.Int) *CredentialBu
 // correctness of this commitment.
 func (b *CredentialBuilder) CommitToSecretAndProve(nonce1 *big.Int) *IssueCommitmentMessage {
 	proofU := b.proveCommitment(b.u, nonce1)
-	b.nonce2, _ = randomBigInt(b.pk.Params.Lstatzk)
+	b.nonce2, _ = RandomBigInt(b.pk.Params.Lstatzk)
 
 	return &IssueCommitmentMessage{U: b.u, Proofs: ProofList{proofU}, Nonce2: b.nonce2}
 }
@@ -116,8 +116,8 @@ func hashCommit(values []*big.Int) *big.Int {
 }
 
 func (b *CredentialBuilder) proveCommitment(U, nonce1 *big.Int) *ProofU {
-	sCommit, _ := randomBigInt(b.pk.Params.LsCommit)
-	vPrimeCommit, _ := randomBigInt(b.pk.Params.LvPrimeCommit)
+	sCommit, _ := RandomBigInt(b.pk.Params.LsCommit)
+	vPrimeCommit, _ := RandomBigInt(b.pk.Params.LvPrimeCommit)
 
 	// Ucommit = S^{vPrimeCommit} * R_0^{sCommit}
 	Sv := new(big.Int).Exp(b.pk.S, vPrimeCommit, b.pk.N)
@@ -154,11 +154,11 @@ type CredentialBuilder struct {
 // Commit commits to the secret (first) attribute using the provided randomizer.
 func (b *CredentialBuilder) Commit(skRandomizer *big.Int) []*big.Int {
 	// create receiver nonce (nonce2)
-	b.nonce2, _ = randomBigInt(b.pk.Params.Lstatzk)
+	b.nonce2, _ = RandomBigInt(b.pk.Params.Lstatzk)
 
 	b.skRandomizer = skRandomizer
 	// vPrimeCommit
-	b.vPrimeCommit, _ = randomBigInt(b.pk.Params.LvPrimeCommit)
+	b.vPrimeCommit, _ = RandomBigInt(b.pk.Params.LvPrimeCommit)
 
 	// U_commit = S^{v_prime_commit} * R_0^{s_commit}
 	sv := new(big.Int).Exp(b.pk.S, b.vPrimeCommit, b.pk.N)

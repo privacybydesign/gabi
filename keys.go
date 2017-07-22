@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"errors"
+
 	"github.com/credentials/safeprime"
 )
 
@@ -365,7 +366,7 @@ func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, e
 
 	var s *big.Int
 	for {
-		s, err = randomBigInt(param.Ln)
+		s, err = RandomBigInt(param.Ln)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -383,7 +384,7 @@ func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, e
 	// Derive Z from S
 	var x *big.Int
 	for {
-		x, _ = randomBigInt(primeSize)
+		x, _ = RandomBigInt(primeSize)
 		if x.Cmp(bigTWO) > 0 && x.Cmp(pubk.N) < 0 {
 			break
 		}
@@ -399,7 +400,7 @@ func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, e
 
 		var x *big.Int
 		for {
-			x, _ = randomBigInt(primeSize)
+			x, _ = RandomBigInt(primeSize)
 			if x.Cmp(bigTWO) > 0 && x.Cmp(pubk.N) < 0 {
 				break
 			}

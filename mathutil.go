@@ -76,9 +76,9 @@ func representToBases(bases, exps []*big.Int, modulus *big.Int) *big.Int {
 	return r
 }
 
-// randomBigInt returns a random big integer value in the range
+// RandomBigInt returns a random big integer value in the range
 // [0,(2^numBits)-1], inclusive.
-func randomBigInt(numBits uint) (*big.Int, error) {
+func RandomBigInt(numBits uint) (*big.Int, error) {
 	t := new(big.Int).Lsh(bigONE, numBits)
 	return rand.Int(rand.Reader, t)
 }
