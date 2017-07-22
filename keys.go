@@ -271,6 +271,7 @@ func NewPublicKeyFromFile(filename string) (*PublicKey, error) {
 	if err != nil {
 		return nil, err
 	}
+	pubk.Params = DefaultSystemParameters[pubk.N.BitLen()]
 	return pubk, nil
 }
 
