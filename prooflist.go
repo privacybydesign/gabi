@@ -91,8 +91,12 @@ func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, sho
 // BuildProofList builds a list of bounded proofs. For this it is given a list
 // of ProofBuilders. Examples of proof builders are Builder and
 // DisclosureProofBuilder.
-func BuildProofList(params *SystemParameters, context, nonce *big.Int, proofBuilders []ProofBuilder) ProofList {
-	skCommitment, _ := RandomBigInt(params.LmCommit)
+func BuildProofList(context, nonce *big.Int, proofBuilders []ProofBuilder) ProofList {
+	// The secret key may be used across credentials supporting different attribute sizes.
+	// So we should take it, and hence also its commitment, to fit within the smallest size -
+	// otherwise it will be too big so that we cannot perform the range proof showing
+	// that it is not too large.
+	skCommitment, _ := RandomBigInt(DefaultSystemParameters[1024].LmCommit)
 
 	commitmentValues := make([]*big.Int, 0, len(proofBuilders)*2)
 	for _, pb := range proofBuilders {
