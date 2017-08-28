@@ -358,7 +358,6 @@ func TestShowingProof(t *testing.T) {
 }
 
 func TestCombinedShowingProof(t *testing.T) {
-	keylength := 1024
 	context, _ := RandomBigInt(testPubK.Params.Lh)
 	nonce1, _ := RandomBigInt(testPubK.Params.Lstatzk)
 	secret, _ := RandomBigInt(testPubK.Params.Lm)
@@ -369,10 +368,9 @@ func TestCombinedShowingProof(t *testing.T) {
 	issuer2 := NewIssuer(testPrivK2, testPubK2, context)
 	cred2 := createCredential(t, context, secret, issuer2)
 
-	prooflist := BuildProofList(DefaultSystemParameters[keylength], context, nonce1,
-		[]ProofBuilder{
-			cred1.CreateDisclosureProofBuilder([]int{1, 2}),
-			cred2.CreateDisclosureProofBuilder([]int{1, 3})})
+	prooflist := BuildProofList(context, nonce1, []ProofBuilder{
+		cred1.CreateDisclosureProofBuilder([]int{1, 2}),
+		cred2.CreateDisclosureProofBuilder([]int{1, 3})})
 
 	if !prooflist.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, true) {
 		t.Error("Prooflist does not verify whereas it should!")
@@ -473,7 +471,7 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 	cb2 := NewCredentialBuilder(testPubK, context, secret)
 	issuer2 := NewIssuer(testPrivK, testPubK, context)
 
-	prooflist := BuildProofList(testPubK.Params, context, nonce1, []ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2})
+	prooflist := BuildProofList(context, nonce1, []ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2})
 
 	commitMsg2 := cb2.CreateIssueCommitmentMessage(prooflist)
 
@@ -575,7 +573,7 @@ func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 	cb2 := NewCredentialBuilder(issuer2.Pk, context, secret)
 
 	nonce1, _ := RandomBigInt(DefaultSystemParameters[keylength].Lstatzk)
-	prooflist := BuildProofList(testPubK.Params, context, nonce1, []ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2})
+	prooflist := BuildProofList(context, nonce1, []ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2})
 
 	commitMsg := cb2.CreateIssueCommitmentMessage(prooflist)
 
@@ -619,7 +617,7 @@ func TestWronglyBoundIssuanceAndShowingWithDifferentIssuers(t *testing.T) {
 	cb2 := NewCredentialBuilder(issuer2.Pk, context, secret2)
 
 	nonce1, _ := RandomBigInt(DefaultSystemParameters[keylength].Lstatzk)
-	prooflist := BuildProofList(testPubK.Params, context, nonce1, []ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2})
+	prooflist := BuildProofList(context, nonce1, []ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2})
 
 	commitMsg := cb2.CreateIssueCommitmentMessage(prooflist)
 
