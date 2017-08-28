@@ -103,11 +103,22 @@ func intHashSha256(input []byte) *big.Int {
 // hashCommit computes the sha256 hash over the asn1 representation of a slice
 // of big integers and returns a positive big integer that can be represented
 // with that hash.
-func hashCommit(values []*big.Int) *big.Int {
+func hashCommit(values []*big.Int, issig bool) *big.Int {
 	// The first element is the number of elements
-	tmp := make([]*big.Int, len(values)+1)
-	tmp[0] = big.NewInt(int64(len(values)))
-	copy(tmp[1:], values)
+	var tmp []interface{}
+	offset := 0
+	if issig {
+		tmp = make([]interface{}, len(values)+2)
+		tmp[0] = true
+		offset++
+	} else {
+		tmp = make([]interface{}, len(values)+1)
+	}
+	tmp[offset] = big.NewInt(int64(len(values)))
+	offset++
+	for i, v := range values {
+		tmp[i+offset] = v
+	}
 	r, _ := asn1.Marshal(tmp)
 
 	h := sha256.New()
@@ -125,7 +136,7 @@ func (b *CredentialBuilder) proveCommitment(U, nonce1 *big.Int) *ProofU {
 	Ucommit := new(big.Int).Mul(Sv, R0s)
 	Ucommit.Mod(Ucommit, b.pk.N)
 
-	c := hashCommit([]*big.Int{b.context, U, Ucommit, nonce1})
+	c := hashCommit([]*big.Int{b.context, U, Ucommit, nonce1}, false)
 	sResponse := new(big.Int).Mul(c, b.secret)
 	sResponse.Add(sResponse, sCommit)
 

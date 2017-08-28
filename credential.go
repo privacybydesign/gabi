@@ -71,7 +71,7 @@ func (ic *Credential) CreateDisclosureProof(disclosedAttributes []int, context, 
 		Z.Mod(Z, ic.Pk.N)
 	}
 
-	c := hashCommit([]*big.Int{context, randSig.A, Z, nonce1})
+	c := hashCommit([]*big.Int{context, randSig.A, Z, nonce1}, false)
 
 	ePrime := new(big.Int).Sub(randSig.E, new(big.Int).Lsh(bigONE, ic.Pk.Params.Le-1))
 	eResponse := new(big.Int).Mul(c, ePrime)

@@ -216,9 +216,9 @@ func TestProofU(t *testing.T) {
 	secret, _ := RandomBigInt(DefaultSystemParameters[keylength].Lm)
 
 	b := NewCredentialBuilder(testPubK, context, secret)
-	proofU := b.CreateProof(createChallenge(context, nonce1, b.Commit(secret)))
+	proofU := b.CreateProof(createChallenge(context, nonce1, b.Commit(secret), false))
 
-	if !proofU.VerifyWithChallenge(testPubK, createChallenge(context, nonce1, proofU.ChallengeContribution(testPubK))) {
+	if !proofU.VerifyWithChallenge(testPubK, createChallenge(context, nonce1, proofU.ChallengeContribution(testPubK), false)) {
 		t.Error("ProofU does not verify, whereas it should.")
 	}
 }
@@ -247,7 +247,7 @@ func TestCommitmentMessage(t *testing.T) {
 
 	b := NewCredentialBuilder(testPubK, context, secret)
 	msg := b.CommitToSecretAndProve(nonce1)
-	if !msg.Proofs.Verify([]*PublicKey{testPubK}, context, nonce1, false) {
+	if !msg.Proofs.Verify([]*PublicKey{testPubK}, context, nonce1, false, false) {
 		t.Error("Commitment message proof does not verify, whereas it should.")
 	}
 }
@@ -352,7 +352,7 @@ func TestShowingProof(t *testing.T) {
 	nonce1, _ := RandomBigInt(testPubK.Params.Lstatzk)
 
 	proof := cred.CreateDisclosureProof(disclosed, context, nonce1)
-	if !proof.Verify(testPubK, context, nonce1) {
+	if !proof.Verify(testPubK, context, nonce1, false) {
 		t.Error("Proof of disclosure did not verify, whereas it should.")
 	}
 }
@@ -370,9 +370,9 @@ func TestCombinedShowingProof(t *testing.T) {
 
 	prooflist := BuildProofList(context, nonce1, []ProofBuilder{
 		cred1.CreateDisclosureProofBuilder([]int{1, 2}),
-		cred2.CreateDisclosureProofBuilder([]int{1, 3})})
+		cred2.CreateDisclosureProofBuilder([]int{1, 3})}, false)
 
-	if !prooflist.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, true) {
+	if !prooflist.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, true, false) {
 		t.Error("Prooflist does not verify whereas it should!")
 	}
 
@@ -406,13 +406,13 @@ func TestShowingProofLogged(t *testing.T) {
 
 	proof1 := &ProofD{c: c, A: A, eResponse: eResponse, vResponse: vResponse, aResponses: aResponses, aDisclosed: aDisclosed}
 
-	if !proof1.Verify(testPubK, context, nonce1) {
+	if !proof1.Verify(testPubK, context, nonce1, false) {
 		t.Error("Proof of disclosure did not verify, whereas it should.")
 	}
 
 	aDisclosed[1] = s2big("123")
 	proof2 := &ProofD{c: c, A: A, eResponse: eResponse, vResponse: vResponse, aResponses: aResponses, aDisclosed: aDisclosed}
-	if proof2.Verify(testPubK, context, nonce1) {
+	if proof2.Verify(testPubK, context, nonce1, false) {
 		t.Error("Proof of disclosure verifies, whereas it should not.")
 	}
 }
@@ -441,7 +441,7 @@ func TestFullIssuanceAndShowing(t *testing.T) {
 	disclosed := []int{1, 2}
 
 	proof := cred.CreateDisclosureProof(disclosed, context, n1)
-	if !proof.Verify(testPubK, context, n1) {
+	if !proof.Verify(testPubK, context, n1, false) {
 		t.Error("Proof of disclosure does not verify, whereas it should.")
 	}
 }
@@ -471,11 +471,11 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 	cb2 := NewCredentialBuilder(testPubK, context, secret)
 	issuer2 := NewIssuer(testPrivK, testPubK, context)
 
-	prooflist := BuildProofList(context, nonce1, []ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2})
+	prooflist := BuildProofList(context, nonce1, []ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2}, false)
 
 	commitMsg2 := cb2.CreateIssueCommitmentMessage(prooflist)
 
-	if !commitMsg2.Proofs.Verify([]*PublicKey{testPubK, testPubK}, context, nonce1, true) {
+	if !commitMsg2.Proofs.Verify([]*PublicKey{testPubK, testPubK}, context, nonce1, true, false) {
 		t.Error("Proofs in commit message do not verify!")
 	}
 
@@ -492,7 +492,7 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 	nonce1s, _ := RandomBigInt(testPubK.Params.Lstatzk)
 	disclosedAttributes := []int{1, 3}
 	proof := cred2.CreateDisclosureProof(disclosedAttributes, context, nonce1s)
-	if !proof.Verify(testPubK, context, nonce1s) {
+	if !proof.Verify(testPubK, context, nonce1s, false) {
 		t.Error("Proof of disclosure did not verify, whereas it should.")
 	}
 
@@ -573,11 +573,11 @@ func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 	cb2 := NewCredentialBuilder(issuer2.Pk, context, secret)
 
 	nonce1, _ := RandomBigInt(DefaultSystemParameters[keylength].Lstatzk)
-	prooflist := BuildProofList(context, nonce1, []ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2})
+	prooflist := BuildProofList(context, nonce1, []ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2}, false)
 
 	commitMsg := cb2.CreateIssueCommitmentMessage(prooflist)
 
-	if !commitMsg.Proofs.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, true) {
+	if !commitMsg.Proofs.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, true, false) {
 		t.Error("Proofs in commit message do not verify!")
 	}
 
@@ -594,7 +594,7 @@ func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 	nonce1s, _ := RandomBigInt(issuer2.Pk.Params.Lstatzk)
 	disclosedAttributes := []int{1, 3}
 	proof := cred2.CreateDisclosureProof(disclosedAttributes, context, nonce1s)
-	if !proof.Verify(issuer2.Pk, context, nonce1s) {
+	if !proof.Verify(issuer2.Pk, context, nonce1s, false) {
 		t.Error("Proof of disclosure did not verify, whereas it should.")
 	}
 
@@ -617,11 +617,11 @@ func TestWronglyBoundIssuanceAndShowingWithDifferentIssuers(t *testing.T) {
 	cb2 := NewCredentialBuilder(issuer2.Pk, context, secret2)
 
 	nonce1, _ := RandomBigInt(DefaultSystemParameters[keylength].Lstatzk)
-	prooflist := BuildProofList(context, nonce1, []ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2})
+	prooflist := BuildProofList(context, nonce1, []ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2}, false)
 
 	commitMsg := cb2.CreateIssueCommitmentMessage(prooflist)
 
-	if commitMsg.Proofs.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, true) {
+	if commitMsg.Proofs.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, true, false) {
 		t.Error("Proofs in commit message verify, whereas they should not!")
 	}
 }

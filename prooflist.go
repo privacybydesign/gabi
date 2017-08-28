@@ -57,7 +57,7 @@ func (pl ProofList) challengeContributions(publicKeys []*PublicKey, context, non
 
 // Verify returns true when all the proofs inside verify and if shouldBeBound is
 // set to true whether all proofs are properly bound.
-func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, shouldBeBound bool) bool {
+func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, shouldBeBound bool, issig bool) bool {
 	if len(pl) == 0 {
 		return true
 	}
@@ -68,7 +68,7 @@ func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, sho
 
 	if shouldBeBound {
 		contributions := pl.challengeContributions(publicKeys, context, nonce)
-		expectedChallenge := createChallenge(context, nonce, contributions)
+		expectedChallenge := createChallenge(context, nonce, contributions, issig)
 		expectedSecretKeyResponse := pl[0].SecretKeyResponse()
 		for i, proof := range pl {
 			if expectedSecretKeyResponse.Cmp(proof.SecretKeyResponse()) != 0 ||
@@ -79,7 +79,7 @@ func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, sho
 	} else {
 		for i, proof := range pl {
 			// if !proof.Verify(publicKeys[i], context, nonce) {
-			if !proof.VerifyWithChallenge(publicKeys[i], createChallenge(context, nonce, proof.ChallengeContribution(publicKeys[i]))) {
+			if !proof.VerifyWithChallenge(publicKeys[i], createChallenge(context, nonce, proof.ChallengeContribution(publicKeys[i]), issig)) {
 				return false
 			}
 		}
@@ -91,7 +91,7 @@ func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, sho
 // BuildProofList builds a list of bounded proofs. For this it is given a list
 // of ProofBuilders. Examples of proof builders are Builder and
 // DisclosureProofBuilder.
-func BuildProofList(context, nonce *big.Int, proofBuilders []ProofBuilder) ProofList {
+func BuildProofList(context, nonce *big.Int, proofBuilders []ProofBuilder, issig bool) ProofList {
 	// The secret key may be used across credentials supporting different attribute sizes.
 	// So we should take it, and hence also its commitment, to fit within the smallest size -
 	// otherwise it will be too big so that we cannot perform the range proof showing
@@ -104,7 +104,7 @@ func BuildProofList(context, nonce *big.Int, proofBuilders []ProofBuilder) Proof
 	}
 
 	// Create a shared challenge
-	challenge := createChallenge(context, nonce, commitmentValues)
+	challenge := createChallenge(context, nonce, commitmentValues, issig)
 
 	proofs := make([]Proof, len(proofBuilders))
 	// Now create proofs using this challenge

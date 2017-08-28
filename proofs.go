@@ -18,13 +18,13 @@ type Proof interface {
 
 // createChallenge creates a challenge based on context, nonce and the
 // contributions.
-func createChallenge(context, nonce *big.Int, contributions []*big.Int) *big.Int {
+func createChallenge(context, nonce *big.Int, contributions []*big.Int, issig bool) *big.Int {
 	// Basically, sandwich the contributions between context and nonce
 	input := make([]*big.Int, 2+len(contributions))
 	input[0] = context
 	copy(input[1:1+len(contributions)], contributions)
 	input[len(input)-1] = nonce
-	return hashCommit(input)
+	return hashCommit(input, issig)
 }
 
 // ProofU represents a proof of correctness of the commitment in the first phase
@@ -38,7 +38,7 @@ type ProofU struct {
 
 // Verify verifies whether the proof is correct.
 func (p *ProofU) Verify(pk *PublicKey, context, nonce *big.Int) bool {
-	return p.VerifyWithChallenge(pk, createChallenge(context, nonce, p.ChallengeContribution(pk)))
+	return p.VerifyWithChallenge(pk, createChallenge(context, nonce, p.ChallengeContribution(pk), false))
 }
 
 // correctResponseSizes checks the sizes of the elements in the ProofU proof.
@@ -105,7 +105,7 @@ func (p *ProofS) Verify(pk *PublicKey, signature *CLSignature, context, nonce *b
 	Q := new(big.Int).Exp(signature.A, signature.E, pk.N)
 
 	// Recalculate hash
-	cPrime := hashCommit([]*big.Int{context, Q, signature.A, nonce, ACommit})
+	cPrime := hashCommit([]*big.Int{context, Q, signature.A, nonce, ACommit}, false)
 
 	return p.c.Cmp(cPrime) == 0
 }
@@ -179,8 +179,8 @@ func (p *ProofD) reconstructZ(pk *PublicKey) *big.Int {
 }
 
 // Verify verifies the proof against the given public key, context, and nonce.
-func (p *ProofD) Verify(pk *PublicKey, context, nonce1 *big.Int) bool {
-	return p.VerifyWithChallenge(pk, createChallenge(context, nonce1, p.ChallengeContribution(pk)))
+func (p *ProofD) Verify(pk *PublicKey, context, nonce1 *big.Int, issig bool) bool {
+	return p.VerifyWithChallenge(pk, createChallenge(context, nonce1, p.ChallengeContribution(pk), issig))
 }
 
 // Verify verifies the proof against the given public key and the provided
