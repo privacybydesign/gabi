@@ -5,6 +5,7 @@
 package gabi
 
 import (
+	"encoding/json"
 	"math/big"
 )
 
@@ -113,6 +114,18 @@ func (p *ProofS) Verify(pk *PublicKey, signature *CLSignature, context, nonce *b
 type ProofD struct {
 	c, A, eResponse, vResponse *big.Int
 	aResponses, aDisclosed     map[int]*big.Int
+}
+
+func (p *ProofD) MarshalJSON() ([]byte, error) {
+	temp := &struct {
+		A          *big.Int
+		C          *big.Int         `json:"c"`
+		EResponse  *big.Int         `json:"e_response"`
+		VResponse  *big.Int         `json:"v_response"`
+		AResponses map[int]*big.Int `json:"a_responses"`
+		ADisclosed map[int]*big.Int `json:"a_disclosed"`
+	}{p.A, p.c, p.eResponse, p.vResponse, p.aResponses, p.aDisclosed}
+	return json.Marshal(temp)
 }
 
 // correctResponseSizes checks the sizes of the elements in the ProofD proof.
