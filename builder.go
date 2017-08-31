@@ -14,16 +14,16 @@ import (
 // IssueCommitmentMessage encapsulates the messages sent by the receiver to the
 // issuer in the second step of the issuance protocol.
 type IssueCommitmentMessage struct {
-	U      *big.Int
-	Nonce2 *big.Int
-	Proofs ProofList
+	U      *big.Int  `json:"U"`
+	Nonce2 *big.Int  `json:"n_2"`
+	Proofs ProofList `json:"combinedProofs"`
 }
 
 // IssueSignatureMessage encapsulates the messages sent from the issuer to the
 // reciver in the final step of the issuance protocol.
 type IssueSignatureMessage struct {
-	Proof     *ProofS
-	Signature *CLSignature
+	Proof     *ProofS      `json:"proof"`
+	Signature *CLSignature `json:"signature"`
 }
 
 // commitmentToSecret produces a commitment to the provided secret
@@ -39,10 +39,10 @@ func commitmentToSecret(pk *PublicKey, secret *big.Int) (vPrime, U *big.Int) {
 
 // NewCredentialBuilder creates a new credential builder. The resulting credential builder
 // is already committed to the provided secret.
-func NewCredentialBuilder(pk *PublicKey, context, secret *big.Int) *CredentialBuilder {
+func NewCredentialBuilder(pk *PublicKey, context, secret *big.Int, nonce2 *big.Int) *CredentialBuilder {
 	vPrime, U := commitmentToSecret(pk, secret)
 
-	return &CredentialBuilder{pk: pk, context: context, secret: secret, vPrime: vPrime, u: U}
+	return &CredentialBuilder{pk: pk, context: context, secret: secret, vPrime: vPrime, u: U, nonce2: nonce2}
 }
 
 // CommitToSecretAndProve creates the response to the initial challenge nonce
@@ -51,7 +51,6 @@ func NewCredentialBuilder(pk *PublicKey, context, secret *big.Int) *CredentialBu
 // correctness of this commitment.
 func (b *CredentialBuilder) CommitToSecretAndProve(nonce1 *big.Int) *IssueCommitmentMessage {
 	proofU := b.proveCommitment(b.u, nonce1)
-	b.nonce2, _ = RandomBigInt(b.pk.Params.Lstatzk)
 
 	return &IssueCommitmentMessage{U: b.u, Proofs: ProofList{proofU}, Nonce2: b.nonce2}
 }
@@ -143,7 +142,7 @@ func (b *CredentialBuilder) proveCommitment(U, nonce1 *big.Int) *ProofU {
 	vPrimeResponse := new(big.Int).Mul(c, b.vPrime)
 	vPrimeResponse.Add(vPrimeResponse, vPrimeCommit)
 
-	return &ProofU{u: U, c: c, vPrimeResponse: vPrimeResponse, sResponse: sResponse}
+	return &ProofU{U: U, C: c, VPrimeResponse: vPrimeResponse, SResponse: sResponse}
 }
 
 // CredentialBuilder is a temporary object to hold some state for the protocol
@@ -164,9 +163,6 @@ type CredentialBuilder struct {
 
 // Commit commits to the secret (first) attribute using the provided randomizer.
 func (b *CredentialBuilder) Commit(skRandomizer *big.Int) []*big.Int {
-	// create receiver nonce (nonce2)
-	b.nonce2, _ = RandomBigInt(b.pk.Params.Lstatzk)
-
 	b.skRandomizer = skRandomizer
 	// vPrimeCommit
 	b.vPrimeCommit, _ = RandomBigInt(b.pk.Params.LvPrimeCommit)
@@ -185,5 +181,5 @@ func (b *CredentialBuilder) CreateProof(challenge *big.Int) Proof {
 	sResponse := new(big.Int).Add(b.skRandomizer, new(big.Int).Mul(challenge, b.secret))
 	vPrimeResponse := new(big.Int).Add(b.vPrimeCommit, new(big.Int).Mul(challenge, b.vPrime))
 
-	return &ProofU{u: b.u, c: challenge, vPrimeResponse: vPrimeResponse, sResponse: sResponse}
+	return &ProofU{U: b.u, C: challenge, VPrimeResponse: vPrimeResponse, SResponse: sResponse}
 }

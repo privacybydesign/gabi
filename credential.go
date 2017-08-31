@@ -90,7 +90,7 @@ func (ic *Credential) CreateDisclosureProof(disclosedAttributes []int, context, 
 		aDisclosed[v] = ic.Attributes[v]
 	}
 
-	return &ProofD{c: c, A: randSig.A, eResponse: eResponse, vResponse: vResponse, aResponses: aResponses, aDisclosed: aDisclosed}
+	return &ProofD{C: c, A: randSig.A, EResponse: eResponse, VResponse: vResponse, AResponses: aResponses, ADisclosed: aDisclosed}
 }
 
 // CreateDisclosureProofBuilder produces a DisclosureProofBuilder, an object to
@@ -155,5 +155,5 @@ func (d *DisclosureProofBuilder) CreateProof(challenge *big.Int) Proof {
 		aDisclosed[v] = d.attributes[v]
 	}
 
-	return &ProofD{c: challenge, A: d.randomizedSignature.A, eResponse: eResponse, vResponse: vResponse, aResponses: aResponses, aDisclosed: aDisclosed}
+	return &ProofD{C: challenge, A: d.randomizedSignature.A, EResponse: eResponse, VResponse: vResponse, AResponses: aResponses, ADisclosed: aDisclosed}
 }
