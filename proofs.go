@@ -11,6 +11,7 @@ type Proof interface {
 	VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.Int) bool
 	SecretKeyResponse() *big.Int
 	ChallengeContribution(pk *PublicKey) []*big.Int
+	MergeProofP(proofP *ProofP, pk *PublicKey)
 }
 
 // createChallenge creates a challenge based on context, nonce and the
@@ -31,6 +32,14 @@ type ProofU struct {
 	C              *big.Int `json:"c"`
 	VPrimeResponse *big.Int `json:"v_prime_response"`
 	SResponse      *big.Int `json:"s_response"`
+}
+
+func (p *ProofU) MergeProofP(proofP *ProofP, pk *PublicKey) {
+	p.U.Mod(
+		p.U.Mul(p.U, proofP.P),
+		pk.N,
+	)
+	p.SResponse.Add(p.SResponse, proofP.SResponse)
 }
 
 // Verify verifies whether the proof is correct.
@@ -117,6 +126,10 @@ type ProofD struct {
 	ADisclosed map[int]*big.Int `json:"a_disclosed"`
 }
 
+func (p *ProofD) MergeProofP(proofP *ProofP, pk *PublicKey) {
+	p.SecretKeyResponse().Add(p.SecretKeyResponse(), proofP.SResponse)
+}
+
 // correctResponseSizes checks the sizes of the elements in the ProofD proof.
 func (p *ProofD) correctResponseSizes(pk *PublicKey) bool {
 	// Check range on the AResponses
@@ -193,4 +206,18 @@ func (p *ProofD) SecretKeyResponse() *big.Int {
 // Challenge returns the challenge in the proof (part of the Proof interface).
 func (p *ProofD) Challenge() *big.Int {
 	return p.C
+}
+
+// ProofP is a keyshare server's knowledge of its part of the secret key.
+type ProofP struct {
+	P         *big.Int `json:"P"`
+	C         *big.Int `json:"c"`
+	SResponse *big.Int `json:"s_response"`
+}
+
+// ProofPCommitment is a keyshare server's first message in its proof of knowledge
+// of its part of the secret key.
+type ProofPCommitment struct {
+	P       *big.Int
+	Pcommit *big.Int
 }

@@ -14,9 +14,10 @@ import (
 // IssueCommitmentMessage encapsulates the messages sent by the receiver to the
 // issuer in the second step of the issuance protocol.
 type IssueCommitmentMessage struct {
-	U      *big.Int  `json:"U"`
-	Nonce2 *big.Int  `json:"n_2"`
-	Proofs ProofList `json:"combinedProofs"`
+	U         *big.Int  `json:"U"`
+	Nonce2    *big.Int  `json:"n_2"`
+	Proofs    ProofList `json:"combinedProofs"`
+	ProofPjwt string    `json:"proofPJwt"`
 }
 
 // IssueSignatureMessage encapsulates the messages sent from the issuer to the
@@ -42,7 +43,15 @@ func commitmentToSecret(pk *PublicKey, secret *big.Int) (vPrime, U *big.Int) {
 func NewCredentialBuilder(pk *PublicKey, context, secret *big.Int, nonce2 *big.Int) *CredentialBuilder {
 	vPrime, U := commitmentToSecret(pk, secret)
 
-	return &CredentialBuilder{pk: pk, context: context, secret: secret, vPrime: vPrime, u: U, nonce2: nonce2}
+	return &CredentialBuilder{
+		pk:      pk,
+		context: context,
+		secret:  secret,
+		vPrime:  vPrime,
+		u:       U,
+		uCommit: big.NewInt(1),
+		nonce2:  nonce2,
+	}
 }
 
 // CommitToSecretAndProve creates the response to the initial challenge nonce
@@ -78,7 +87,14 @@ func (b *CredentialBuilder) ConstructCredential(msg *IssueSignatureMessage, attr
 	}
 
 	// Construct actual signature
-	signature := &CLSignature{msg.Signature.A, msg.Signature.E, new(big.Int).Add(msg.Signature.V, b.vPrime)}
+	signature := &CLSignature{
+		A: msg.Signature.A,
+		E: msg.Signature.E,
+		V: new(big.Int).Add(msg.Signature.V, b.vPrime),
+	}
+	if b.proofPcomm != nil {
+		signature.KeyshareP = b.proofPcomm.P
+	}
 
 	// Verify signature
 	exponents := make([]*big.Int, len(attributes)+1)
@@ -157,8 +173,22 @@ type CredentialBuilder struct {
 	uCommit      *big.Int
 	skRandomizer *big.Int
 
-	pk      *PublicKey
-	context *big.Int
+	pk         *PublicKey
+	context    *big.Int
+	proofPcomm *ProofPCommitment
+}
+
+func (b *CredentialBuilder) MergeProofPCommitment(commitment *ProofPCommitment) {
+	b.proofPcomm = commitment
+	b.uCommit.Mod(
+		b.uCommit.Mul(b.uCommit, commitment.Pcommit),
+		b.pk.N,
+	)
+}
+
+// PublicKey returns the Idemix public key against which the credential will verify.
+func (b *CredentialBuilder) PublicKey() *PublicKey {
+	return b.pk
 }
 
 // Commit commits to the secret (first) attribute using the provided randomizer.
@@ -167,13 +197,16 @@ func (b *CredentialBuilder) Commit(skRandomizer *big.Int) []*big.Int {
 	// vPrimeCommit
 	b.vPrimeCommit, _ = RandomBigInt(b.pk.Params.LvPrimeCommit)
 
-	// U_commit = S^{v_prime_commit} * R_0^{s_commit}
+	// U_commit = U_commit * S^{v_prime_commit} * R_0^{s_commit}
 	sv := new(big.Int).Exp(b.pk.S, b.vPrimeCommit, b.pk.N)
 	r0s := new(big.Int).Exp(b.pk.R[0], b.skRandomizer, b.pk.N)
-	b.uCommit = new(big.Int).Mul(sv, r0s)
-	b.uCommit.Mod(b.uCommit, b.pk.N)
+	b.uCommit.Mul(b.uCommit, sv).Mul(b.uCommit, r0s).Mod(b.uCommit, b.pk.N)
 
-	return []*big.Int{b.u, b.uCommit}
+	ucomm := new(big.Int).Set(b.u)
+	if b.proofPcomm != nil {
+		ucomm.Mul(ucomm, b.proofPcomm.P).Mod(ucomm, b.pk.N)
+	}
+	return []*big.Int{ucomm, b.uCommit}
 }
 
 // CreateProof creates a (ProofU) Proof using the provided challenge.

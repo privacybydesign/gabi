@@ -9,14 +9,16 @@ import (
 	"math/big"
 )
 
-// ProofBuilder is an interface for a prof builder. That is, an object to hold
+// ProofBuilder is an interface for a proof builder. That is, an object to hold
 // the state to build a list of bounded proofs (see ProofList).
 type ProofBuilder interface {
 	Commit(skRandomizer *big.Int) []*big.Int
 	CreateProof(challenge *big.Int) Proof
+	PublicKey() *PublicKey
+	MergeProofPCommitment(commitment *ProofPCommitment)
 }
 
-// ProofList represents a list of (typically bounded) proofs.
+// ProofList represents a list of (typically bound) proofs.
 type ProofList []Proof
 
 var (
@@ -88,14 +90,11 @@ func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, sho
 	return true
 }
 
-// BuildProofList builds a list of bounded proofs. For this it is given a list
-// of ProofBuilders. Examples of proof builders are Builder and
-// DisclosureProofBuilder.
-func BuildProofList(context, nonce *big.Int, proofBuilders []ProofBuilder, issig bool) ProofList {
+func DistributedChallenge(context, nonce *big.Int, proofBuilders []ProofBuilder, issig bool) *big.Int {
 	// The secret key may be used across credentials supporting different attribute sizes.
 	// So we should take it, and hence also its commitment, to fit within the smallest size -
 	// otherwise it will be too big so that we cannot perform the range proof showing
-	// that it is not too large.
+	// that it is not too big.
 	skCommitment, _ := RandomBigInt(DefaultSystemParameters[1024].LmCommit)
 
 	commitmentValues := make([]*big.Int, 0, len(proofBuilders)*2)
@@ -104,12 +103,32 @@ func BuildProofList(context, nonce *big.Int, proofBuilders []ProofBuilder, issig
 	}
 
 	// Create a shared challenge
-	challenge := createChallenge(context, nonce, commitmentValues, issig)
+	return createChallenge(context, nonce, commitmentValues, issig)
+}
+
+func BuildDistributedProofList(
+	challenge *big.Int, proofBuilders []ProofBuilder, proofPs []*ProofP,
+) (ProofList, error) {
+	if proofPs != nil && len(proofBuilders) != len(proofPs) {
+		return nil, errors.New("Not enough ProofP's given")
+	}
 
 	proofs := make([]Proof, len(proofBuilders))
 	// Now create proofs using this challenge
 	for i, v := range proofBuilders {
 		proofs[i] = v.CreateProof(challenge)
+		if proofPs != nil && proofPs[i] != nil {
+			proofs[i].MergeProofP(proofPs[i], v.PublicKey())
+		}
 	}
-	return proofs
+	return proofs, nil
+}
+
+// BuildProofList builds a list of bounded proofs. For this it is given a list
+// of ProofBuilders. Examples of proof builders are CredentialBuilder and
+// DisclosureProofBuilder.
+func BuildProofList(context, nonce *big.Int, proofBuilders []ProofBuilder, issig bool) ProofList {
+	challenge := DistributedChallenge(context, nonce, proofBuilders, issig)
+	list, _ := BuildDistributedProofList(challenge, proofBuilders, nil)
+	return list
 }

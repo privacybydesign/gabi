@@ -219,6 +219,7 @@ type PublicKey struct {
 	R           Bases             `xml:"Elements>Bases"`
 	EpochLength EpochLength       `xml:"Features"`
 	Params      *SystemParameters `xml:"-"`
+	Issuer      string            `xml:"-"`
 }
 
 // NewPublicKey creates and returns a new public key based on the provided parameters.

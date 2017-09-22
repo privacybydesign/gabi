@@ -11,9 +11,10 @@ import (
 
 // CLSignature is a data structure for holding a Camenisch-Lysyanskaya signature.
 type CLSignature struct {
-	A *big.Int
-	E *big.Int `json:"e"`
-	V *big.Int `json:"v"`
+	A         *big.Int
+	E         *big.Int `json:"e"`
+	V         *big.Int `json:"v"`
+	KeyshareP *big.Int `json:"KeyshareP"` // R_0^{keysharesecret}, necessary for verification
 }
 
 // SignMessageBlock signs a message block (ms) and a commitment (U) using the
@@ -69,6 +70,9 @@ func (s *CLSignature) Verify(pk *PublicKey, ms []*big.Int) bool {
 	// Q = A^e * R * S^v
 	Ae := new(big.Int).Exp(s.A, s.E, pk.N)
 	R := representToBases(pk.R, ms, pk.N)
+	if s.KeyshareP != nil {
+		R.Mul(R, s.KeyshareP)
+	}
 	Sv := modPow(pk.S, s.V, pk.N)
 	Q := new(big.Int).Mul(Ae, R)
 	Q.Mul(Q, Sv).Mod(Q, pk.N)

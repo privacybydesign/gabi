@@ -98,6 +98,7 @@ func (ic *Credential) CreateDisclosureProof(disclosedAttributes []int, context, 
 // linked to other proofs.
 func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int) *DisclosureProofBuilder {
 	d := &DisclosureProofBuilder{}
+	d.z = big.NewInt(1)
 	d.pk = ic.Pk
 	d.randomizedSignature = ic.Signature.Randomize(ic.Pk)
 	d.eCommit, _ = RandomBigInt(ic.Pk.Params.LeCommit)
@@ -116,6 +117,18 @@ func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int) *D
 
 // TODO: Eventually replace skRandomizer with an array
 
+func (d *DisclosureProofBuilder) MergeProofPCommitment(commitment *ProofPCommitment) {
+	d.z.Mod(
+		d.z.Mul(d.z, commitment.Pcommit),
+		d.pk.N,
+	)
+}
+
+// PublicKey returns the Idemix public key against which this disclosure proof will verify.
+func (d *DisclosureProofBuilder) PublicKey() *PublicKey {
+	return d.pk
+}
+
 // Commit commits to the first attribute (the secret) using the provided
 // randomizer.
 func (d *DisclosureProofBuilder) Commit(skRandomizer *big.Int) []*big.Int {
@@ -125,8 +138,7 @@ func (d *DisclosureProofBuilder) Commit(skRandomizer *big.Int) []*big.Int {
 	//     PROD_{i \in undisclosed} ( R_i^{a_commits{i}} )
 	Ae := modPow(d.randomizedSignature.A, d.eCommit, d.pk.N)
 	Sv := modPow(d.pk.S, d.vCommit, d.pk.N)
-	d.z = new(big.Int).Mul(Ae, Sv)
-	d.z.Mod(d.z, d.pk.N)
+	d.z.Mul(d.z, Ae).Mul(d.z, Sv).Mod(d.z, d.pk.N)
 
 	for _, v := range d.undisclosedAttributes {
 		d.z.Mul(d.z, modPow(d.pk.R[v], d.attrRandomizers[v], d.pk.N))
