@@ -372,9 +372,10 @@ func TestCombinedShowingProof(t *testing.T) {
 	issuer2 := NewIssuer(testPrivK2, testPubK2, context)
 	cred2 := createCredential(t, context, secret, issuer2)
 
-	prooflist := BuildProofList(context, nonce1, []ProofBuilder{
+	builders := ProofBuilderList([]ProofBuilder{
 		cred1.CreateDisclosureProofBuilder([]int{1, 2}),
-		cred2.CreateDisclosureProofBuilder([]int{1, 3})}, false)
+		cred2.CreateDisclosureProofBuilder([]int{1, 3})})
+	prooflist := builders.BuildProofList(context, nonce1, false)
 
 	if !prooflist.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, true, false) {
 		t.Error("Prooflist does not verify whereas it should!")
@@ -477,7 +478,8 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 	cb2 := NewCredentialBuilder(testPubK, context, secret, nonce2)
 	issuer2 := NewIssuer(testPrivK, testPubK, context)
 
-	prooflist := BuildProofList(context, nonce1, []ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2}, false)
+	builders := ProofBuilderList([]ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2})
+	prooflist := builders.BuildProofList(context, nonce1, false)
 
 	commitMsg2 := cb2.CreateIssueCommitmentMessage(prooflist)
 
@@ -581,7 +583,8 @@ func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 	cb2 := NewCredentialBuilder(issuer2.Pk, context, secret, nonce2)
 
 	nonce1, _ := RandomBigInt(DefaultSystemParameters[keylength].Lstatzk)
-	prooflist := BuildProofList(context, nonce1, []ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2}, false)
+	builders := ProofBuilderList([]ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2})
+	prooflist := builders.BuildProofList(context, nonce1, false)
 
 	commitMsg := cb2.CreateIssueCommitmentMessage(prooflist)
 
@@ -626,7 +629,8 @@ func TestWronglyBoundIssuanceAndShowingWithDifferentIssuers(t *testing.T) {
 	cb2 := NewCredentialBuilder(issuer2.Pk, context, secret2, nonce2)
 
 	nonce1, _ := RandomBigInt(DefaultSystemParameters[keylength].Lstatzk)
-	prooflist := BuildProofList(context, nonce1, []ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2}, false)
+	builders := ProofBuilderList([]ProofBuilder{cred1.CreateDisclosureProofBuilder([]int{1, 2}), cb2})
+	prooflist := builders.BuildProofList(context, nonce1, false)
 
 	commitMsg := cb2.CreateIssueCommitmentMessage(prooflist)
 
