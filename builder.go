@@ -7,6 +7,7 @@ package gabi
 import (
 	"crypto/sha256"
 	"encoding/asn1"
+	"encoding/json"
 	"errors"
 	"math/big"
 )
@@ -18,6 +19,39 @@ type IssueCommitmentMessage struct {
 	Nonce2    *big.Int  `json:"n_2"`
 	Proofs    ProofList `json:"combinedProofs"`
 	ProofPjwt string    `json:"proofPJwt"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler (json's default unmarshaler
+// is unable to handle a list of interfaces).
+func (pl *ProofList) UnmarshalJSON(bytes []byte) error {
+	if pl == nil || *pl == nil {
+		*pl = []Proof{}
+	}
+	proofs := []Proof{}
+	temp := []json.RawMessage{}
+	if err := json.Unmarshal(bytes, &temp); err != nil {
+		return err
+	}
+	for _, proofbytes := range temp {
+		proofd := &ProofD{}
+		if err := json.Unmarshal(proofbytes, proofd); err != nil {
+			return err
+		}
+		if proofd.A != nil {
+			proofs = append(proofs, proofd)
+			continue
+		}
+		proofu := &ProofU{}
+		if err := json.Unmarshal(proofbytes, proofu); err != nil {
+			return err
+		}
+		if proofu.U != nil {
+			proofs = append(proofs, proofu)
+			continue
+		}
+		return errors.New("Unknown proof type found in ProofList")
+	}
+	return nil
 }
 
 // IssueSignatureMessage encapsulates the messages sent from the issuer to the
