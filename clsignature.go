@@ -11,7 +11,9 @@ import (
 
 // CLSignature is a data structure for holding a Camenisch-Lysyanskaya signature.
 type CLSignature struct {
-	A, E, V *big.Int
+	A *big.Int
+	E *big.Int `json:"e"`
+	V *big.Int `json:"v"`
 }
 
 // SignMessageBlock signs a message block (ms) and a commitment (U) using the

@@ -10,9 +10,9 @@ import (
 
 // Credential represents an Idemix credential.
 type Credential struct {
-	Signature  *CLSignature
-	Pk         *PublicKey
-	Attributes []*big.Int
+	Signature  *CLSignature `json:"signature"`
+	Pk         *PublicKey   `json:"-"`
+	Attributes []*big.Int   `json:"attributes"`
 }
 
 // DisclosureProofBuilder is an object that holds the state for the protocol to
