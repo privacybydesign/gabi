@@ -334,7 +334,10 @@ func TestFullIssuance(t *testing.T) {
 	if err != nil {
 		t.Error("Error in IssueSignature:", err)
 	}
-	b.ConstructCredential(msg, testAttributes1)
+	_, err = b.ConstructCredential(msg, testAttributes1)
+	if err != nil {
+		t.Error("Error in IssueSignature:", err)
+	}
 }
 
 func TestShowingProof(t *testing.T) {
