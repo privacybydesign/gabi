@@ -31,7 +31,7 @@ var defaultBaseParameters = map[int]BaseParameters{
 		Lv:      1700,
 	},
 	2048: BaseParameters{
-		Le:      597,
+		Le:      645,
 		LePrime: 120,
 		Lh:      256,
 		Lm:      256,
@@ -40,7 +40,7 @@ var defaultBaseParameters = map[int]BaseParameters{
 		Lv:      1700,
 	},
 	4096: BaseParameters{
-		Le:      597,
+		Le:      901,
 		LePrime: 120,
 		Lh:      256,
 		Lm:      512,
