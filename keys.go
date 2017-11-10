@@ -238,11 +238,11 @@ func NewPublicKey(N, Z, S *big.Int, R []*big.Int, counter uint, expiryDate time.
 
 // NewPublicKeyFromXML creates a new issuer public key using the xml data
 // provided.
-func NewPublicKeyFromXML(xmlInput string) (*PublicKey, error) {
+func NewPublicKeyFromBytes(bts []byte) (*PublicKey, error) {
 	// TODO: this might fail in the future. The DefaultSystemParameters and the
 	// public key might not match!
 	pubk := &PublicKey{}
-	err := xml.Unmarshal([]byte(xmlInput), pubk)
+	err := xml.Unmarshal(bts, pubk)
 	if err != nil {
 		return nil, err
 	}
@@ -253,6 +253,10 @@ func NewPublicKeyFromXML(xmlInput string) (*PublicKey, error) {
 		return nil, errors.New("Unknown keylength")
 	}
 	return pubk, nil
+}
+
+func NewPublicKeyFromXML(xmlInput string) (*PublicKey, error) {
+	return NewPublicKeyFromBytes([]byte(xmlInput))
 }
 
 // NewPublicKeyFromFile create a new issuer public key from an xml file.
