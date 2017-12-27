@@ -20,7 +20,7 @@ type CLSignature struct {
 // SignMessageBlock signs a message block (ms) and a commitment (U) using the
 // Camenisch-Lysyanskaya signature scheme as used in the IdeMix system.
 func signMessageBlockAndCommitment(sk *PrivateKey, pk *PublicKey, U *big.Int, ms []*big.Int, Rs []*big.Int) (*CLSignature, error) {
-	R := representToBases(Rs, ms, pk.N)
+	R := representToBases(Rs, ms, pk.N, pk.Params.Lm)
 
 	vTilde, _ := RandomBigInt(pk.Params.Lv - 1)
 	twoLv := new(big.Int).Lsh(bigONE, pk.Params.Lv-1)
@@ -69,7 +69,7 @@ func (s *CLSignature) Verify(pk *PublicKey, ms []*big.Int) bool {
 
 	// Q = A^e * R * S^v
 	Ae := new(big.Int).Exp(s.A, s.E, pk.N)
-	R := representToBases(pk.R, ms, pk.N)
+	R := representToBases(pk.R, ms, pk.N, pk.Params.Lm)
 	if s.KeyshareP != nil {
 		R.Mul(R, s.KeyshareP)
 	}

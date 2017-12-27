@@ -161,7 +161,11 @@ func (p *ProofD) reconstructZ(pk *PublicKey) *big.Int {
 	numerator := new(big.Int).Lsh(bigONE, pk.Params.Le-1)
 	numerator.Exp(p.A, numerator, pk.N)
 	for i, attribute := range p.ADisclosed {
-		numerator.Mul(numerator, new(big.Int).Exp(pk.R[i], attribute, pk.N))
+		exp := attribute
+		if exp.BitLen() > int(pk.Params.Lm) {
+			exp = intHashSha256(exp.Bytes())
+		}
+		numerator.Mul(numerator, new(big.Int).Exp(pk.R[i], exp, pk.N))
 	}
 
 	known := new(big.Int).ModInverse(numerator, pk.N)

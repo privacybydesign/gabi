@@ -81,7 +81,11 @@ func (ic *Credential) CreateDisclosureProof(disclosedAttributes []int, context, 
 
 	aResponses := make(map[int]*big.Int)
 	for _, v := range undisclosedAttributes {
-		t := new(big.Int).Mul(c, ic.Attributes[v])
+		exp := ic.Attributes[v]
+		if exp.BitLen() > int(ic.Pk.Params.Lm) {
+			exp = intHashSha256(exp.Bytes())
+		}
+		t := new(big.Int).Mul(c, exp)
 		aResponses[v] = t.Add(aCommits[v], t)
 	}
 
@@ -158,7 +162,11 @@ func (d *DisclosureProofBuilder) CreateProof(challenge *big.Int) Proof {
 
 	aResponses := make(map[int]*big.Int)
 	for _, v := range d.undisclosedAttributes {
-		t := new(big.Int).Mul(challenge, d.attributes[v])
+		exp := d.attributes[v]
+		if exp.BitLen() > int(d.pk.Params.Lm) {
+			exp = intHashSha256(exp.Bytes())
+		}
+		t := new(big.Int).Mul(challenge, exp)
 		aResponses[v] = t.Add(d.attrRandomizers[v], t)
 	}
 

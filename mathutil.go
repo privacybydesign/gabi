@@ -64,12 +64,16 @@ func modPow(x, y, m *big.Int) *big.Int {
 // the given bases. For given bases bases[1],...,bases[k]; exponents
 // exps[1],...,exps[k] and modulus this function returns
 // bases[k]^{exps[1]}*...*bases[k]^{exps[k]} (mod modulus).
-func representToBases(bases, exps []*big.Int, modulus *big.Int) *big.Int {
+func representToBases(bases, exps []*big.Int, modulus *big.Int, maxMessageLength uint) *big.Int {
 	r := big.NewInt(1)
 	tmp := new(big.Int)
 	for i := 0; i < len(exps); i++ {
-		// tmp = bases_i ^ exps_i (mod modulus)
-		tmp.Exp(bases[i], exps[i], modulus)
+		exp := exps[i]
+		if exp.BitLen() > int(maxMessageLength) {
+			exp = intHashSha256(exp.Bytes())
+		}
+		// tmp = bases_i ^ exps_i (mod modulus), with exps_i hashed if it exceeds maxMessageLength
+		tmp.Exp(bases[i], exp, modulus)
 		// r = r * tmp (mod modulus)
 		r.Mul(r, tmp).Mod(r, modulus)
 	}

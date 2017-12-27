@@ -639,6 +639,36 @@ func TestWronglyBoundIssuanceAndShowingWithDifferentIssuers(t *testing.T) {
 	}
 }
 
+func TestBigAttribute(t *testing.T) {
+	attrs := []*big.Int{
+		new(big.Int).SetBytes([]byte("one")),
+		new(big.Int).SetBytes([]byte("two")),
+		new(big.Int).SetBytes([]byte("This is a very long attribute: its size of 132 bytes exceeds the maximum message length of all currently supported public key sizes.")),
+	}
+	signature, err := SignMessageBlock(testPrivK, testPubK, attrs)
+	if err != nil {
+		t.Error("Error producing CL signature.")
+	}
+	cred := &Credential{Pk: testPubK, Attributes: attrs, Signature: signature}
+	if !signature.Verify(testPubK, attrs) {
+		t.Error("Failed to create CL signature over large attribute")
+	}
+
+	context, _ := RandomBigInt(testPubK.Params.Lh)
+	nonce1, _ := RandomBigInt(testPubK.Params.Lstatzk)
+
+	// Don't disclose large attribute
+	proof := cred.CreateDisclosureProof([]int{1}, context, nonce1)
+	if !proof.Verify(testPubK, context, nonce1, false) {
+		t.Error("Failed to verify ProofD with large undisclosed attribute")
+	}
+	// Disclose large attribute
+	proof = cred.CreateDisclosureProof([]int{2}, context, nonce1)
+	if !proof.Verify(testPubK, context, nonce1, false) {
+		t.Error("Failed to verify ProofD with large undisclosed attribute")
+	}
+}
+
 // TODO: tests to add:
 // - Reading/writing key files
 // - Tests with expiration dates?
