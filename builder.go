@@ -24,9 +24,6 @@ type IssueCommitmentMessage struct {
 // UnmarshalJSON implements json.Unmarshaler (json's default unmarshaler
 // is unable to handle a list of interfaces).
 func (pl *ProofList) UnmarshalJSON(bytes []byte) error {
-	if pl == nil || *pl == nil {
-		*pl = []Proof{}
-	}
 	proofs := []Proof{}
 	temp := []json.RawMessage{}
 	if err := json.Unmarshal(bytes, &temp); err != nil {
@@ -51,6 +48,7 @@ func (pl *ProofList) UnmarshalJSON(bytes []byte) error {
 		}
 		return errors.New("Unknown proof type found in ProofList")
 	}
+	*pl = proofs
 	return nil
 }
 
