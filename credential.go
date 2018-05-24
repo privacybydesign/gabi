@@ -4,9 +4,7 @@
 
 package gabi
 
-import (
-	"math/big"
-)
+import "math/big"
 
 // Credential represents an Idemix credential.
 type Credential struct {
@@ -176,4 +174,20 @@ func (d *DisclosureProofBuilder) CreateProof(challenge *big.Int) Proof {
 	}
 
 	return &ProofD{C: challenge, A: d.randomizedSignature.A, EResponse: eResponse, VResponse: vResponse, AResponses: aResponses, ADisclosed: aDisclosed}
+}
+
+// TimestampRequestContributions returns the contributions of this disclosure proof
+// to the message that is to be signed by the timestamp server:
+// - A of the randomized CL-signature
+// - Slice of bigints populated with the disclosed attributes and 0 for the undisclosed ones.
+func (d *DisclosureProofBuilder) TimestampRequestContributions() (*big.Int, []*big.Int) {
+	zero := big.NewInt(0)
+	disclosed := make([]*big.Int, len(d.attributes))
+	for i := 0; i < len(d.attributes); i++ {
+		disclosed[i] = zero
+	}
+	for _, i := range d.disclosedAttributes {
+		disclosed[i] = d.attributes[i]
+	}
+	return d.randomizedSignature.A, disclosed
 }
