@@ -7,14 +7,13 @@ package gabi
 import (
 	"crypto/rand"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRandomPrimeInRange(t *testing.T) {
 	p, err := randomPrimeInRange(rand.Reader, 597, 120)
-	if err != nil {
-		t.Error(err)
-	}
-	if !p.ProbablyPrime(22) {
-		t.Error("p not prime!")
-	}
+	assert.NoError(t, err)
+
+	assert.True(t, p.ProbablyPrime(22), "p not prime!")
 }
