@@ -15,8 +15,7 @@ import (
 	"time"
 
 	"errors"
-
-	"github.com/credentials/safeprime"
+	"github.com/mhe/gabi/safeprime"
 )
 
 const (

@@ -2,12 +2,6 @@
 
 
 [[projects]]
-  branch = "master"
-  name = "github.com/credentials/safeprime"
-  packages = ["."]
-  revision = "b04afffdb6d92bdfb4b8b7305129c3e39fcd000e"
-
-[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
@@ -34,6 +28,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "910327df354e45c088e98462832777dccd127140f8cd2486d4c39f0ef3d304a4"
+  inputs-digest = "d3abf25be9e8d1863a739b427fdbee4b9a499a5d976cfcf372d951fff4c852bd"
   solver-name = "gps-cdcl"
   solver-version = 1
