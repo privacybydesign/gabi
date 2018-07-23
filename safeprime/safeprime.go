@@ -10,25 +10,15 @@ import (
 	"github.com/rainycape/dl"
 )
 
-var bnNew func() uintptr
-var bnFree func(uintptr)
-var bnGenPrime func(uintptr, int, int, uintptr, uintptr, uintptr) int
-var bnToHex func(uintptr) string
+var (
+	bnNew      func() uintptr
+	bnFree     func(uintptr)
+	bnGenPrime func(uintptr, int, int, uintptr, uintptr, uintptr) int
+	bnToHex    func(uintptr) string
+)
 
-// Generate tries to use openssl's BN_generate_prime_ex to generate a new safe prime of the given size;
-// if that fails it uses a pure Go algorithm.
+// Generate uses openssl's BN_generate_prime_ex to generate a new safe prime of the given size.
 func Generate(bitsize int) (*big.Int, error) {
-	num, err := genUsingOpenssl(bitsize)
-
-	if err != nil {
-		return nil, errors.New("Failed to dynamically load OpenSSL")
-	}
-
-	return num, nil
-}
-
-// GenUsingOpenssl uses openssl's BN_generate_prime_ex to generate a new safe prime of the given size.
-func genUsingOpenssl(bitsize int) (*big.Int, error) {
 	openssl, err := linkOpenssl()
 	if err != nil {
 		return nil, err
@@ -59,15 +49,12 @@ func linkOpenssl() (*dl.DL, error) {
 	if err = openssl.Sym("BN_new", &bnNew); err != nil {
 		return nil, err
 	}
-
 	if err = openssl.Sym("BN_clear_free", &bnFree); err != nil {
 		return nil, err
 	}
-
 	if err = openssl.Sym("BN_generate_prime_ex", &bnGenPrime); err != nil {
 		return nil, err
 	}
-
 	if err = openssl.Sym("BN_bn2hex", &bnToHex); err != nil {
 		return nil, err
 	}
