@@ -15,10 +15,11 @@ import (
 // IssueCommitmentMessage encapsulates the messages sent by the receiver to the
 // issuer in the second step of the issuance protocol.
 type IssueCommitmentMessage struct {
-	U         *big.Int  `json:"U"`
-	Nonce2    *big.Int  `json:"n_2"`
-	Proofs    ProofList `json:"combinedProofs"`
-	ProofPjwt string    `json:"proofPJwt"`
+	U          *big.Int          `json:"U"`
+	Nonce2     *big.Int          `json:"n_2"`
+	Proofs     ProofList         `json:"combinedProofs"`
+	ProofPjwt  string            `json:"proofPJwt"`
+	ProofPjwts map[string]string `json:"proofPJwts"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler (json's default unmarshaler
