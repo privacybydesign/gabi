@@ -62,31 +62,19 @@ func (pl ProofList) challengeContributions(publicKeys []*PublicKey, context, non
 
 // Verify returns true when all the proofs inside verify and if shouldBeBound is
 // set to true whether all proofs are properly bound.
-func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, shouldBeBound bool, issig bool) bool {
+func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, issig bool) bool {
 	if len(pl) == 0 {
 		return true
 	}
-
 	if len(pl) != len(publicKeys) {
 		return false
 	}
 
-	if shouldBeBound {
-		contributions := pl.challengeContributions(publicKeys, context, nonce)
-		expectedChallenge := createChallenge(context, nonce, contributions, issig)
-		expectedSecretKeyResponse := pl[0].SecretKeyResponse()
-		for i, proof := range pl {
-			if expectedSecretKeyResponse.Cmp(proof.SecretKeyResponse()) != 0 ||
-				!proof.VerifyWithChallenge(publicKeys[i], expectedChallenge) {
-				return false
-			}
-		}
-	} else {
-		for i, proof := range pl {
-			// if !proof.Verify(publicKeys[i], context, nonce) {
-			if !proof.VerifyWithChallenge(publicKeys[i], createChallenge(context, nonce, proof.ChallengeContribution(publicKeys[i]), issig)) {
-				return false
-			}
+	contributions := pl.challengeContributions(publicKeys, context, nonce)
+	expectedChallenge := createChallenge(context, nonce, contributions, issig)
+	for i, proof := range pl {
+		if !proof.VerifyWithChallenge(publicKeys[i], expectedChallenge) {
+			return false
 		}
 	}
 
