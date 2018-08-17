@@ -287,7 +287,7 @@ func TestSignatureMessage(t *testing.T) {
 	commitMsg := b.CommitToSecretAndProve(nonce1)
 
 	issuer := NewIssuer(testPrivK, testPubK, context)
-	_, err := issuer.IssueSignature(commitMsg, testAttributes1, nonce1)
+	_, err := issuer.IssueSignature(commitMsg.U, testAttributes1, nonce2)
 	assert.NoError(t, err, "Error in IssueSignature")
 }
 
@@ -300,7 +300,7 @@ func TestFullIssuance(t *testing.T) {
 	commitMsg := b.CommitToSecretAndProve(nonce1)
 
 	issuer := NewIssuer(testPrivK, testPubK, context)
-	msg, err := issuer.IssueSignature(commitMsg, testAttributes1, nonce1)
+	msg, err := issuer.IssueSignature(commitMsg.U, testAttributes1, nonce2)
 	assert.NoError(t, err, "Error in IssueSignature")
 	_, err = b.ConstructCredential(msg, testAttributes1)
 	assert.NoError(t, err, "Error in IssueSignature")
@@ -384,7 +384,7 @@ func TestFullIssuanceAndShowing(t *testing.T) {
 	builder := NewCredentialBuilder(testPubK, context, secret, nonce2)
 	commitMsg := builder.CommitToSecretAndProve(nonce1)
 	issuer := NewIssuer(testPrivK, testPubK, context)
-	sigMsg, err := issuer.IssueSignature(commitMsg, testAttributes1, nonce1)
+	sigMsg, err := issuer.IssueSignature(commitMsg.U, testAttributes1, nonce2)
 	assert.NoError(t, err, "Error in IssueSignature")
 
 	cred, err := builder.ConstructCredential(sigMsg, testAttributes1)
@@ -409,7 +409,7 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 	commitMsg := cb1.CommitToSecretAndProve(nonce1)
 
 	issuer1 := NewIssuer(testPrivK, testPubK, context)
-	ism, err := issuer1.IssueSignature(commitMsg, testAttributes1, nonce1)
+	ism, err := issuer1.IssueSignature(commitMsg.U, testAttributes1, nonce2)
 	assert.NoError(t, err, "Error creating Issue Signature")
 
 	cred1, err := cb1.ConstructCredential(ism, testAttributes1)
@@ -427,7 +427,7 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 
 	assert.True(t, commitMsg2.Proofs.Verify([]*PublicKey{testPubK, testPubK}, context, nonce1, true, false), "Proofs in commit message do not verify!")
 
-	msg, err := issuer2.IssueSignature(commitMsg2, testAttributes1, nonce1)
+	msg, err := issuer2.IssueSignature(commitMsg2.U, testAttributes1, nonce2)
 	assert.NoError(t, err, "Error creating Issue Signature")
 	cred2, err := cb2.ConstructCredential(msg, testAttributes1)
 	assert.NoError(t, err, "Error creating credential")
@@ -482,7 +482,7 @@ func createCredential(t *testing.T, context, secret *big.Int, issuer *Issuer) *C
 	cb := NewCredentialBuilder(issuer.Pk, context, secret, nonce2)
 	commitMsg := cb.CommitToSecretAndProve(nonce1)
 
-	ism, err := issuer.IssueSignature(commitMsg, testAttributes1, nonce1)
+	ism, err := issuer.IssueSignature(commitMsg.U, testAttributes1, nonce2)
 	assert.NoError(t, err, "Error creating Issue Signature")
 
 	cred, err := cb.ConstructCredential(ism, testAttributes1)
@@ -513,7 +513,7 @@ func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 
 	assert.True(t, commitMsg.Proofs.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, true, false), "Proofs in commit message do not verify!")
 
-	msg, err := issuer2.IssueSignature(commitMsg, testAttributes2, nonce1)
+	msg, err := issuer2.IssueSignature(commitMsg.U, testAttributes2, nonce2)
 	assert.NoError(t, err, "Error creating Issue Signature")
 	cred2, err := cb2.ConstructCredential(msg, testAttributes2)
 	assert.NoError(t, err, "Error creating credential")

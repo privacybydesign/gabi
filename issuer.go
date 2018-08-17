@@ -25,14 +25,12 @@ func NewIssuer(sk *PrivateKey, pk *PublicKey, context *big.Int) *Issuer {
 // the IssueCommitmentMessage provided. Note that this function DOES NOT check
 // the proofs containted in the IssueCommitmentMessage! That needs to be done at
 // a higher level!
-func (i *Issuer) IssueSignature(msg *IssueCommitmentMessage, attributes []*big.Int, nonce1 *big.Int) (*IssueSignatureMessage, error) {
-
-	signature, err := i.signCommitmentAndAttributes(msg.U, attributes)
+func (i *Issuer) IssueSignature(U *big.Int, attributes []*big.Int, nonce2 *big.Int) (*IssueSignatureMessage, error) {
+	signature, err := i.signCommitmentAndAttributes(U, attributes)
 	if err != nil {
 		return nil, err
 	}
-	proof := i.proveSignature(signature, msg.Nonce2)
-
+	proof := i.proveSignature(signature, nonce2)
 	return &IssueSignatureMessage{Signature: signature, Proof: proof}, nil
 }
 
