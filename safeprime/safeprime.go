@@ -5,7 +5,8 @@ package safeprime
 
 import (
 	"errors"
-	"math/big"
+
+	"github.com/mhe/gabi/big"
 
 	"github.com/rainycape/dl"
 )

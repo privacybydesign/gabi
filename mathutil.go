@@ -6,7 +6,8 @@ package gabi
 
 import (
 	"crypto/rand"
-	"math/big"
+
+	"github.com/mhe/gabi/big"
 )
 
 // Some utility code (mostly math stuff) useful in various places in this
@@ -84,7 +85,7 @@ func representToBases(bases, exps []*big.Int, modulus *big.Int, maxMessageLength
 // [0,(2^numBits)-1], inclusive.
 func RandomBigInt(numBits uint) (*big.Int, error) {
 	t := new(big.Int).Lsh(bigONE, numBits)
-	return rand.Int(rand.Reader, t)
+	return big.RandInt(rand.Reader, t)
 }
 
 // legendreSymbol calculates the Legendre symbol (a/p).

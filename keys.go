@@ -5,16 +5,16 @@
 package gabi
 
 import (
-	"crypto/rand"
 	"encoding/xml"
+	"fmt"
 	"io"
 	"io/ioutil"
-	"math/big"
 	"os"
 	"strconv"
 	"time"
 
-	"errors"
+	"github.com/mhe/gabi/big"
+
 	"github.com/mhe/gabi/safeprime"
 )
 
@@ -249,7 +249,7 @@ func NewPublicKeyFromBytes(bts []byte) (*PublicKey, error) {
 	if sysparam, ok := DefaultSystemParameters[keylength]; ok {
 		pubk.Params = sysparam
 	} else {
-		return nil, errors.New("Unknown keylength")
+		return nil, fmt.Errorf("Unknown keylength %d", keylength)
 	}
 	return pubk, nil
 }
@@ -320,21 +320,6 @@ func (pubk *PublicKey) WriteToFile(filename string, forceOverwrite bool) (int64,
 	defer f.Close()
 
 	return pubk.WriteTo(f)
-}
-
-// randomSafePrime produces a safe prime of the requested number of bits
-func randomSafePrime(bits int) (*big.Int, error) {
-	p2 := new(big.Int)
-	for {
-		p, err := rand.Prime(rand.Reader, bits)
-		if err != nil {
-			return nil, err
-		}
-		p2.Rsh(p, 1) // p2 = (p - 1)/2
-		if p2.ProbablyPrime(20) {
-			return p, nil
-		}
-	}
 }
 
 // GenerateKeyPair generates a private/public keypair for an Issuer

@@ -1,8 +1,9 @@
 package safeprime
 
 import (
-	"math/big"
 	"testing"
+
+	"github.com/mhe/gabi/big"
 
 	"github.com/stretchr/testify/require"
 )

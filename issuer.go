@@ -6,7 +6,8 @@ package gabi
 
 import (
 	"crypto/rand"
-	"math/big"
+
+	"github.com/mhe/gabi/big"
 )
 
 // Issuer holds the key material for a credential issuer.
@@ -51,7 +52,7 @@ func randomElementMultiplicativeGroup(modulus *big.Int) *big.Int {
 	for r.Sign() <= 0 || t.GCD(nil, nil, r, modulus).Cmp(bigONE) != 0 {
 		// TODO: for memory/cpu efficiency re-use r's memory. See Go's
 		// implementation for finding a random prime.
-		r, _ = rand.Int(rand.Reader, modulus)
+		r, _ = big.RandInt(rand.Reader, modulus)
 	}
 	return r
 }

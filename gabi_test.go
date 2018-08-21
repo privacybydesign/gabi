@@ -5,10 +5,11 @@
 package gabi
 
 import (
-	"math/big"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/mhe/gabi/big"
 
 	"github.com/stretchr/testify/assert"
 )

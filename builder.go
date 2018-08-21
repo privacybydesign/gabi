@@ -9,7 +9,9 @@ import (
 	"encoding/asn1"
 	"encoding/json"
 	"errors"
-	"math/big"
+	gobig "math/big"
+
+	"github.com/mhe/gabi/big"
 )
 
 // IssueCommitmentMessage encapsulates the messages sent by the receiver to the
@@ -162,10 +164,10 @@ func hashCommit(values []*big.Int, issig bool) *big.Int {
 	} else {
 		tmp = make([]interface{}, len(values)+1)
 	}
-	tmp[offset] = big.NewInt(int64(len(values)))
+	tmp[offset] = gobig.NewInt(int64(len(values)))
 	offset++
 	for i, v := range values {
-		tmp[i+offset] = v
+		tmp[i+offset] = v.Value()
 	}
 	r, _ := asn1.Marshal(tmp)
 

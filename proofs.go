@@ -4,7 +4,7 @@
 
 package gabi
 
-import "math/big"
+import "github.com/mhe/gabi/big"
 
 // Proof represents a non-interactive zero-knowledge proof
 type Proof interface {

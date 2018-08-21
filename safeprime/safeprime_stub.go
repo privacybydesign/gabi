@@ -3,7 +3,7 @@
 package safeprime
 
 import (
-	"math/big"
+	"github.com/mhe/gabi/big"
 )
 
 func Generate(bitsize int) (*big.Int, error) {

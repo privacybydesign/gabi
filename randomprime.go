@@ -7,7 +7,8 @@ package gabi
 import (
 	"errors"
 	"io"
-	"math/big"
+
+	"github.com/mhe/gabi/big"
 )
 
 // smallPrimes is a list of small, prime numbers that allows us to rapidly

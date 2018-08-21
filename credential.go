@@ -4,7 +4,7 @@
 
 package gabi
 
-import "math/big"
+import "github.com/mhe/gabi/big"
 
 // Credential represents an Idemix credential.
 type Credential struct {
