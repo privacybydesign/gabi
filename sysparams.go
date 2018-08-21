@@ -10,53 +10,47 @@ import (
 
 // BaseParameters holds the base system parameters
 type BaseParameters struct {
-	Le      uint
 	LePrime uint
 	Lh      uint
 	Lm      uint
 	Ln      uint
 	Lstatzk uint
-	Lv      uint
 }
 
 // defaultBaseParameters holds per keylength the base parameters.
 var defaultBaseParameters = map[int]BaseParameters{
 	1024: BaseParameters{
-		Le:      597,
 		LePrime: 120,
 		Lh:      256,
 		Lm:      256,
 		Ln:      1024,
 		Lstatzk: 80,
-		Lv:      1700,
 	},
 	2048: BaseParameters{
-		Le:      645,
 		LePrime: 120,
 		Lh:      256,
 		Lm:      256,
 		Ln:      2048,
 		Lstatzk: 128,
-		Lv:      1700,
 	},
 	4096: BaseParameters{
-		Le:      901,
 		LePrime: 120,
 		Lh:      256,
 		Lm:      512,
 		Ln:      4096,
 		Lstatzk: 128,
-		Lv:      1700,
 	},
 }
 
 // DerivedParameters holds system parameters that can be drived from base
 // systemparameters (BaseParameters)
 type DerivedParameters struct {
+	Le            uint
 	LeCommit      uint
 	LmCommit      uint
 	LRA           uint
 	LsCommit      uint
+	Lv            uint
 	LvCommit      uint
 	LvPrime       uint
 	LvPrimeCommit uint
@@ -64,12 +58,15 @@ type DerivedParameters struct {
 
 // MakeDerivedParameters computes the derived system parameters
 func MakeDerivedParameters(base BaseParameters) DerivedParameters {
+	Lv := base.Ln + 2*base.Lstatzk + base.Lh + base.Lm + 4
 	return DerivedParameters{
+		Le:            base.Lstatzk + base.Lh + base.Lm + 5,
 		LeCommit:      base.LePrime + base.Lstatzk + base.Lh,
 		LmCommit:      base.Lm + base.Lstatzk + base.Lh,
 		LRA:           base.Ln + base.Lstatzk,
 		LsCommit:      base.Lm + base.Lstatzk + base.Lh + 1,
-		LvCommit:      base.Lv + base.Lstatzk + base.Lh,
+		Lv:            Lv,
+		LvCommit:      Lv + base.Lstatzk + base.Lh,
 		LvPrime:       base.Ln + base.Lstatzk,
 		LvPrimeCommit: base.Ln + 2*base.Lstatzk + base.Lh,
 	}
