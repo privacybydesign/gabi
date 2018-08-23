@@ -61,21 +61,53 @@ func (pl ProofList) challengeContributions(publicKeys []*PublicKey, context, non
 	return contributions
 }
 
-// Verify returns true when all the proofs inside verify and if shouldBeBound is
-// set to true whether all proofs are properly bound.
-func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, issig bool) bool {
+// Verify returns true when all the proofs inside verify.
+// The keyshareServers parameter is used to indicate which proofs should be
+// verified to share the same secret key: when two proofs share the same keyshare
+// server (or none), so that they should have the same secret key, they should have
+// identical entries (index-wise) in keyshareServers. Pass nil if all proofs should have
+// the same secret key (i.e. it should be verified that all proofs use either none,
+// or one and the same keyshare server).
+func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, issig bool, keyshareServers []string) bool {
 	if len(pl) == 0 {
 		return true
 	}
 	if len(pl) != len(publicKeys) {
 		return false
 	}
+	if len(keyshareServers) > 0 && len(pl) != len(keyshareServers) {
+		return false
+	}
+
+	// If the secret key comes from a credential whose scheme manager has a keyshare server,
+	// then the secretkey = userpart + keysharepart.
+	// So, we can only expect two secret key responses to be equal if their credentials
+	// are both associated to either no keyshare server, or the same keyshare server.
+	// During verification of the proofs we keep track of their secret key responses in this map.
+	secretkeyResponses := make(map[string]*big.Int)
 
 	contributions := pl.challengeContributions(publicKeys, context, nonce)
 	expectedChallenge := createChallenge(context, nonce, contributions, issig)
+
+	// If keyshareServers == nil then we never update this variable,
+	// so the check below verifies that all creds share the same secret key.
+	kss := ""
+
 	for i, proof := range pl {
 		if !proof.VerifyWithChallenge(publicKeys[i], expectedChallenge) {
 			return false
+		}
+		if len(keyshareServers) > 0 {
+			kss = keyshareServers[i]
+		}
+		if response, contains := secretkeyResponses[kss]; !contains {
+			// First time we see this keyshare server
+			secretkeyResponses[kss] = proof.SecretKeyResponse()
+		} else {
+			// We've already seen this keyshare server, secret key response should match earlier one
+			if response.Cmp(proof.SecretKeyResponse()) != 0 {
+				return false
+			}
 		}
 	}
 

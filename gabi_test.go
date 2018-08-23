@@ -230,7 +230,7 @@ func TestCommitmentMessage(t *testing.T) {
 	b := NewCredentialBuilder(testPubK, context, secret, nonce2)
 	msg := b.CommitToSecretAndProve(nonce1)
 
-	assert.True(t, msg.Proofs.Verify([]*PublicKey{testPubK}, context, nonce1, false, false), "Commitment message proof does not verify, whereas it should.")
+	assert.True(t, msg.Proofs.Verify([]*PublicKey{testPubK}, context, nonce1, false, nil), "Commitment message proof does not verify, whereas it should.")
 }
 
 func TestProofS(t *testing.T) {
@@ -337,7 +337,7 @@ func TestCombinedShowingProof(t *testing.T) {
 		cred2.CreateDisclosureProofBuilder([]int{1, 3})})
 	prooflist := builders.BuildProofList(context, nonce1, false)
 
-	assert.True(t, prooflist.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, true, false), "Prooflist does not verify whereas it should!")
+	assert.True(t, prooflist.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, false, nil), "Prooflist does not verify whereas it should!")
 }
 
 // A convenience function for initializing big integers from known correct (10
@@ -426,7 +426,7 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 
 	commitMsg2 := cb2.CreateIssueCommitmentMessage(prooflist)
 
-	assert.True(t, commitMsg2.Proofs.Verify([]*PublicKey{testPubK, testPubK}, context, nonce1, true, false), "Proofs in commit message do not verify!")
+	assert.True(t, commitMsg2.Proofs.Verify([]*PublicKey{testPubK, testPubK}, context, nonce1, false, nil), "Proofs in commit message do not verify!")
 
 	msg, err := issuer2.IssueSignature(commitMsg2.U, testAttributes1, nonce2)
 	assert.NoError(t, err, "Error creating Issue Signature")
@@ -512,7 +512,7 @@ func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 
 	commitMsg := cb2.CreateIssueCommitmentMessage(prooflist)
 
-	assert.True(t, commitMsg.Proofs.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, true, false), "Proofs in commit message do not verify!")
+	assert.True(t, commitMsg.Proofs.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, false, nil), "Proofs in commit message do not verify!")
 
 	msg, err := issuer2.IssueSignature(commitMsg.U, testAttributes2, nonce2)
 	assert.NoError(t, err, "Error creating Issue Signature")
@@ -549,7 +549,7 @@ func TestWronglyBoundIssuanceAndShowingWithDifferentIssuers(t *testing.T) {
 
 	commitMsg := cb2.CreateIssueCommitmentMessage(prooflist)
 
-	assert.False(t, commitMsg.Proofs.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, true, false), "Proofs in commit message verify, whereas they should not!")
+	assert.False(t, commitMsg.Proofs.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, false, nil), "Proofs in commit message verify, whereas they should not!")
 }
 
 func TestBigAttribute(t *testing.T) {
