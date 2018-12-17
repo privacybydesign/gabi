@@ -7,7 +7,7 @@ package gabi
 import (
 	"errors"
 
-	"github.com/mhe/gabi/big"
+	"github.com/privacybydesign/gabi/big"
 )
 
 // ProofBuilder is an interface for a proof builder. That is, an object to hold

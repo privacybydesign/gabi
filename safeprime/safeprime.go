@@ -6,7 +6,7 @@ package safeprime
 import (
 	"errors"
 
-	"github.com/mhe/gabi/big"
+	"github.com/privacybydesign/gabi/big"
 
 	"github.com/rainycape/dl"
 )

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mhe/gabi/big"
+	"github.com/privacybydesign/gabi/big"
 
 	"github.com/stretchr/testify/assert"
 )

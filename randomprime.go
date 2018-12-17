@@ -8,7 +8,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/mhe/gabi/big"
+	"github.com/privacybydesign/gabi/big"
 )
 
 // smallPrimes is a list of small, prime numbers that allows us to rapidly

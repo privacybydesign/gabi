@@ -7,7 +7,7 @@ package gabi
 import (
 	"crypto/rand"
 
-	"github.com/mhe/gabi/big"
+	"github.com/privacybydesign/gabi/big"
 )
 
 // CLSignature is a data structure for holding a Camenisch-Lysyanskaya signature.

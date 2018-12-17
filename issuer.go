@@ -7,7 +7,7 @@ package gabi
 import (
 	"crypto/rand"
 
-	"github.com/mhe/gabi/big"
+	"github.com/privacybydesign/gabi/big"
 )
 
 // Issuer holds the key material for a credential issuer.

@@ -13,9 +13,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/mhe/gabi/big"
+	"github.com/privacybydesign/gabi/big"
 
-	"github.com/mhe/gabi/safeprime"
+	"github.com/privacybydesign/gabi/safeprime"
 )
 
 const (

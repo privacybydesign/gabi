@@ -3,7 +3,7 @@
 package safeprime
 
 import (
-	"github.com/mhe/gabi/big"
+	"github.com/privacybydesign/gabi/big"
 )
 
 func Generate(bitsize int) (*big.Int, error) {

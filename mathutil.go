@@ -7,7 +7,7 @@ package gabi
 import (
 	"crypto/rand"
 
-	"github.com/mhe/gabi/big"
+	"github.com/privacybydesign/gabi/big"
 )
 
 // Some utility code (mostly math stuff) useful in various places in this

@@ -11,7 +11,7 @@ import (
 	"errors"
 	gobig "math/big"
 
-	"github.com/mhe/gabi/big"
+	"github.com/privacybydesign/gabi/big"
 )
 
 // IssueCommitmentMessage encapsulates the messages sent by the receiver to the
