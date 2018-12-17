@@ -1,4 +1,4 @@
-[![GoDoc](https://godoc.org/github.com/privacybydesign/gabi?status.svg)](https://godoc.org/github.com/privacybydesign/gabi) [![Build Status](https://travis-ci.org/mhe/gabi.svg?branch=master)](https://travis-ci.org/mhe/gabi)
+[![GoDoc](https://godoc.org/github.com/privacybydesign/gabi?status.svg)](https://godoc.org/github.com/privacybydesign/gabi) [![Build Status](https://travis-ci.org/privacybydesign/gabi.svg?branch=master)](https://travis-ci.org/privacybydesign/gabi)
 Gabi
 ====
 
