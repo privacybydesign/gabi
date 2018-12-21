@@ -18,6 +18,10 @@ import (
 // Only supports positive integers.
 type Int big.Int
 
+func (i *Int) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	return e.EncodeElement(i.String(), start)
+}
+
 // UnmarshalXML implements xml.Unmarshaler, attempting to parse the text of the specified element
 // as a base 10 integer.
 func (i *Int) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
