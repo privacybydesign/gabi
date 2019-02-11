@@ -1,4 +1,4 @@
-// +build android ios windows !cgo
+// +build android ios
 
 package safeprime
 
@@ -6,6 +6,6 @@ import (
 	"github.com/privacybydesign/gabi/big"
 )
 
-func Generate(bitsize int) (*big.Int, error) {
+func Generate(int) (*big.Int, error) {
 	panic("Safe prime generation is disabled")
 }
