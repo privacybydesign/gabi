@@ -1,6 +1,5 @@
 // +build cgo,!android,!ios
 
-// Package safeprime is a small wrapper around openssl's BN_generate_prime_ex for generating safe primes.
 package safeprime
 
 import (
@@ -18,8 +17,17 @@ var (
 	bnToHex    func(uintptr) string
 )
 
-// Generate uses openssl's BN_generate_prime_ex to generate a new safe prime of the given size.
 func Generate(bitsize int) (*big.Int, error) {
+	x, err := GenerateOpenssl(bitsize)
+	if err == nil {
+		return x, nil
+	}
+	Logger.Debug("Fallback to (slower) Go safeprime algorithm; openssl failed: ", err.Error())
+	return GenerateGo(bitsize)
+}
+
+// Generate uses openssl's BN_generate_prime_ex to generate a new safe prime of the given size.
+func GenerateOpenssl(bitsize int) (*big.Int, error) {
 	openssl, err := linkOpenssl()
 	if err != nil {
 		return nil, err
