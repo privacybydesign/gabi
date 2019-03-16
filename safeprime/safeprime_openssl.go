@@ -3,8 +3,7 @@
 package safeprime
 
 import (
-	"errors"
-
+	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
 
 	"github.com/rainycape/dl"
@@ -46,6 +45,9 @@ func GenerateOpenssl(bitsize int) (*big.Int, error) {
 
 	x := new(big.Int)
 	x.SetString(bnToHex(bignum), 16)
+	if !ProbablySafePrime(x, 40) {
+		return nil, errors.Errorf("Received non-safeprime from openssl: " + x.String())
+	}
 	return x, nil
 }
 

@@ -6,6 +6,7 @@ package safeprime
 import (
 	"crypto/rand"
 
+	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
 	"github.com/sirupsen/logrus"
 )
@@ -63,5 +64,23 @@ func GenerateGo(bitsize int) (*big.Int, error) {
 		}
 	}
 
+	if !ProbablySafePrime(twoqone, 40) {
+		return nil, errors.New("Go safeprime generation returned non-safeprime")
+	}
 	return twoqone, nil
+}
+
+var one = big.NewInt(1)
+var two = big.NewInt(2)
+
+func ProbablySafePrime(x *big.Int, n int) bool {
+	if x.Cmp(two) <= 0 {
+		return false
+	}
+	if !x.ProbablyPrime(n) {
+		return false
+	}
+	y := new(big.Int).Sub(x, one)
+	y.Div(y, two)
+	return y.ProbablyPrime(n)
 }
