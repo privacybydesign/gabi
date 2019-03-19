@@ -1,6 +1,6 @@
+// +build !android,!ios
+
 // Package safeprime computes safe primes, i.e. primes of the form 2p+1 where p is also prime.
-// It attempts to dynamically link against openssl for this, and uses a builtin slower algorithm
-// if that fails.
 package safeprime
 
 import (
@@ -8,19 +8,16 @@ import (
 
 	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
-	"github.com/sirupsen/logrus"
 )
 
-var Logger = logrus.StandardLogger()
-
 // Generate a safe prime of the given size, using the fact that:
-//     If q is prime and 2^(2q) = 1 mod (2q+1), then q is a safe prime.
+//     If q is prime and 2^(2q) = 1 mod (2q+1), then 2q+1 is a safe prime.
 // We take a random bigint q; if the above formula holds and q is prime, then we return 2q+1.
 //
 // See
 // https://www.ijipbangalore.org/abstracts_2(1)/p5.pdf and
 // https://groups.google.com/group/sci.crypt/msg/34c4abf63568a8eb
-func GenerateGo(bitsize int) (*big.Int, error) {
+func Generate(bitsize int) (*big.Int, error) {
 	var (
 		one        = big.NewInt(1)
 		two        = big.NewInt(2)
