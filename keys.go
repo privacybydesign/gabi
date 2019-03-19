@@ -329,15 +329,15 @@ func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, e
 	// p and q need to be safe primes with p'!=q'(mod 8), p'!=1(mod 8) and q'!=1(mod 8)
 	var p, q, pprime, qprime *big.Int
 	var err error
-	for ok := true; ok; ok = (new(big.Int).Mod(pprime, bigEIGHT).Cmp(bigONE) == 0) {
+	for pvalid := false; !pvalid; pvalid = (new(big.Int).Mod(pprime, bigEIGHT).Cmp(bigONE) != 0) {
 		p, err = safeprime.Generate(int(primeSize))
 		if err != nil {
 			return nil, nil, err
 		}
 		pprime = new(big.Int).Rsh(p, 1)
 	}
-	for ok := true; ok; ok = (new(big.Int).Mod(qprime, bigEIGHT).Cmp(bigONE) == 0 ||
-		new(big.Int).Mod(q, bigEIGHT).Cmp(new(big.Int).Mod(p, bigEIGHT)) == 0) {
+	for qvalid := false; !qvalid; qvalid = (new(big.Int).Mod(qprime, bigEIGHT).Cmp(bigONE) != 0 &&
+		new(big.Int).Mod(q, bigEIGHT).Cmp(new(big.Int).Mod(p, bigEIGHT)) != 0) {
 		q, err = safeprime.Generate(int(primeSize))
 		if err != nil {
 			return nil, nil, err
