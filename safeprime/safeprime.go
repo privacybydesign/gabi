@@ -77,7 +77,6 @@ func ProbablySafePrime(x *big.Int, n int) bool {
 	if !x.ProbablyPrime(n) {
 		return false
 	}
-	y := new(big.Int).Sub(x, one)
-	y.Div(y, two)
+	y := new(big.Int).Rsh(x, 1)
 	return y.ProbablyPrime(n)
 }
