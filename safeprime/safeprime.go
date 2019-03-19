@@ -67,7 +67,6 @@ func Generate(bitsize int) (*big.Int, error) {
 	return twoqone, nil
 }
 
-var one = big.NewInt(1)
 var two = big.NewInt(2)
 
 func ProbablySafePrime(x *big.Int, n int) bool {
