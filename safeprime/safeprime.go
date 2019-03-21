@@ -5,19 +5,70 @@ package safeprime
 
 import (
 	"crypto/rand"
+	"runtime"
 
 	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
 )
 
+// GenerateConcurrent concurrently and continuously generates safeprimes on all CPU cores,
+// until the stop channel receives a struct or is closed. If an error is encountered, generation is
+// stopped in all goroutines, and the error is sent on the second return parameter.
+func GenerateConcurrent(bitsize int, stop chan struct{}) (<-chan *big.Int, <-chan error) {
+	count := runtime.GOMAXPROCS(0)
+	ints := make(chan *big.Int, count)
+	errs := make(chan error, count)
+
+	// In order to succesfully close all goroutines below when the caller wants them to, they require
+	// a channel that is close()d: just sending a struct{}{} would stop one but not all goroutines.
+	// Instead of requiring the caller to close() the stop chan parameter we use our own chan for
+	// this, so that we always stop all goroutines independent of whether the caller close()s stop
+	// or sends a struct{}{} to it.
+	stopped := make(chan struct{})
+	go func() {
+		select {
+		case <-stop:
+			close(stopped)
+		case <-stopped: // stopped can also be closed by a goroutine that encountered an error
+		}
+	}()
+
+	// Start safeprime generation goroutines
+	for i := 0; i < count; i++ {
+		go func() {
+			for {
+				// Pass stopped chan along; if closed, Generate() returns nil, nil
+				x, err := Generate(bitsize, stopped)
+				if err != nil {
+					errs <- err
+					close(stopped)
+					return
+				}
+
+				// Only send result and continue generating if we have not been told to stop
+				select {
+				case <-stopped:
+					return
+				default:
+					ints <- x
+					continue
+				}
+			}
+		}()
+	}
+
+	return ints, errs
+}
+
 // Generate a safe prime of the given size, using the fact that:
 //     If q is prime and 2^(2q) = 1 mod (2q+1), then 2q+1 is a safe prime.
 // We take a random bigint q; if the above formula holds and q is prime, then we return 2q+1.
+// (See https://www.ijipbangalore.org/abstracts_2(1)/p5.pdf and
+// https://groups.google.com/group/sci.crypt/msg/34c4abf63568a8eb)
 //
-// See
-// https://www.ijipbangalore.org/abstracts_2(1)/p5.pdf and
-// https://groups.google.com/group/sci.crypt/msg/34c4abf63568a8eb
-func Generate(bitsize int) (*big.Int, error) {
+// In order to cancel the generation algorithm, send a struct{} on the stop parameter or close() it.
+// (Passing nil is allowed; then the algorithm cannot be cancelled).
+func Generate(bitsize int, stop chan struct{}) (*big.Int, error) {
 	var (
 		one        = big.NewInt(1)
 		two        = big.NewInt(2)
@@ -28,9 +79,20 @@ func Generate(bitsize int) (*big.Int, error) {
 		q          *big.Int
 		bitlen     int
 		err        error
+		i          int
 	)
 
 	for {
+		// Every 1000 iterations, check if we have been asked to stop
+		i++
+		if stop != nil && i%1000 == 0 {
+			select {
+			case <-stop:
+				return nil, nil
+			default: // just continue with the loop
+			}
+		}
+
 		if q, err = big.RandInt(rand.Reader, max); err != nil {
 			return nil, err
 		}
@@ -46,7 +108,7 @@ func Generate(bitsize int) (*big.Int, error) {
 		// If bitlen == bitsize we use (q-1)/2 instead of q in the remainder of the algorithm.
 		// This way the acceptable bit length range of big.RandInt's output is 2 bits.
 		if bitlen == int(bitsize) {
-			q.Sub(q, one).Div(q, two)
+			q.Rsh(q, 1)
 			if q.Bit(0) != uint(1) { // ensure again that q is odd
 				continue
 			}
