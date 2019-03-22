@@ -326,25 +326,26 @@ func (pubk *PublicKey) WriteToFile(filename string, forceOverwrite bool) (int64,
 func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, expiryDate time.Time) (*PrivateKey, *PublicKey, error) {
 	primeSize := param.Ln / 2
 
-	// p and q need to be safe primes
-	p, err := safeprime.Generate(int(primeSize))
-	if err != nil {
-		return nil, nil, err
+	// p and q need to be safe primes with p'!=q'(mod 8), p'!=1(mod 8) and q'!=1(mod 8)
+	var p, q, pprime, qprime *big.Int
+	var err error
+	for pvalid := false; !pvalid; pvalid = (new(big.Int).Mod(pprime, bigEIGHT).Cmp(bigONE) != 0) {
+		p, err = safeprime.Generate(int(primeSize))
+		if err != nil {
+			return nil, nil, err
+		}
+		pprime = new(big.Int).Rsh(p, 1)
+	}
+	for qvalid := false; !qvalid; qvalid = (new(big.Int).Mod(qprime, bigEIGHT).Cmp(bigONE) != 0 &&
+		new(big.Int).Mod(q, bigEIGHT).Cmp(new(big.Int).Mod(p, bigEIGHT)) != 0) {
+		q, err = safeprime.Generate(int(primeSize))
+		if err != nil {
+			return nil, nil, err
+		}
+		qprime = new(big.Int).Rsh(q, 1)
 	}
 
-	q, err := safeprime.Generate(int(primeSize))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	priv := &PrivateKey{P: p, Q: q, PPrime: new(big.Int), QPrime: new(big.Int), Counter: counter, ExpiryDate: expiryDate.Unix()}
-
-	// compute p' and q'
-	priv.PPrime.Sub(priv.P, bigONE)
-	priv.PPrime.Rsh(priv.PPrime, 1)
-
-	priv.QPrime.Sub(priv.Q, bigONE)
-	priv.QPrime.Rsh(priv.QPrime, 1)
+	priv := &PrivateKey{P: p, Q: q, PPrime: pprime, QPrime: qprime, Counter: counter, ExpiryDate: expiryDate.Unix()}
 
 	// compute n
 	pubk := &PublicKey{Params: param, EpochLength: DefaultEpochLength, Counter: counter, ExpiryDate: expiryDate.Unix()}

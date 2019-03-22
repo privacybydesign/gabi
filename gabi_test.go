@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/safeprime"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -142,9 +143,9 @@ func setupParameters() error {
 	return nil
 }
 
-func testPrivateKey(t *testing.T, privk *PrivateKey) {
-	assert.True(t, privk.P.ProbablyPrime(20), "p in secret key is not prime!")
-	assert.True(t, privk.Q.ProbablyPrime(20), "q in secret key is not prime!")
+func testPrivateKey(t *testing.T, privk *PrivateKey, strict bool) {
+	assert.True(t, safeprime.ProbablySafePrime(privk.P, 20), "p in secret key is not prime!")
+	assert.True(t, safeprime.ProbablySafePrime(privk.Q, 20), "q in secret key is not prime!")
 
 	tmpP := new(big.Int).Mul(privk.PPrime, bigTWO)
 	tmpP.Add(tmpP, bigONE)
@@ -155,6 +156,22 @@ func testPrivateKey(t *testing.T, privk *PrivateKey) {
 	tmpQ.Add(tmpQ, bigONE)
 
 	assert.Equal(t, 0, tmpQ.Cmp(privk.Q), "q = 2q' + 1 does not hold!")
+
+	// DEAL WITH FACT THAT OLD KEYS DONT SATIFY PROOF REQUIREMENTS
+	if strict {
+		modP := new(big.Int).Mod(privk.P, bigEIGHT)
+		modQ := new(big.Int).Mod(privk.Q, bigEIGHT)
+		modPPrime := new(big.Int).Mod(privk.PPrime, bigEIGHT)
+		modQPrime := new(big.Int).Mod(privk.QPrime, bigEIGHT)
+
+		assert.NotEqual(t, 0, modP.Cmp(bigONE), "p != 1 (mod 8) does not hold!")
+		assert.NotEqual(t, 0, modQ.Cmp(bigONE), "q != 1 (mod 8) does not hold!")
+		assert.NotEqual(t, 0, modP.Cmp(modQ), "p != q (mod 8) does not hold!")
+
+		assert.NotEqual(t, 0, modPPrime.Cmp(bigONE), "p' != 1 (mod 8) does not hold!")
+		assert.NotEqual(t, 0, modQPrime.Cmp(bigONE), "q' != 1 (mod 8) does not hold!")
+		assert.NotEqual(t, 0, modPPrime.Cmp(modQPrime), "p' != q' (mod 8) does not hold!")
+	}
 }
 
 func testPublicKey(t *testing.T, pubk *PublicKey, privk *PrivateKey) {
@@ -166,7 +183,8 @@ func testPublicKey(t *testing.T, pubk *PublicKey, privk *PrivateKey) {
 }
 
 func TestTestKeys(t *testing.T) {
-	testPrivateKey(t, testPrivK)
+	// DEAL WITH FACT THAT OLD KEYS DONT SATIFY PROOF REQUIREMENTS
+	testPrivateKey(t, testPrivK, false)
 	testPublicKey(t, testPubK, testPrivK)
 }
 
@@ -463,7 +481,7 @@ func TestGenerateKeyPair(t *testing.T) {
 	keylength := 1024
 	privk, pubk, err := GenerateKeyPair(DefaultSystemParameters[keylength], 6, 0, time.Now().AddDate(1, 0, 0))
 	assert.NoError(t, err, "Error generating key pair")
-	testPrivateKey(t, privk)
+	testPrivateKey(t, privk, true)
 	testPublicKey(t, pubk, privk)
 }
 
