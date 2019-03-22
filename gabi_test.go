@@ -478,8 +478,29 @@ func TestLegendreSymbol(t *testing.T) {
 }
 
 func TestGenerateKeyPair(t *testing.T) {
-	keylength := 1024
-	privk, pubk, err := GenerateKeyPair(DefaultSystemParameters[keylength], 6, 0, time.Now().AddDate(1, 0, 0))
+	// Insert toy parameters for speed
+	defaultBaseParameters[256] = BaseParameters{
+		LePrime: 120,
+		Lh:      256,
+		Lm:      256,
+		Ln:      256,
+		Lstatzk: 80,
+	}
+	DefaultSystemParameters[256] = &SystemParameters{
+		defaultBaseParameters[256],
+		MakeDerivedParameters(defaultBaseParameters[256]),
+	}
+
+	// Using the toy parameters, generate a bunch of keys
+	for i := 0; i < 20; i++ {
+		privk, pubk, err := GenerateKeyPair(DefaultSystemParameters[256], 6, 0, time.Now().AddDate(1, 0, 0))
+		assert.NoError(t, err, "Error generating key pair")
+		testPrivateKey(t, privk, true)
+		testPublicKey(t, pubk, privk)
+	}
+
+	// Generate one key of the smallest supported sizes
+	privk, pubk, err := GenerateKeyPair(DefaultSystemParameters[1024], 6, 0, time.Now().AddDate(1, 0, 0))
 	assert.NoError(t, err, "Error generating key pair")
 	testPrivateKey(t, privk, true)
 	testPublicKey(t, pubk, privk)

@@ -326,26 +326,53 @@ func (pubk *PublicKey) WriteToFile(filename string, forceOverwrite bool) (int64,
 func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, expiryDate time.Time) (*PrivateKey, *PublicKey, error) {
 	primeSize := param.Ln / 2
 
-	// p and q need to be safe primes with p'!=q'(mod 8), p'!=1(mod 8) and q'!=1(mod 8)
-	var p, q, pprime, qprime *big.Int
+	stop := make(chan struct{})
+	safeprimes := make([]*big.Int, 0, 2)
+	pPrime, pPrimeMod8, pMod8, qMod8 := new(big.Int), new(big.Int), new(big.Int), new(big.Int)
+	var p *big.Int
 	var err error
-	for pvalid := false; !pvalid; pvalid = (new(big.Int).Mod(pprime, bigEIGHT).Cmp(bigONE) != 0) {
-		p, err = safeprime.Generate(int(primeSize))
-		if err != nil {
-			return nil, nil, err
+
+	// Start generating safeprimes
+	ints, errs := safeprime.GenerateConcurrent(int(primeSize), stop)
+
+	// Receive safeprime results in a loop, discarding them unless they are acceptable,
+	// until we have two acceptable safeprimes.
+loop: // we need this label to continue/break the for loop from within the select below
+	for {
+		select { // wait for and then handle an incoming bigint or error, whichever comes first
+		case p = <-ints:
+			pPrimeMod8.Mod(pPrime.Rsh(p, 1), bigEIGHT)
+			// p is our candidate safeprime, set p' = (p-1)/2. Check that p' mod 8 != 1
+			if pPrimeMod8.Cmp(bigONE) == 0 {
+				continue loop
+			}
+			// If this is our second candidate, check that p mod 8 != firstcandidate mod 8
+			if len(safeprimes) == 1 && pMod8.Mod(p, bigEIGHT).Cmp(qMod8.Mod(safeprimes[0], bigEIGHT)) == 0 {
+				continue loop
+			}
+			safeprimes = append(safeprimes, p)
+			if len(safeprimes) == 2 {
+				close(stop) // We have enough, stop safeprime.GenerateConcurrent()
+				break loop
+			}
+		case err = <-errs:
+			close(stop) // Something went wrong during safeprime generation, abort
+			break loop
 		}
-		pprime = new(big.Int).Rsh(p, 1)
-	}
-	for qvalid := false; !qvalid; qvalid = (new(big.Int).Mod(qprime, bigEIGHT).Cmp(bigONE) != 0 &&
-		new(big.Int).Mod(q, bigEIGHT).Cmp(new(big.Int).Mod(p, bigEIGHT)) != 0) {
-		q, err = safeprime.Generate(int(primeSize))
-		if err != nil {
-			return nil, nil, err
-		}
-		qprime = new(big.Int).Rsh(q, 1)
 	}
 
-	priv := &PrivateKey{P: p, Q: q, PPrime: pprime, QPrime: qprime, Counter: counter, ExpiryDate: expiryDate.Unix()}
+	if err != nil {
+		return nil, nil, err
+	}
+
+	priv := &PrivateKey{
+		P:          safeprimes[0],
+		Q:          safeprimes[1],
+		PPrime:     new(big.Int).Rsh(safeprimes[0], 1),
+		QPrime:     new(big.Int).Rsh(safeprimes[1], 1),
+		Counter:    counter,
+		ExpiryDate: expiryDate.Unix(),
+	}
 
 	// compute n
 	pubk := &PublicKey{Params: param, EpochLength: DefaultEpochLength, Counter: counter, ExpiryDate: expiryDate.Unix()}
