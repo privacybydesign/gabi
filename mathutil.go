@@ -98,8 +98,7 @@ func legendreSymbol(a, p *big.Int) int {
 
 	// rule 5
 	n := new(big.Int).Mod(a, p)
-	m := new(big.Int)
-	*m = *p // copy value
+	m := new(big.Int).Set(p)
 
 	tmp := new(big.Int)
 	for n.Cmp(bigZERO) != 0 {
