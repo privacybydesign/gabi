@@ -68,14 +68,11 @@ func (pl ProofList) challengeContributions(publicKeys []*PublicKey, context, non
 // identical entries (index-wise) in keyshareServers. Pass nil if all proofs should have
 // the same secret key (i.e. it should be verified that all proofs use either none,
 // or one and the same keyshare server).
+// An empty ProofList is not considered valid.
 func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, issig bool, keyshareServers []string) bool {
-	if len(pl) == 0 {
-		return true
-	}
-	if len(pl) != len(publicKeys) {
-		return false
-	}
-	if len(keyshareServers) > 0 && len(pl) != len(keyshareServers) {
+	if len(pl) == 0 ||
+		len(pl) != len(publicKeys) ||
+		len(keyshareServers) > 0 && len(pl) != len(keyshareServers) {
 		return false
 	}
 
