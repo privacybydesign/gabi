@@ -9,3 +9,7 @@ import (
 func Generate(int) (*big.Int, error) {
 	panic("Safe prime generation is disabled")
 }
+
+func GenerateConcurrent(int, chan struct{}) (<-chan *big.Int, <-chan error) {
+	panic("Safe prime generation is disabled")
+}
