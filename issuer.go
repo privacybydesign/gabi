@@ -41,7 +41,7 @@ func (i *Issuer) IssueSignature(U *big.Int, attributes []*big.Int, nonce2 *big.I
 // when verifying the signature.
 func (i *Issuer) signCommitmentAndAttributes(U *big.Int, attributes []*big.Int) (*CLSignature, error) {
 	// Skip the first generator
-	return signMessageBlockAndCommitment(i.Sk, i.Pk, U, attributes, i.Pk.R[1:])
+	return signMessageBlockAndCommitment(i.Sk, i.Pk, U, append([]*big.Int{bigZERO}, attributes...))
 }
 
 // randomElementMultiplicativeGroup returns a random element in the

@@ -61,10 +61,15 @@ func modPow(x, y, m *big.Int) *big.Int {
 	return new(big.Int).Exp(x, y, m)
 }
 
-// representToBases returns a representation of the given exponents in terms of
-// the given bases. For given bases bases[1],...,bases[k]; exponents
-// exps[1],...,exps[k] and modulus this function returns
-// bases[k]^{exps[1]}*...*bases[k]^{exps[k]} (mod modulus).
+// RepresentToPublicKey returns a representation of the given exponents in terms of the R bases
+// from the public key. For example given exponents exps[1],...,exps[k] this function returns
+//   R[1]^{exps[1]}*...*R[k]^{exps[k]} (mod N)
+// with R and N coming from the public key. The exponents are hashed if their length
+// exceeds the maximum message length from the public key.
+func RepresentToPublicKey(pk *PublicKey, exps []*big.Int) *big.Int {
+	return representToBases(pk.R, exps, pk.N, pk.Params.Lm)
+}
+
 func representToBases(bases, exps []*big.Int, modulus *big.Int, maxMessageLength uint) *big.Int {
 	r := big.NewInt(1)
 	tmp := new(big.Int)
