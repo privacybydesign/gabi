@@ -146,6 +146,7 @@ func setupParameters() error {
 func testPrivateKey(t *testing.T, privk *PrivateKey, strict bool) {
 	assert.True(t, safeprime.ProbablySafePrime(privk.P, 20), "p in secret key is not prime!")
 	assert.True(t, safeprime.ProbablySafePrime(privk.Q, 20), "q in secret key is not prime!")
+	assert.NotZero(t, privk.P.Cmp(privk.Q))
 
 	tmpP := new(big.Int).Mul(privk.PPrime, bigTWO)
 	tmpP.Add(tmpP, bigONE)
@@ -176,6 +177,10 @@ func testPrivateKey(t *testing.T, privk *PrivateKey, strict bool) {
 
 func testPublicKey(t *testing.T, pubk *PublicKey, privk *PrivateKey) {
 	r := new(big.Int).Mul(privk.P, privk.Q)
+
+	assert.Equal(t, pubk.Params.Ln/2, uint(privk.P.BitLen()))
+	assert.Equal(t, pubk.Params.Ln/2, uint(privk.Q.BitLen()))
+	assert.Equal(t, pubk.Params.Ln, uint(pubk.N.BitLen()))
 
 	assert.Equal(t, 0, r.Cmp(pubk.N), "p*q != n")
 	assert.Equal(t, 1, legendreSymbol(pubk.S, privk.P), "S \notin QR_p")

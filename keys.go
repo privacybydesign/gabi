@@ -322,54 +322,71 @@ func (pubk *PublicKey) WriteToFile(filename string, forceOverwrite bool) (int64,
 	return pubk.WriteTo(f)
 }
 
-// GenerateKeyPair generates a private/public keypair for an Issuer
-func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, expiryDate time.Time) (*PrivateKey, *PublicKey, error) {
+// findMatch returns the first element of safeprimes that makes a suitable pair with p:
+// p*q has the required bith length and p != q mod 8.
+func findMatch(safeprimes []*big.Int, param *SystemParameters, p *big.Int,
+	n, pMod8, qMod8 *big.Int, // temp vars allocated by caller
+) *big.Int {
+	for _, q := range safeprimes {
+		if uint(n.Mul(p, q).BitLen()) == param.Ln && pMod8.Mod(p, bigEIGHT).Cmp(qMod8.Mod(q, bigEIGHT)) != 0 {
+			return q
+		}
+	}
+	return nil
+}
+
+func generateSafePrimePair(param *SystemParameters) (*big.Int, *big.Int, error) {
 	primeSize := param.Ln / 2
 
+	// Declare and allocate all vars outside the loop and outside the helper function above
 	stop := make(chan struct{})
-	safeprimes := make([]*big.Int, 0, 2)
-	pPrime, pPrimeMod8, pMod8, qMod8 := new(big.Int), new(big.Int), new(big.Int), new(big.Int)
-	var p *big.Int
+	safeprimes := make([]*big.Int, 0, 10) // store all generated safeprimes until we find a suitable pair
+	pPrime, pPrimeMod8, pMod8, qMod8, n := new(big.Int), new(big.Int), new(big.Int), new(big.Int), new(big.Int)
+	var p, q *big.Int
 	var err error
 
 	// Start generating safeprimes
 	ints, errs := safeprime.GenerateConcurrent(int(primeSize), stop)
 
-	// Receive safeprime results in a loop, discarding them unless they are acceptable,
-	// until we have two acceptable safeprimes.
-loop: // we need this label to continue/break the for loop from within the select below
+	// Receive safeprime results in a loop, until we have a suitable pair of safeprimes.
+loop: // we need this label to continue the for loop from within the select below
 	for {
 		select { // wait for and then handle an incoming bigint or error, whichever comes first
+
 		case p = <-ints:
 			pPrimeMod8.Mod(pPrime.Rsh(p, 1), bigEIGHT)
 			// p is our candidate safeprime, set p' = (p-1)/2. Check that p' mod 8 != 1
 			if pPrimeMod8.Cmp(bigONE) == 0 {
 				continue loop
 			}
-			// If this is our second candidate, check that p mod 8 != firstcandidate mod 8
-			if len(safeprimes) == 1 && pMod8.Mod(p, bigEIGHT).Cmp(qMod8.Mod(safeprimes[0], bigEIGHT)) == 0 {
+			// If we have earlier found other candidates, see if any pair of them fits all requirements
+			if q = findMatch(safeprimes, param, p, n, pMod8, qMod8); len(safeprimes) == 0 || q == nil {
+				safeprimes = append(safeprimes, p) // include p as it might match with future safe primes
 				continue loop
 			}
-			safeprimes = append(safeprimes, p)
-			if len(safeprimes) == 2 {
-				close(stop) // We have enough, stop safeprime.GenerateConcurrent()
-				break loop
-			}
+			close(stop) // We have enough, stop safeprime.GenerateConcurrent()
+			return p, q, nil
+
 		case err = <-errs:
 			close(stop) // Something went wrong during safeprime generation, abort
-			break loop
+			return nil, nil, err
+
 		}
 	}
+}
 
+// GenerateKeyPair generates a private/public keypair for an Issuer
+func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, expiryDate time.Time) (*PrivateKey, *PublicKey, error) {
+	p, q, err := generateSafePrimePair(param)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	priv := &PrivateKey{
-		P:          safeprimes[0],
-		Q:          safeprimes[1],
-		PPrime:     new(big.Int).Rsh(safeprimes[0], 1),
-		QPrime:     new(big.Int).Rsh(safeprimes[1], 1),
+		P:          p,
+		Q:          q,
+		PPrime:     new(big.Int).Rsh(p, 1),
+		QPrime:     new(big.Int).Rsh(q, 1),
 		Counter:    counter,
 		ExpiryDate: expiryDate.Unix(),
 	}
@@ -399,6 +416,7 @@ loop: // we need this label to continue/break the for loop from within the selec
 	pubk.S = s
 
 	// Derive Z from S
+	primeSize := param.Ln / 2
 	var x *big.Int
 	for {
 		x, _ = RandomBigInt(primeSize)
