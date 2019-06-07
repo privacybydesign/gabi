@@ -4,7 +4,10 @@
 
 package gabi
 
-import "github.com/privacybydesign/gabi/big"
+import (
+	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/internal/common"
+)
 
 // Proof represents a non-interactive zero-knowledge proof
 type Proof interface {
@@ -22,7 +25,7 @@ func createChallenge(context, nonce *big.Int, contributions []*big.Int, issig bo
 	input[0] = context
 	copy(input[1:1+len(contributions)], contributions)
 	input[len(input)-1] = nonce
-	return hashCommit(input, issig)
+	return common.HashCommit(input, issig)
 }
 
 // ProofU represents a proof of correctness of the commitment in the first phase
@@ -49,8 +52,8 @@ func (p *ProofU) Verify(pk *PublicKey, context, nonce *big.Int) bool {
 
 // correctResponseSizes checks the sizes of the elements in the ProofU proof.
 func (p *ProofU) correctResponseSizes(pk *PublicKey) bool {
-	maximum := new(big.Int).Lsh(bigONE, pk.Params.LvPrimeCommit+1)
-	maximum.Sub(maximum, bigONE)
+	maximum := new(big.Int).Lsh(big.NewInt(1), pk.Params.LvPrimeCommit+1)
+	maximum.Sub(maximum, big.NewInt(1))
 	minimum := new(big.Int).Neg(maximum)
 
 	return p.VPrimeResponse.Cmp(minimum) >= 0 && p.VPrimeResponse.Cmp(maximum) <= 0
@@ -66,9 +69,9 @@ func (p *ProofU) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.
 func (p *ProofU) reconstructUcommit(pk *PublicKey) *big.Int {
 	// Reconstruct Ucommit
 	// U_commit = U^{-C} * S^{VPrimeResponse} * R_0^{SResponse}
-	Uc := modPow(p.U, new(big.Int).Neg(p.C), pk.N)
-	Sv := modPow(pk.S, p.VPrimeResponse, pk.N)
-	R0s := modPow(pk.R[0], p.SResponse, pk.N)
+	Uc := common.ModPow(p.U, new(big.Int).Neg(p.C), pk.N)
+	Sv := common.ModPow(pk.S, p.VPrimeResponse, pk.N)
+	R0s := common.ModPow(pk.R[0], p.SResponse, pk.N)
 	Ucommit := new(big.Int).Mul(Uc, Sv)
 	Ucommit.Mul(Ucommit, R0s).Mod(Ucommit, pk.N)
 
@@ -111,7 +114,7 @@ func (p *ProofS) Verify(pk *PublicKey, signature *CLSignature, context, nonce *b
 	Q := new(big.Int).Exp(signature.A, signature.E, pk.N)
 
 	// Recalculate hash
-	cPrime := hashCommit([]*big.Int{context, Q, signature.A, nonce, ACommit}, false)
+	cPrime := common.HashCommit([]*big.Int{context, Q, signature.A, nonce, ACommit}, false)
 
 	return p.C.Cmp(cPrime) == 0
 }
@@ -133,8 +136,8 @@ func (p *ProofD) MergeProofP(proofP *ProofP, pk *PublicKey) {
 // correctResponseSizes checks the sizes of the elements in the ProofD proof.
 func (p *ProofD) correctResponseSizes(pk *PublicKey) bool {
 	// Check range on the AResponses
-	maximum := new(big.Int).Lsh(bigONE, pk.Params.LmCommit+1)
-	maximum.Sub(maximum, bigONE)
+	maximum := new(big.Int).Lsh(big.NewInt(1), pk.Params.LmCommit+1)
+	maximum.Sub(maximum, big.NewInt(1))
 	minimum := new(big.Int).Neg(maximum)
 	for _, aResponse := range p.AResponses {
 		if aResponse.Cmp(minimum) < 0 || aResponse.Cmp(maximum) > 0 {
@@ -143,8 +146,8 @@ func (p *ProofD) correctResponseSizes(pk *PublicKey) bool {
 	}
 
 	// Check range EResponse
-	maximum.Lsh(bigONE, pk.Params.LeCommit+1)
-	maximum.Sub(maximum, bigONE)
+	maximum.Lsh(big.NewInt(1), pk.Params.LeCommit+1)
+	maximum.Sub(maximum, big.NewInt(1))
 	minimum.Neg(maximum)
 
 	if p.EResponse.Cmp(minimum) < 0 || p.EResponse.Cmp(maximum) > 0 {
@@ -158,12 +161,12 @@ func (p *ProofD) correctResponseSizes(pk *PublicKey) bool {
 // provided public key.
 func (p *ProofD) reconstructZ(pk *PublicKey) *big.Int {
 	// known = Z / ( prod_{disclosed} R_i^{a_i} * A^{2^{l_e - 1}} )
-	numerator := new(big.Int).Lsh(bigONE, pk.Params.Le-1)
+	numerator := new(big.Int).Lsh(big.NewInt(1), pk.Params.Le-1)
 	numerator.Exp(p.A, numerator, pk.N)
 	for i, attribute := range p.ADisclosed {
 		exp := attribute
 		if exp.BitLen() > int(pk.Params.Lm) {
-			exp = intHashSha256(exp.Bytes())
+			exp = common.IntHashSha256(exp.Bytes())
 		}
 		numerator.Mul(numerator, new(big.Int).Exp(pk.R[i], exp, pk.N))
 	}
@@ -171,12 +174,12 @@ func (p *ProofD) reconstructZ(pk *PublicKey) *big.Int {
 	known := new(big.Int).ModInverse(numerator, pk.N)
 	known.Mul(pk.Z, known)
 
-	knownC := modPow(known, new(big.Int).Neg(p.C), pk.N)
-	Ae := modPow(p.A, p.EResponse, pk.N)
-	Sv := modPow(pk.S, p.VResponse, pk.N)
+	knownC := common.ModPow(known, new(big.Int).Neg(p.C), pk.N)
+	Ae := common.ModPow(p.A, p.EResponse, pk.N)
+	Sv := common.ModPow(pk.S, p.VResponse, pk.N)
 	Rs := big.NewInt(1)
 	for i, response := range p.AResponses {
-		Rs.Mul(Rs, modPow(pk.R[i], response, pk.N))
+		Rs.Mul(Rs, common.ModPow(pk.R[i], response, pk.N))
 	}
 	Z := new(big.Int).Mul(knownC, Ae)
 	Z.Mul(Z, Rs).Mul(Z, Sv).Mod(Z, pk.N)
@@ -224,4 +227,9 @@ type ProofP struct {
 type ProofPCommitment struct {
 	P       *big.Int
 	Pcommit *big.Int
+}
+
+// Generate nonce for use in proofs
+func GenerateNonce() (*big.Int, error) {
+	return common.RandomBigInt(DefaultSystemParameters[2048].Lstatzk)
 }

@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/internal/common"
 )
 
 // ProofBuilder is an interface for a proof builder. That is, an object to hold
@@ -116,7 +117,7 @@ func (builders ProofBuilderList) Challenge(context, nonce *big.Int, issig bool) 
 	// So we should take it, and hence also its commitment, to fit within the smallest size -
 	// otherwise it will be too big so that we cannot perform the range proof showing
 	// that it is not too big.
-	skCommitment, _ := RandomBigInt(DefaultSystemParameters[1024].LmCommit)
+	skCommitment, _ := common.RandomBigInt(DefaultSystemParameters[1024].LmCommit)
 
 	commitmentValues := make([]*big.Int, 0, len(builders)*2)
 	for _, pb := range builders {

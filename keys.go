@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/privacybydesign/gabi/big"
-
+	"github.com/privacybydesign/gabi/internal/common"
 	"github.com/privacybydesign/gabi/safeprime"
 )
 
@@ -40,10 +40,10 @@ type PrivateKey struct {
 func NewPrivateKey(p, q *big.Int, counter uint, expiryDate time.Time) *PrivateKey {
 	sk := PrivateKey{P: p, Q: q, PPrime: new(big.Int), QPrime: new(big.Int), Counter: counter, ExpiryDate: expiryDate.Unix()}
 
-	sk.PPrime.Sub(p, bigONE)
+	sk.PPrime.Sub(p, big.NewInt(1))
 	sk.PPrime.Rsh(sk.PPrime, 1)
 
-	sk.QPrime.Sub(q, bigONE)
+	sk.QPrime.Sub(q, big.NewInt(1))
 	sk.QPrime.Rsh(sk.QPrime, 1)
 
 	return &sk
@@ -328,7 +328,7 @@ func findMatch(safeprimes []*big.Int, param *SystemParameters, p *big.Int,
 	n, pMod8, qMod8 *big.Int, // temp vars allocated by caller
 ) *big.Int {
 	for _, q := range safeprimes {
-		if uint(n.Mul(p, q).BitLen()) == param.Ln && pMod8.Mod(p, bigEIGHT).Cmp(qMod8.Mod(q, bigEIGHT)) != 0 {
+		if uint(n.Mul(p, q).BitLen()) == param.Ln && pMod8.Mod(p, big.NewInt(8)).Cmp(qMod8.Mod(q, big.NewInt(8))) != 0 {
 			return q
 		}
 	}
@@ -354,9 +354,9 @@ loop: // we need this label to continue the for loop from within the select belo
 		select { // wait for and then handle an incoming bigint or error, whichever comes first
 
 		case p = <-ints:
-			pPrimeMod8.Mod(pPrime.Rsh(p, 1), bigEIGHT)
+			pPrimeMod8.Mod(pPrime.Rsh(p, 1), big.NewInt(8))
 			// p is our candidate safeprime, set p' = (p-1)/2. Check that p' mod 8 != 1
-			if pPrimeMod8.Cmp(bigONE) == 0 {
+			if pPrimeMod8.Cmp(big.NewInt(1)) == 0 {
 				continue loop
 			}
 			// If we have earlier found other candidates, see if any pair of them fits all requirements
@@ -400,7 +400,7 @@ func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, e
 
 	var s *big.Int
 	for {
-		s, err = RandomBigInt(param.Ln)
+		s, err = common.RandomBigInt(param.Ln)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -408,7 +408,7 @@ func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, e
 		if s.Cmp(pubk.N) > 0 {
 			continue
 		}
-		if legendreSymbol(s, priv.P) == 1 && legendreSymbol(s, priv.Q) == 1 {
+		if common.LegendreSymbol(s, priv.P) == 1 && common.LegendreSymbol(s, priv.Q) == 1 {
 			break
 		}
 	}
@@ -419,8 +419,8 @@ func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, e
 	primeSize := param.Ln / 2
 	var x *big.Int
 	for {
-		x, _ = RandomBigInt(primeSize)
-		if x.Cmp(bigTWO) > 0 && x.Cmp(pubk.N) < 0 {
+		x, _ = common.RandomBigInt(primeSize)
+		if x.Cmp(big.NewInt(2)) > 0 && x.Cmp(pubk.N) < 0 {
 			break
 		}
 	}
@@ -435,8 +435,8 @@ func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, e
 
 		var x *big.Int
 		for {
-			x, _ = RandomBigInt(primeSize)
-			if x.Cmp(bigTWO) > 0 && x.Cmp(pubk.N) < 0 {
+			x, _ = common.RandomBigInt(primeSize)
+			if x.Cmp(big.NewInt(2)) > 0 && x.Cmp(pubk.N) < 0 {
 				break
 			}
 		}
