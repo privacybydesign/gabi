@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/internal/common"
 )
 
 // Issuer holds the key material for a credential issuer.
@@ -41,7 +42,7 @@ func (i *Issuer) IssueSignature(U *big.Int, attributes []*big.Int, nonce2 *big.I
 // when verifying the signature.
 func (i *Issuer) signCommitmentAndAttributes(U *big.Int, attributes []*big.Int) (*CLSignature, error) {
 	// Skip the first generator
-	return signMessageBlockAndCommitment(i.Sk, i.Pk, U, append([]*big.Int{bigZERO}, attributes...))
+	return signMessageBlockAndCommitment(i.Sk, i.Pk, U, append([]*big.Int{big.NewInt(0)}, attributes...))
 }
 
 // randomElementMultiplicativeGroup returns a random element in the
@@ -49,7 +50,7 @@ func (i *Issuer) signCommitmentAndAttributes(U *big.Int, attributes []*big.Int) 
 func randomElementMultiplicativeGroup(modulus *big.Int) *big.Int {
 	r := big.NewInt(0)
 	t := new(big.Int)
-	for r.Sign() <= 0 || t.GCD(nil, nil, r, modulus).Cmp(bigONE) != 0 {
+	for r.Sign() <= 0 || t.GCD(nil, nil, r, modulus).Cmp(big.NewInt(1)) != 0 {
 		// TODO: for memory/cpu efficiency re-use r's memory. See Go's
 		// implementation for finding a random prime.
 		r, _ = big.RandInt(rand.Reader, modulus)
@@ -66,7 +67,7 @@ func (i *Issuer) proveSignature(signature *CLSignature, nonce2 *big.Int) *ProofS
 	eCommit := randomElementMultiplicativeGroup(groupModulus)
 	ACommit := new(big.Int).Exp(Q, eCommit, i.Pk.N)
 
-	c := hashCommit([]*big.Int{i.Context, Q, signature.A, nonce2, ACommit}, false)
+	c := common.HashCommit([]*big.Int{i.Context, Q, signature.A, nonce2, ACommit}, false)
 	eResponse := new(big.Int).Mul(c, d)
 	eResponse.Sub(eCommit, eResponse).Mod(eResponse, groupModulus)
 

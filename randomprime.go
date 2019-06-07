@@ -39,8 +39,8 @@ func randomPrimeInRange(rand io.Reader, start, length uint) (p *big.Int, err err
 		b = 8
 	}
 
-	startVal := new(big.Int).Lsh(bigONE, start)
-	endVal := new(big.Int).Lsh(bigONE, length)
+	startVal := new(big.Int).Lsh(big.NewInt(1), start)
+	endVal := new(big.Int).Lsh(big.NewInt(1), length)
 	endVal.Add(endVal, startVal)
 
 	bytes := make([]byte, (length+7)/8)

@@ -4,7 +4,10 @@
 
 package gabi
 
-import "github.com/privacybydesign/gabi/big"
+import (
+	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/internal/common"
+)
 
 // Credential represents an Idemix credential.
 type Credential struct {
@@ -49,29 +52,29 @@ func (ic *Credential) CreateDisclosureProof(disclosedAttributes []int, context, 
 
 	randSig := ic.Signature.Randomize(ic.Pk)
 
-	eCommit, _ := RandomBigInt(ic.Pk.Params.LeCommit)
-	vCommit, _ := RandomBigInt(ic.Pk.Params.LvCommit)
+	eCommit, _ := common.RandomBigInt(ic.Pk.Params.LeCommit)
+	vCommit, _ := common.RandomBigInt(ic.Pk.Params.LvCommit)
 
 	aCommits := make(map[int]*big.Int)
 	for _, v := range undisclosedAttributes {
-		aCommits[v], _ = RandomBigInt(ic.Pk.Params.LmCommit)
+		aCommits[v], _ = common.RandomBigInt(ic.Pk.Params.LmCommit)
 	}
 
 	// Z = A^{e_commit} * S^{v_commit}
 	//     PROD_{i \in undisclosed} ( R_i^{a_commits{i}} )
-	Ae := modPow(randSig.A, eCommit, ic.Pk.N)
-	Sv := modPow(ic.Pk.S, vCommit, ic.Pk.N)
+	Ae := common.ModPow(randSig.A, eCommit, ic.Pk.N)
+	Sv := common.ModPow(ic.Pk.S, vCommit, ic.Pk.N)
 	Z := new(big.Int).Mul(Ae, Sv)
 	Z.Mod(Z, ic.Pk.N)
 
 	for _, v := range undisclosedAttributes {
-		Z.Mul(Z, modPow(ic.Pk.R[v], aCommits[v], ic.Pk.N))
+		Z.Mul(Z, common.ModPow(ic.Pk.R[v], aCommits[v], ic.Pk.N))
 		Z.Mod(Z, ic.Pk.N)
 	}
 
-	c := hashCommit([]*big.Int{context, randSig.A, Z, nonce1}, false)
+	c := common.HashCommit([]*big.Int{context, randSig.A, Z, nonce1}, false)
 
-	ePrime := new(big.Int).Sub(randSig.E, new(big.Int).Lsh(bigONE, ic.Pk.Params.Le-1))
+	ePrime := new(big.Int).Sub(randSig.E, new(big.Int).Lsh(big.NewInt(1), ic.Pk.Params.Le-1))
 	eResponse := new(big.Int).Mul(c, ePrime)
 	eResponse.Add(eCommit, eResponse)
 	vResponse := new(big.Int).Mul(c, randSig.V)
@@ -81,7 +84,7 @@ func (ic *Credential) CreateDisclosureProof(disclosedAttributes []int, context, 
 	for _, v := range undisclosedAttributes {
 		exp := ic.Attributes[v]
 		if exp.BitLen() > int(ic.Pk.Params.Lm) {
-			exp = intHashSha256(exp.Bytes())
+			exp = common.IntHashSha256(exp.Bytes())
 		}
 		t := new(big.Int).Mul(c, exp)
 		aResponses[v] = t.Add(aCommits[v], t)
@@ -103,15 +106,15 @@ func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int) *D
 	d.z = big.NewInt(1)
 	d.pk = ic.Pk
 	d.randomizedSignature = ic.Signature.Randomize(ic.Pk)
-	d.eCommit, _ = RandomBigInt(ic.Pk.Params.LeCommit)
-	d.vCommit, _ = RandomBigInt(ic.Pk.Params.LvCommit)
+	d.eCommit, _ = common.RandomBigInt(ic.Pk.Params.LeCommit)
+	d.vCommit, _ = common.RandomBigInt(ic.Pk.Params.LvCommit)
 
 	d.attrRandomizers = make(map[int]*big.Int)
 	d.disclosedAttributes = disclosedAttributes
 	d.undisclosedAttributes = getUndisclosedAttributes(disclosedAttributes, len(ic.Attributes))
 	d.attributes = ic.Attributes
 	for _, v := range d.undisclosedAttributes {
-		d.attrRandomizers[v], _ = RandomBigInt(ic.Pk.Params.LmCommit)
+		d.attrRandomizers[v], _ = common.RandomBigInt(ic.Pk.Params.LmCommit)
 	}
 
 	return d
@@ -138,12 +141,12 @@ func (d *DisclosureProofBuilder) Commit(skRandomizer *big.Int) []*big.Int {
 
 	// Z = A^{e_commit} * S^{v_commit}
 	//     PROD_{i \in undisclosed} ( R_i^{a_commits{i}} )
-	Ae := modPow(d.randomizedSignature.A, d.eCommit, d.pk.N)
-	Sv := modPow(d.pk.S, d.vCommit, d.pk.N)
+	Ae := common.ModPow(d.randomizedSignature.A, d.eCommit, d.pk.N)
+	Sv := common.ModPow(d.pk.S, d.vCommit, d.pk.N)
 	d.z.Mul(d.z, Ae).Mul(d.z, Sv).Mod(d.z, d.pk.N)
 
 	for _, v := range d.undisclosedAttributes {
-		d.z.Mul(d.z, modPow(d.pk.R[v], d.attrRandomizers[v], d.pk.N))
+		d.z.Mul(d.z, common.ModPow(d.pk.R[v], d.attrRandomizers[v], d.pk.N))
 		d.z.Mod(d.z, d.pk.N)
 	}
 
@@ -152,7 +155,7 @@ func (d *DisclosureProofBuilder) Commit(skRandomizer *big.Int) []*big.Int {
 
 // CreateProof creates a (disclosure) proof with the provided challenge.
 func (d *DisclosureProofBuilder) CreateProof(challenge *big.Int) Proof {
-	ePrime := new(big.Int).Sub(d.randomizedSignature.E, new(big.Int).Lsh(bigONE, d.pk.Params.Le-1))
+	ePrime := new(big.Int).Sub(d.randomizedSignature.E, new(big.Int).Lsh(big.NewInt(1), d.pk.Params.Le-1))
 	eResponse := new(big.Int).Mul(challenge, ePrime)
 	eResponse.Add(d.eCommit, eResponse)
 	vResponse := new(big.Int).Mul(challenge, d.randomizedSignature.V)
@@ -162,7 +165,7 @@ func (d *DisclosureProofBuilder) CreateProof(challenge *big.Int) Proof {
 	for _, v := range d.undisclosedAttributes {
 		exp := d.attributes[v]
 		if exp.BitLen() > int(d.pk.Params.Lm) {
-			exp = intHashSha256(exp.Bytes())
+			exp = common.IntHashSha256(exp.Bytes())
 		}
 		t := new(big.Int).Mul(challenge, exp)
 		aResponses[v] = t.Add(d.attrRandomizers[v], t)
@@ -190,4 +193,9 @@ func (d *DisclosureProofBuilder) TimestampRequestContributions() (*big.Int, []*b
 		disclosed[i] = d.attributes[i]
 	}
 	return d.randomizedSignature.A, disclosed
+}
+
+// Generate secret attribute used prove ownership and links between credentials from the same user.
+func GenerateSecretAttribute() (*big.Int, error) {
+	return common.RandomBigInt(DefaultSystemParameters[1024].Lm)
 }
