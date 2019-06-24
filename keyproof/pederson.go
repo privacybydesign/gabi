@@ -27,11 +27,11 @@ type PedersonProof struct {
 func newPedersonRepresentationProofStructure(name string) representationProofStructure {
 	var structure representationProofStructure
 	structure.lhs = []lhsContribution{
-		lhsContribution{name, big.NewInt(1)},
+		{name, big.NewInt(1)},
 	}
 	structure.rhs = []rhsContribution{
-		rhsContribution{"g", name, 1},
-		rhsContribution{"h", strings.Join([]string{name, "hider"}, "_"), 1},
+		{"g", name, 1},
+		{"h", strings.Join([]string{name, "hider"}, "_"), 1},
 	}
 	return structure
 }
@@ -39,11 +39,11 @@ func newPedersonRepresentationProofStructure(name string) representationProofStr
 func newPedersonRangeProofStructure(name string, l1 uint, l2 uint) rangeProofStructure {
 	var structure rangeProofStructure
 	structure.lhs = []lhsContribution{
-		lhsContribution{name, big.NewInt(1)},
+		{name, big.NewInt(1)},
 	}
 	structure.rhs = []rhsContribution{
-		rhsContribution{"g", name, 1},
-		rhsContribution{"h", strings.Join([]string{name, "hider"}, "_"), 1},
+		{"g", name, 1},
+		{"h", strings.Join([]string{name, "hider"}, "_"), 1},
 	}
 	structure.rangeSecret = name
 	structure.l1 = l1
@@ -113,31 +113,31 @@ func (s *pedersonSecret) getRandomizer(name string) *big.Int {
 	}
 	return nil
 }
-func (c *pedersonSecret) exp(ret *big.Int, name string, exp, P *big.Int) bool {
-	if name != c.name {
+func (s *pedersonSecret) exp(ret *big.Int, name string, exp, P *big.Int) bool {
+	if name != s.name {
 		return false
 	}
 	// We effectively compute c.commit^exp, which is more expensive to do
 	// directly, than with two table-backed exponentiations.
 	var exp1, exp2, ret1, ret2, tmp big.Int
-	tmp.Mul(c.secret, exp)
-	c.g.orderMod.Mod(&exp1, &tmp)
-	tmp.Mul(c.hider, exp)
-	c.g.orderMod.Mod(&exp2, &tmp)
-	c.g.exp(&ret1, "g", &exp1, c.g.p)
-	c.g.exp(&ret2, "h", &exp2, c.g.p)
+	tmp.Mul(s.secret, exp)
+	s.g.orderMod.Mod(&exp1, &tmp)
+	tmp.Mul(s.hider, exp)
+	s.g.orderMod.Mod(&exp2, &tmp)
+	s.g.exp(&ret1, "g", &exp1, s.g.p)
+	s.g.exp(&ret2, "h", &exp2, s.g.p)
 	tmp.Mul(&ret1, &ret2)
-	c.g.pMod.Mod(ret, &tmp)
+	s.g.pMod.Mod(ret, &tmp)
 	return true
 }
-func (c *pedersonSecret) getBase(name string) *big.Int {
-	if name == c.name {
-		return c.commit
+func (s *pedersonSecret) getBase(name string) *big.Int {
+	if name == s.name {
+		return s.commit
 	}
 	return nil
 }
-func (c *pedersonSecret) names() []string {
-	return []string{c.name}
+func (s *pedersonSecret) names() []string {
+	return []string{s.name}
 }
 
 func (p *PedersonProof) setName(name string) {

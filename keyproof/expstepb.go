@@ -70,11 +70,11 @@ func newExpStepBStructure(bitname, prename, postname, mulname, modname string, b
 	structure.myname = strings.Join([]string{bitname, prename, postname, "expb"}, "_")
 	structure.bitRep = representationProofStructure{
 		[]lhsContribution{
-			lhsContribution{bitname, big.NewInt(1)},
-			lhsContribution{"g", big.NewInt(-1)},
+			{bitname, big.NewInt(1)},
+			{"g", big.NewInt(-1)},
 		},
 		[]rhsContribution{
-			rhsContribution{"h", strings.Join([]string{bitname, "hider"}, "_"), 1},
+			{"h", strings.Join([]string{bitname, "hider"}, "_"), 1},
 		},
 	}
 	structure.mulRep = newPedersonRepresentationProofStructure(mulname)

@@ -61,12 +61,12 @@ func newMultiplicationProofStructure(m1, m2, mod, result string, l uint) multipl
 	structure.myname = strings.Join([]string{m1, m2, mod, result, "mul"}, "_")
 	structure.multRepresentation = representationProofStructure{
 		[]lhsContribution{
-			lhsContribution{result, big.NewInt(1)},
+			{result, big.NewInt(1)},
 		},
 		[]rhsContribution{
-			rhsContribution{m2, m1, 1},
-			rhsContribution{mod, strings.Join([]string{structure.myname, "mod"}, "_"), -1},
-			rhsContribution{"h", strings.Join([]string{structure.myname, "hider"}, "_"), 1},
+			{m2, m1, 1},
+			{mod, strings.Join([]string{structure.myname, "mod"}, "_"), -1},
+			{"h", strings.Join([]string{structure.myname, "hider"}, "_"), 1},
 		},
 	}
 	structure.modMultRepresentation = newPedersonRepresentationProofStructure(strings.Join([]string{structure.myname, "mod"}, "_"))

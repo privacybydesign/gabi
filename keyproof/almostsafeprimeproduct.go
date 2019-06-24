@@ -50,10 +50,10 @@ func almostSafePrimeProductBuildCommitments(list []*big.Int, Pprime *big.Int, Qp
 
 func almostSafePrimeProductBuildProof(Pprime *big.Int, Qprime *big.Int, challenge *big.Int, index *big.Int, commit almostSafePrimeProductCommit) AlmostSafePrimeProductProof {
 	// Setup proof structure
-	var proof AlmostSafePrimeProductProof
-	proof.Nonce = commit.nonce
-	proof.Commitments = commit.commitments
-	proof.Responses = []*big.Int{}
+	proof := AlmostSafePrimeProductProof{
+		Nonce:       commit.nonce,
+		Commitments: commit.commitments,
+	}
 
 	// Calculate useful constants
 	N := new(big.Int).Mul(new(big.Int).Add(new(big.Int).Lsh(Pprime, 1), big.NewInt(1)), new(big.Int).Add(new(big.Int).Lsh(Qprime, 1), big.NewInt(1)))
@@ -163,10 +163,10 @@ func almostSafePrimeProductVerifyProof(N *big.Int, challenge *big.Int, index *bi
 		t3 := new(big.Int).Exp(t1, big.NewInt(2), N)
 		t4 := new(big.Int).ModInverse(t3, N)
 
-		ok1 := (t1.Cmp(yg) == 0)
-		ok2 := (t2.Cmp(yg) == 0)
-		ok3 := (t3.Cmp(yg) == 0)
-		ok4 := (t4.Cmp(yg) == 0)
+		ok1 := t1.Cmp(yg) == 0
+		ok2 := t2.Cmp(yg) == 0
+		ok3 := t3.Cmp(yg) == 0
+		ok4 := t4.Cmp(yg) == 0
 
 		if !ok1 && !ok2 && !ok3 && !ok4 {
 			return false
