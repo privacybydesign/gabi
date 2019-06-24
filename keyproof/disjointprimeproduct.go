@@ -22,7 +22,6 @@ func disjointPrimeProductBuildProof(P *big.Int, Q *big.Int, challenge *big.Int, 
 
 	// Generate the challenges and responses
 	var proof DisjointPrimeProductProof
-	proof.Responses = []*big.Int{}
 	for i := 0; i < squareFreeIters; i++ {
 		// Generate the challenge
 		curc := common.GetHashNumber(challenge, index, i, uint(N.BitLen()))

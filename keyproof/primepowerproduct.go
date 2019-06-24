@@ -28,6 +28,7 @@ func primePowerProductBuildProof(P *big.Int, Q *big.Int, challenge *big.Int, ind
 			panic("Generated number not in Z_N")
 		}
 
+		// Try to compute the square root of curc, -curc, 2*curc, -2*curc
 		r1, ok1 := common.ModSqrt(curc, factors)
 		r2, ok2 := common.ModSqrt(new(big.Int).Mod(new(big.Int).Neg(curc), N), factors)
 		r3, ok3 := common.ModSqrt(new(big.Int).Mod(new(big.Int).Lsh(curc, 1), N), factors)
@@ -73,10 +74,10 @@ func primePowerProductVerifyProof(N *big.Int, challenge *big.Int, index *big.Int
 		// Process response
 		result := new(big.Int).Exp(proof.Responses[i], big.NewInt(2), N)
 
-		ok1 := (result.Cmp(curc) == 0)
-		ok2 := (result.Cmp(new(big.Int).Mod(new(big.Int).Neg(curc), N)) == 0)
-		ok3 := (result.Cmp(new(big.Int).Mod(new(big.Int).Lsh(curc, 1), N)) == 0)
-		ok4 := (result.Cmp(new(big.Int).Mod(new(big.Int).Neg(new(big.Int).Lsh(curc, 1)), N)) == 0)
+		ok1 := result.Cmp(curc) == 0
+		ok2 := result.Cmp(new(big.Int).Mod(new(big.Int).Neg(curc), N)) == 0
+		ok3 := result.Cmp(new(big.Int).Mod(new(big.Int).Lsh(curc, 1), N)) == 0
+		ok4 := result.Cmp(new(big.Int).Mod(new(big.Int).Neg(new(big.Int).Lsh(curc, 1)), N)) == 0
 
 		if !ok1 && !ok2 && !ok3 && !ok4 {
 			return false

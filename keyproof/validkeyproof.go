@@ -73,45 +73,42 @@ func NewValidKeyProofStructure(N *big.Int, Z *big.Int, S *big.Int, Bases []*big.
 
 	structure.pPprimeRel = representationProofStructure{
 		[]lhsContribution{
-			lhsContribution{"p", big.NewInt(1)},
-			lhsContribution{"pprime", big.NewInt(-2)},
-			lhsContribution{"g", big.NewInt(-1)},
+			{"p", big.NewInt(1)},
+			{"pprime", big.NewInt(-2)},
+			{"g", big.NewInt(-1)},
 		},
 		[]rhsContribution{
-			rhsContribution{"h", "p_hider", 1},
-			rhsContribution{"h", "pprime_hider", -2},
+			{"h", "p_hider", 1},
+			{"h", "pprime_hider", -2},
 		},
 	}
 
 	structure.qQprimeRel = representationProofStructure{
 		[]lhsContribution{
-			lhsContribution{"q", big.NewInt(1)},
-			lhsContribution{"qprime", big.NewInt(-2)},
-			lhsContribution{"g", big.NewInt(-1)},
+			{"q", big.NewInt(1)},
+			{"qprime", big.NewInt(-2)},
+			{"g", big.NewInt(-1)},
 		},
 		[]rhsContribution{
-			rhsContribution{"h", "q_hider", 1},
-			rhsContribution{"h", "qprime_hider", -2},
+			{"h", "q_hider", 1},
+			{"h", "qprime_hider", -2},
 		},
 	}
 
 	structure.pQNRel = representationProofStructure{
 		[]lhsContribution{
-			lhsContribution{"g", new(big.Int).Set(N)},
+			{"g", new(big.Int).Set(N)},
 		},
 		[]rhsContribution{
-			rhsContribution{"p", "q", 1},
-			rhsContribution{"h", "pqnrel", -1},
+			{"p", "q", 1},
+			{"h", "pqnrel", -1},
 		},
 	}
 
 	structure.pprimeIsPrime = newPrimeProofStructure("pprime", uint((N.BitLen()+1)/2))
 	structure.qprimeIsPrime = newPrimeProofStructure("qprime", uint((N.BitLen()+1)/2))
 
-	BaseList := []*big.Int{}
-	BaseList = append(BaseList, Z)
-	BaseList = append(BaseList, S)
-	BaseList = append(BaseList, Bases...)
+	BaseList := append([]*big.Int{Z, S}, Bases...)
 	structure.basesValid = newIsSquareProofStructure(N, BaseList)
 
 	return structure

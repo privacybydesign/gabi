@@ -71,13 +71,13 @@ func newAdditionProofStructure(a1, a2, mod, result string, l uint) additionProof
 	structure.myname = strings.Join([]string{a1, a2, mod, result, "add"}, "_")
 	structure.addRepresentation = representationProofStructure{
 		[]lhsContribution{
-			lhsContribution{result, big.NewInt(1)},
-			lhsContribution{a1, big.NewInt(-1)},
-			lhsContribution{a2, big.NewInt(-1)},
+			{result, big.NewInt(1)},
+			{a1, big.NewInt(-1)},
+			{a2, big.NewInt(-1)},
 		},
 		[]rhsContribution{
-			rhsContribution{mod, strings.Join([]string{structure.myname, "mod"}, "_"), 1},
-			rhsContribution{"h", strings.Join([]string{structure.myname, "hider"}, "_"), 1},
+			{mod, strings.Join([]string{structure.myname, "mod"}, "_"), 1},
+			{"h", strings.Join([]string{structure.myname, "hider"}, "_"), 1},
 		},
 	}
 	structure.addRange = rangeProofStructure{

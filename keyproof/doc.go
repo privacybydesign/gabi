@@ -46,7 +46,7 @@ demonstrating membership of some language of natural numbers:
    the prime decomposition
 - Disjointprimeproduct allows for proofs that a given number N, which has
    already been shown that it is the product of at most two distinct primes, is
-   in fact the product of precisely two squares
+   in fact the product of precisely two primes
 - Finaly, Almostsafeprimeproduct shows that a product N of exactly two distinct
    primes is the product of two almost safe primes, e.g. that there exists
    primes p, q, and integers n, m such that N = (2*p^n+1)*(2*q^m+1)
