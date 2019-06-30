@@ -225,7 +225,7 @@ func TestProofU(t *testing.T) {
 	secret, _ := common.RandomBigInt(DefaultSystemParameters[keylength].Lm)
 
 	b := NewCredentialBuilder(testPubK, context, secret, nonce2)
-	proofU := b.CreateProof(createChallenge(context, nonce1, b.Commit(secret), false))
+	proofU := b.CreateProof(createChallenge(context, nonce1, b.Commit(map[string]*big.Int{"secretkey": secret}), false))
 
 	assert.True(t, proofU.VerifyWithChallenge(testPubK, createChallenge(context, nonce1, proofU.ChallengeContribution(testPubK), false)), "ProofU does not verify, whereas it should.")
 }

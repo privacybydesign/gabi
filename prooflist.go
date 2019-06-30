@@ -14,7 +14,7 @@ import (
 // ProofBuilder is an interface for a proof builder. That is, an object to hold
 // the state to build a list of bounded proofs (see ProofList).
 type ProofBuilder interface {
-	Commit(skRandomizer *big.Int) []*big.Int
+	Commit(randomizers map[string]*big.Int) []*big.Int
 	CreateProof(challenge *big.Int) Proof
 	PublicKey() *PublicKey
 	MergeProofPCommitment(commitment *ProofPCommitment)
@@ -121,7 +121,7 @@ func (builders ProofBuilderList) Challenge(context, nonce *big.Int, issig bool) 
 
 	commitmentValues := make([]*big.Int, 0, len(builders)*2)
 	for _, pb := range builders {
-		commitmentValues = append(commitmentValues, pb.Commit(skCommitment)...)
+		commitmentValues = append(commitmentValues, pb.Commit(map[string]*big.Int{"secretkey": skCommitment})...)
 	}
 
 	// Create a shared challenge

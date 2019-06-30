@@ -191,8 +191,8 @@ func (b *CredentialBuilder) PublicKey() *PublicKey {
 }
 
 // Commit commits to the secret (first) attribute using the provided randomizer.
-func (b *CredentialBuilder) Commit(skRandomizer *big.Int) []*big.Int {
-	b.skRandomizer = skRandomizer
+func (b *CredentialBuilder) Commit(randomizers map[string]*big.Int) []*big.Int {
+	b.skRandomizer = randomizers["secretkey"]
 	// vPrimeCommit
 	b.vPrimeCommit, _ = common.RandomBigInt(b.pk.Params.LvPrimeCommit)
 
