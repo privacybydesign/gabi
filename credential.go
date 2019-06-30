@@ -120,8 +120,6 @@ func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int) *D
 	return d
 }
 
-// TODO: Eventually replace skRandomizer with an array
-
 func (d *DisclosureProofBuilder) MergeProofPCommitment(commitment *ProofPCommitment) {
 	d.z.Mod(
 		d.z.Mul(d.z, commitment.Pcommit),
@@ -136,8 +134,8 @@ func (d *DisclosureProofBuilder) PublicKey() *PublicKey {
 
 // Commit commits to the first attribute (the secret) using the provided
 // randomizer.
-func (d *DisclosureProofBuilder) Commit(skRandomizer *big.Int) []*big.Int {
-	d.attrRandomizers[0] = skRandomizer
+func (d *DisclosureProofBuilder) Commit(randomizers map[string]*big.Int) []*big.Int {
+	d.attrRandomizers[0] = randomizers["secretkey"]
 
 	// Z = A^{e_commit} * S^{v_commit}
 	//     PROD_{i \in undisclosed} ( R_i^{a_commits{i}} )
