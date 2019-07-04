@@ -90,3 +90,15 @@ func FastRandomBigInt(limit *big.Int) *big.Int {
 	}
 	return res
 }
+
+func RandomQR(n *big.Int) *big.Int {
+	var r *big.Int
+	var tmp big.Int
+	for {
+		r = FastRandomBigInt(n)
+		// if GCD(r, n) == 1 then r is in (Z/nZ)*; return its square
+		if tmp.GCD(nil, nil, r, n).Cmp(big.NewInt(1)) == 0 {
+			return r.Mul(r, r).Mod(r, n)
+		}
+	}
+}

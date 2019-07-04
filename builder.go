@@ -6,10 +6,12 @@ package gabi
 
 import (
 	"encoding/json"
-	"errors"
+
+	"github.com/go-errors/errors"
 
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
+	"github.com/privacybydesign/gabi/revocation"
 )
 
 // IssueCommitmentMessage encapsulates the messages sent by the receiver to the
@@ -56,8 +58,9 @@ func (pl *ProofList) UnmarshalJSON(bytes []byte) error {
 // IssueSignatureMessage encapsulates the messages sent from the issuer to the
 // reciver in the final step of the issuance protocol.
 type IssueSignatureMessage struct {
-	Proof     *ProofS      `json:"proof"`
-	Signature *CLSignature `json:"signature"`
+	Proof                *ProofS             `json:"proof"`
+	Signature            *CLSignature        `json:"signature"`
+	NonRevocationWitness *revocation.Witness `json:"nonrev,omitempty"`
 }
 
 // commitmentToSecret produces a commitment to the provided secret
@@ -134,10 +137,19 @@ func (b *CredentialBuilder) ConstructCredential(msg *IssueSignatureMessage, attr
 	exponents[0] = b.secret
 	copy(exponents[1:], attributes)
 
-	if !signature.Verify(b.pk, exponents) {
+	var nonrevAttr *big.Int
+	if msg.NonRevocationWitness != nil {
+		nonrevAttr = msg.NonRevocationWitness.E
+	}
+	if !signature.Verify(b.pk, exponents, nonrevAttr) {
 		return nil, ErrIncorrectAttributeSignature
 	}
-	return &Credential{Pk: b.pk, Signature: signature, Attributes: exponents}, nil
+	return &Credential{
+		Pk:                   b.pk,
+		Signature:            signature,
+		Attributes:           exponents,
+		NonRevocationWitness: msg.NonRevocationWitness,
+	}, nil
 }
 
 func (b *CredentialBuilder) proveCommitment(U, nonce1 *big.Int) *ProofU {
