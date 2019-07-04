@@ -46,7 +46,7 @@ func signMessageBlockAndCommitment(sk *PrivateKey, pk *PublicKey, U *big.Int, ms
 	Q := new(big.Int).Mul(pk.Z, invNumerator)
 	Q.Mod(Q, pk.N)
 
-	e, err := randomPrimeInRange(rand.Reader, pk.Params.Le-1, pk.Params.LePrime-1)
+	e, err := common.RandomPrimeInRange(rand.Reader, pk.Params.Le-1, pk.Params.LePrime-1)
 	if err != nil {
 		return nil, err
 	}
