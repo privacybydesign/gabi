@@ -7,6 +7,7 @@ package gabi
 import (
 	"crypto/rand"
 
+	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
 )
@@ -16,8 +17,15 @@ import (
 //   R[1]^{exps[1]}*...*R[k]^{exps[k]} (mod N)
 // with R and N coming from the public key. The exponents are hashed if their length
 // exceeds the maximum message length from the public key.
-func RepresentToPublicKey(pk *PublicKey, exps []*big.Int) *big.Int {
-	return common.RepresentToBases(pk.R, exps, pk.N, pk.Params.Lm)
+func RepresentToPublicKey(pk *PublicKey, exps []*big.Int, nonrevAttr *big.Int) (*big.Int, error) {
+	R := common.RepresentToBases(pk.R, exps, pk.N, pk.Params.Lm)
+	if nonrevAttr != nil {
+		if !pk.RevocationSupported() {
+			return nil, errors.New("revocation not supported by this public key")
+		}
+		R.Mul(R, common.ModPow(pk.T, nonrevAttr, pk.N)).Mod(R, pk.N)
+	}
+	return R, nil
 }
 
 // CLSignature is a data structure for holding a Camenisch-Lysyanskaya signature.
@@ -30,8 +38,12 @@ type CLSignature struct {
 
 // SignMessageBlock signs a message block (ms) and a commitment (U) using the
 // Camenisch-Lysyanskaya signature scheme as used in the IdeMix system.
-func signMessageBlockAndCommitment(sk *PrivateKey, pk *PublicKey, U *big.Int, ms []*big.Int) (*CLSignature, error) {
-	R := RepresentToPublicKey(pk, ms)
+func signMessageBlockAndCommitment(sk *PrivateKey, pk *PublicKey, U *big.Int, ms []*big.Int, nonrevAttr *big.Int) (
+	*CLSignature, error) {
+	R, err := RepresentToPublicKey(pk, ms, nonrevAttr)
+	if err != nil {
+		return nil, err
+	}
 
 	vTilde, _ := common.RandomBigInt(pk.Params.Lv - 1)
 	twoLv := new(big.Int).Lsh(big.NewInt(1), pk.Params.Lv-1)
@@ -63,13 +75,13 @@ func signMessageBlockAndCommitment(sk *PrivateKey, pk *PublicKey, U *big.Int, ms
 
 // SignMessageBlock signs a message block (ms) using the Camenisch-Lysyanskaya
 // signature scheme as used in the IdeMix system.
-func SignMessageBlock(sk *PrivateKey, pk *PublicKey, ms []*big.Int) (*CLSignature, error) {
-	return signMessageBlockAndCommitment(sk, pk, big.NewInt(1), ms)
+func SignMessageBlock(sk *PrivateKey, pk *PublicKey, ms []*big.Int, nonrevAttr *big.Int) (*CLSignature, error) {
+	return signMessageBlockAndCommitment(sk, pk, big.NewInt(1), ms, nonrevAttr)
 }
 
 // Verify checks whether the signature is correct while being given a public key
 // and the messages.
-func (s *CLSignature) Verify(pk *PublicKey, ms []*big.Int) bool {
+func (s *CLSignature) Verify(pk *PublicKey, ms []*big.Int, nonrevAttr *big.Int) bool {
 	// First check that e is in the range [2^{l_e - 1}, 2^{l_e - 1} + 2^{l_e_prime - 1}]
 	start := new(big.Int).Lsh(big.NewInt(1), pk.Params.Le-1)
 	end := new(big.Int).Lsh(big.NewInt(1), pk.Params.LePrime-1)
@@ -80,7 +92,10 @@ func (s *CLSignature) Verify(pk *PublicKey, ms []*big.Int) bool {
 
 	// Q = A^e * R * S^v
 	Ae := new(big.Int).Exp(s.A, s.E, pk.N)
-	R := RepresentToPublicKey(pk, ms)
+	R, err := RepresentToPublicKey(pk, ms, nonrevAttr)
+	if err != nil {
+		return false
+	}
 	if s.KeyshareP != nil {
 		R.Mul(R, s.KeyshareP)
 	}

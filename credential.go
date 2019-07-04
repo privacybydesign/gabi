@@ -5,15 +5,20 @@
 package gabi
 
 import (
+	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
+	"github.com/privacybydesign/gabi/revocation"
 )
 
 // Credential represents an Idemix credential.
 type Credential struct {
-	Signature  *CLSignature `json:"signature"`
-	Pk         *PublicKey   `json:"-"`
-	Attributes []*big.Int   `json:"attributes"`
+	Signature            *CLSignature        `json:"signature"`
+	Pk                   *PublicKey          `json:"-"`
+	Attributes           []*big.Int          `json:"attributes"`
+	NonRevocationWitness *revocation.Witness `json:"nonrevWitness,omitempty"`
+
+	nonrevBuildCache *NonRevocationProofBuilder
 }
 
 // DisclosureProofBuilder is an object that holds the state for the protocol to
@@ -27,6 +32,36 @@ type DisclosureProofBuilder struct {
 	undisclosedAttributes []int
 	pk                    *PublicKey
 	attributes            []*big.Int
+
+	nonrevAttr, nonrevRandomizer *big.Int
+	nonrevBuilder                *NonRevocationProofBuilder
+}
+
+type NonRevocationProofBuilder struct {
+	pk          *PublicKey
+	witness     *revocation.Witness
+	commit      *revocation.ProofCommit
+	commitments []*big.Int
+	randomizer  *big.Int
+}
+
+func (b *NonRevocationProofBuilder) Commit() ([]*big.Int, error) {
+	if b.commitments == nil {
+		revPk, err := b.pk.RevocationKey()
+		if err != nil {
+			return nil, err
+		}
+		b.commitments, b.commit, err = revocation.NewProofCommit(revPk.Group, b.witness, b.randomizer)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return b.commitments, nil
+}
+
+func (b *NonRevocationProofBuilder) CreateProof(challenge *big.Int) *revocation.Proof {
+	prf := b.commit.BuildProof(challenge)
+	return &prf
 }
 
 // getUndisclosedAttributes computes, given a list of (indices of) disclosed
@@ -101,7 +136,7 @@ func (ic *Credential) CreateDisclosureProof(disclosedAttributes []int, context, 
 // CreateDisclosureProofBuilder produces a DisclosureProofBuilder, an object to
 // hold the state in the protocol for producing a disclosure proof that is
 // linked to other proofs.
-func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int) *DisclosureProofBuilder {
+func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int, nonrev bool) (*DisclosureProofBuilder, error) {
 	d := &DisclosureProofBuilder{}
 	d.z = big.NewInt(1)
 	d.pk = ic.Pk
@@ -117,7 +152,61 @@ func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int) *D
 		d.attrRandomizers[v], _ = common.RandomBigInt(ic.Pk.Params.LmCommit)
 	}
 
-	return d
+	if nonrev && ic.NonRevocationWitness == nil {
+		return nil, errors.New("cannot prove nonrevocation: credential has no witness")
+	}
+	if ic.NonRevocationWitness != nil {
+		// Even if the requestor did not request a nonrevocation proof, it will require
+		// a proof of knowledge of the nonrevocation attribute e to be included in the
+		// ProofD, in order to be able to verify it. (This breaks backwards compatibility
+		// with pre-revocation requestors)
+		if nonrev {
+			var err error
+			d.nonrevBuilder, err = ic.nonrevBuilder()
+			if err != nil {
+				return nil, err
+			}
+			d.nonrevRandomizer = d.nonrevBuilder.randomizer
+		} else {
+			d.nonrevRandomizer = revocation.NewProofRandomizer()
+		}
+		d.nonrevAttr = ic.NonRevocationWitness.E
+	}
+
+	return d, nil
+}
+
+func (ic *Credential) nonrevBuilder() (*NonRevocationProofBuilder, error) {
+	// If we don't have a builder cached, compute one now
+	if ic.nonrevBuildCache == nil {
+		if err := ic.BuildRevocationCache(); err != nil {
+			return nil, err
+		}
+	}
+
+	// Ensure we use the cache only once, lest we totally break security:
+	// reusing randomizers in a second session makes it possible for the verifier
+	// to compute our revocation witness e from the proofs
+	defer func() { ic.nonrevBuildCache = nil }()
+	return ic.nonrevBuildCache, nil
+}
+
+func (ic *Credential) DiscardRevocationCache() {
+	// TODO using the new u, it should be possible to update the cache instead of discarding it
+	ic.nonrevBuildCache = nil
+}
+
+func (ic *Credential) BuildRevocationCache() error {
+	b := &NonRevocationProofBuilder{
+		pk:         ic.Pk,
+		witness:    ic.NonRevocationWitness,
+		randomizer: revocation.NewProofRandomizer(),
+	}
+	_, err := b.Commit()
+	if err == nil {
+		ic.nonrevBuildCache = b
+	}
+	return err
 }
 
 func (d *DisclosureProofBuilder) MergeProofPCommitment(commitment *ProofPCommitment) {
@@ -147,8 +236,20 @@ func (d *DisclosureProofBuilder) Commit(randomizers map[string]*big.Int) []*big.
 		d.z.Mul(d.z, common.ModPow(d.pk.R[v], d.attrRandomizers[v], d.pk.N))
 		d.z.Mod(d.z, d.pk.N)
 	}
+	if d.nonrevAttr != nil {
+		d.z.Mul(d.z, common.ModPow(d.pk.T, d.nonrevRandomizer, d.pk.N)).Mod(d.z, d.pk.N)
+	}
 
-	return []*big.Int{d.randomizedSignature.A, d.z}
+	list := []*big.Int{d.randomizedSignature.A, d.z}
+
+	if d.nonrevBuilder != nil {
+		l, err := d.nonrevBuilder.Commit()
+		if err != nil {
+			panic(err)
+		}
+		list = append(list, l...)
+	}
+	return list
 }
 
 // CreateProof creates a (disclosure) proof with the provided challenge.
@@ -174,7 +275,25 @@ func (d *DisclosureProofBuilder) CreateProof(challenge *big.Int) Proof {
 		aDisclosed[v] = d.attributes[v]
 	}
 
-	return &ProofD{C: challenge, A: d.randomizedSignature.A, EResponse: eResponse, VResponse: vResponse, AResponses: aResponses, ADisclosed: aDisclosed}
+	var nonrevProof *revocation.Proof
+	var nrResponse *big.Int
+	if d.nonrevAttr != nil && d.nonrevRandomizer != nil {
+		nrResponse = new(big.Int).Add(d.nonrevRandomizer, new(big.Int).Mul(challenge, d.nonrevAttr))
+	}
+	if d.nonrevBuilder != nil {
+		nonrevProof = d.nonrevBuilder.CreateProof(challenge)
+	}
+
+	return &ProofD{
+		C:                     challenge,
+		A:                     d.randomizedSignature.A,
+		EResponse:             eResponse,
+		VResponse:             vResponse,
+		AResponses:            aResponses,
+		ADisclosed:            aDisclosed,
+		NonRevocationResponse: nrResponse,
+		NonRevocationProof:    nonrevProof,
+	}
 }
 
 // TimestampRequestContributions returns the contributions of this disclosure proof

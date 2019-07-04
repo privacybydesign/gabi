@@ -5,8 +5,7 @@
 package gabi
 
 import (
-	"errors"
-
+	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
 )

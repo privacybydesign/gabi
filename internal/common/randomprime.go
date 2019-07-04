@@ -5,8 +5,9 @@
 package common
 
 import (
-	"errors"
 	"io"
+
+	"github.com/go-errors/errors"
 
 	"github.com/privacybydesign/gabi/big"
 )
