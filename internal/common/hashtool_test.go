@@ -9,7 +9,7 @@ func TestHashCommit(t *testing.T) {
 		big.NewInt(2),
 		big.NewInt(3),
 	}
-	hashA := HashCommit(listA)
+	hashA := HashCommit(listA, false)
 	if hashA == nil {
 		t.Error("Failed to generate hash for A")
 		return
@@ -20,7 +20,7 @@ func TestHashCommit(t *testing.T) {
 		nil,
 		big.NewInt(3),
 	}
-	hashB := HashCommit(listB)
+	hashB := HashCommit(listB, false)
 	if hashB == nil {
 		t.Error("Failed to generate hash for B")
 		return
@@ -30,7 +30,7 @@ func TestHashCommit(t *testing.T) {
 		big.NewInt(1),
 		big.NewInt(2),
 	}
-	hashC := HashCommit(listC)
+	hashC := HashCommit(listC, false)
 	if hashC == nil {
 		t.Error("Failed to generate hash for C")
 		return

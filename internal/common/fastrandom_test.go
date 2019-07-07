@@ -3,8 +3,6 @@ package common
 import (
 	"encoding/hex"
 	"testing"
-
-	"github.com/privacybydesign/gabi/big"
 )
 
 func TestCPRNG(t *testing.T) {
