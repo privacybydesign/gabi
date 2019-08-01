@@ -5,13 +5,13 @@ import "github.com/privacybydesign/gabi/big"
 
 type ValidKeyProofStructure struct {
 	n          *big.Int
-	pRep       representationProofStructure
-	qRep       representationProofStructure
-	pprimeRep  representationProofStructure
-	qprimeRep  representationProofStructure
-	pPprimeRel representationProofStructure
-	qQprimeRel representationProofStructure
-	pQNRel     representationProofStructure
+	pRep       RepresentationProofStructure
+	qRep       RepresentationProofStructure
+	pprimeRep  RepresentationProofStructure
+	qprimeRep  RepresentationProofStructure
+	pPprimeRel RepresentationProofStructure
+	qQprimeRel RepresentationProofStructure
+	pQNRel     RepresentationProofStructure
 
 	pprimeIsPrime primeProofStructure
 	qprimeIsPrime primeProofStructure
@@ -41,21 +41,21 @@ type safePrimeSecret struct {
 	pQNRelRandomizer *big.Int
 }
 
-func (s *safePrimeSecret) getSecret(name string) *big.Int {
+func (s *safePrimeSecret) GetSecret(name string) *big.Int {
 	if name == "pqnrel" {
 		return s.pQNRel
 	}
 	return nil
 }
 
-func (s *safePrimeSecret) getRandomizer(name string) *big.Int {
+func (s *safePrimeSecret) GetRandomizer(name string) *big.Int {
 	if name == "pqnrel" {
 		return s.pQNRelRandomizer
 	}
 	return nil
 }
 
-func (p *ValidKeyProof) getResult(name string) *big.Int {
+func (p *ValidKeyProof) GetResult(name string) *big.Int {
 	if name == "pqnrel" {
 		return p.PQNRel
 	}
@@ -71,35 +71,35 @@ func NewValidKeyProofStructure(N *big.Int, Z *big.Int, S *big.Int, Bases []*big.
 	structure.pprimeRep = newPedersonRepresentationProofStructure("pprime")
 	structure.qprimeRep = newPedersonRepresentationProofStructure("qprime")
 
-	structure.pPprimeRel = representationProofStructure{
-		[]lhsContribution{
+	structure.pPprimeRel = RepresentationProofStructure{
+		[]LhsContribution{
 			{"p", big.NewInt(1)},
 			{"pprime", big.NewInt(-2)},
 			{"g", big.NewInt(-1)},
 		},
-		[]rhsContribution{
+		[]RhsContribution{
 			{"h", "p_hider", 1},
 			{"h", "pprime_hider", -2},
 		},
 	}
 
-	structure.qQprimeRel = representationProofStructure{
-		[]lhsContribution{
+	structure.qQprimeRel = RepresentationProofStructure{
+		[]LhsContribution{
 			{"q", big.NewInt(1)},
 			{"qprime", big.NewInt(-2)},
 			{"g", big.NewInt(-1)},
 		},
-		[]rhsContribution{
+		[]RhsContribution{
 			{"h", "q_hider", 1},
 			{"h", "qprime_hider", -2},
 		},
 	}
 
-	structure.pQNRel = representationProofStructure{
-		[]lhsContribution{
+	structure.pQNRel = RepresentationProofStructure{
+		[]LhsContribution{
 			{"g", new(big.Int).Set(N)},
 		},
-		[]rhsContribution{
+		[]RhsContribution{
 			{"p", "q", 1},
 			{"h", "pqnrel", -1},
 		},
@@ -148,8 +148,8 @@ func (s *ValidKeyProofStructure) BuildProof(Pprime *big.Int, Qprime *big.Int) Va
 	}
 
 	// Build up bases and secrets structures
-	bases := newBaseMerge(&g, &PSecret, &QSecret, &PprimeSecret, &QprimeSecret)
-	secrets := newSecretMerge(&PSecret, &QSecret, &PprimeSecret, &QprimeSecret, &PQNRelSecret)
+	bases := NewBaseMerge(&g, &PSecret, &QSecret, &PprimeSecret, &QprimeSecret)
+	secrets := NewSecretMerge(&PSecret, &QSecret, &PprimeSecret, &QprimeSecret, &PQNRelSecret)
 
 	// Build up commitment list
 	var list []*big.Int
@@ -250,8 +250,8 @@ func (s *ValidKeyProofStructure) VerifyProof(proof ValidKeyProof) bool {
 	proof.QprimeProof.setName("qprime")
 
 	// Build up bases and secrets
-	bases := newBaseMerge(&g, &proof.PProof, &proof.QProof, &proof.PprimeProof, &proof.QprimeProof)
-	proofs := newProofMerge(&proof.PProof, &proof.QProof, &proof.PprimeProof, &proof.QprimeProof, &proof)
+	bases := NewBaseMerge(&g, &proof.PProof, &proof.QProof, &proof.PprimeProof, &proof.QprimeProof)
+	proofs := NewProofMerge(&proof.PProof, &proof.QProof, &proof.PprimeProof, &proof.QprimeProof, &proof)
 
 	// Build up commitment list
 	var list []*big.Int

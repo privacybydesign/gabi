@@ -19,16 +19,16 @@ type expProofStructure struct {
 	myname   string
 	bitlen   uint
 
-	expBitRep []representationProofStructure
-	expBitEq  representationProofStructure
+	expBitRep []RepresentationProofStructure
+	expBitEq  RepresentationProofStructure
 
-	basePowRep   []representationProofStructure
+	basePowRep   []RepresentationProofStructure
 	basePowRange []rangeProofStructure
 	basePowRels  []multiplicationProofStructure
 
-	startRep representationProofStructure
+	startRep RepresentationProofStructure
 
-	interResRep   []representationProofStructure
+	interResRep   []RepresentationProofStructure
 	interResRange []rangeProofStructure
 
 	interSteps []expStepStructure
@@ -69,21 +69,21 @@ type ExpProof struct {
 	InterStepsProofs []ExpStepProof
 }
 
-func (c *expProofCommit) getSecret(name string) *big.Int {
+func (c *expProofCommit) GetSecret(name string) *big.Int {
 	if name == c.nameBitEqHider {
 		return c.expBitEqHider
 	}
 	return nil
 }
 
-func (c *expProofCommit) getRandomizer(name string) *big.Int {
+func (c *expProofCommit) GetRandomizer(name string) *big.Int {
 	if name == c.nameBitEqHider {
 		return c.expBitEqHiderRandomizer
 	}
 	return nil
 }
 
-func (p *ExpProof) getResult(name string) *big.Int {
+func (p *ExpProof) GetResult(name string) *big.Int {
 	if name == p.nameBitEqHider {
 		return p.ExpBitEqResult
 	}
@@ -101,7 +101,7 @@ func newExpProofStructure(base, exponent, mod, result string, bitlen uint) expPr
 	structure.bitlen = bitlen
 
 	// Bit representation proofs
-	structure.expBitRep = []representationProofStructure{}
+	structure.expBitRep = []RepresentationProofStructure{}
 	for i := uint(0); i < bitlen; i++ {
 		structure.expBitRep = append(
 			structure.expBitRep,
@@ -109,25 +109,25 @@ func newExpProofStructure(base, exponent, mod, result string, bitlen uint) expPr
 	}
 
 	// Bit equality proof
-	structure.expBitEq = representationProofStructure{
-		[]lhsContribution{
-			lhsContribution{exponent, big.NewInt(-1)},
+	structure.expBitEq = RepresentationProofStructure{
+		[]LhsContribution{
+			LhsContribution{exponent, big.NewInt(-1)},
 		},
-		[]rhsContribution{
-			rhsContribution{"h", strings.Join([]string{structure.myname, "biteqhider"}, "_"), 1},
+		[]RhsContribution{
+			RhsContribution{"h", strings.Join([]string{structure.myname, "biteqhider"}, "_"), 1},
 		},
 	}
 	for i := uint(0); i < bitlen; i++ {
-		structure.expBitEq.lhs = append(
-			structure.expBitEq.lhs,
-			lhsContribution{
+		structure.expBitEq.Lhs = append(
+			structure.expBitEq.Lhs,
+			LhsContribution{
 				strings.Join([]string{structure.myname, "bit", fmt.Sprintf("%v", i)}, "_"),
 				new(big.Int).Lsh(big.NewInt(1), i),
 			})
 	}
 
 	// Base representation proofs
-	structure.basePowRep = []representationProofStructure{}
+	structure.basePowRep = []RepresentationProofStructure{}
 	for i := uint(0); i < bitlen; i++ {
 		structure.basePowRep = append(
 			structure.basePowRep,
@@ -168,18 +168,18 @@ func newExpProofStructure(base, exponent, mod, result string, bitlen uint) expPr
 	}
 
 	// start representation proof
-	structure.startRep = representationProofStructure{
-		[]lhsContribution{
-			lhsContribution{strings.Join([]string{structure.myname, "start"}, "_"), big.NewInt(1)},
-			lhsContribution{"g", big.NewInt(-1)},
+	structure.startRep = RepresentationProofStructure{
+		[]LhsContribution{
+			LhsContribution{strings.Join([]string{structure.myname, "start"}, "_"), big.NewInt(1)},
+			LhsContribution{"g", big.NewInt(-1)},
 		},
-		[]rhsContribution{
-			rhsContribution{"h", strings.Join([]string{structure.myname, "start", "hider"}, "_"), 1},
+		[]RhsContribution{
+			RhsContribution{"h", strings.Join([]string{structure.myname, "start", "hider"}, "_"), 1},
 		},
 	}
 
 	// inter representation proofs
-	structure.interResRep = []representationProofStructure{}
+	structure.interResRep = []RepresentationProofStructure{}
 	for i := uint(0); i < bitlen-1; i++ {
 		structure.interResRep = append(
 			structure.interResRep,
@@ -278,7 +278,7 @@ func (s *expProofStructure) numCommitments() int {
 	return res
 }
 
-func (s *expProofStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, expProofCommit) {
+func (s *expProofStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases BaseLookup, secretdata SecretLookup) ([]*big.Int, expProofCommit) {
 	var commit expProofCommit
 	var todo []func([]*big.Int)
 	todoOffset := new(uint32)
@@ -287,7 +287,7 @@ func (s *expProofStructure) generateCommitmentsFromSecrets(g group, list []*big.
 
 	// exponent bits
 	commit.nameBitEqHider = strings.Join([]string{s.myname, "biteqhider"}, "_")
-	commit.expBitEqHider = new(big.Int).Neg(secretdata.getSecret(strings.Join([]string{s.exponent, "hider"}, "_")))
+	commit.expBitEqHider = new(big.Int).Neg(secretdata.GetSecret(strings.Join([]string{s.exponent, "hider"}, "_")))
 	commit.expBitEqHiderRandomizer = common.FastRandomBigInt(g.order)
 	commit.expBitPederson = []pedersonSecret{}
 	for i := uint(0); i < s.bitlen; i++ {
@@ -296,14 +296,14 @@ func (s *expProofStructure) generateCommitmentsFromSecrets(g group, list []*big.
 			newPedersonSecret(
 				g,
 				strings.Join([]string{s.myname, "bit", fmt.Sprintf("%v", i)}, "_"),
-				big.NewInt(int64(secretdata.getSecret(s.exponent).Bit(int(i))))))
+				big.NewInt(int64(secretdata.GetSecret(s.exponent).Bit(int(i))))))
 		commit.expBitEqHider.Add(
 			commit.expBitEqHider,
 			new(big.Int).Lsh(commit.expBitPederson[i].hider, i))
 	}
 	commit.expBitEqHider.Mod(commit.expBitEqHider, g.order)
 
-	// base powers
+	// Base powers
 	commit.basePowPederson = []pedersonSecret{}
 	for i := uint(0); i < s.bitlen; i++ {
 		commit.basePowPederson = append(
@@ -312,9 +312,9 @@ func (s *expProofStructure) generateCommitmentsFromSecrets(g group, list []*big.
 				g,
 				strings.Join([]string{s.myname, "base", fmt.Sprintf("%v", i)}, "_"),
 				new(big.Int).Exp(
-					secretdata.getSecret(s.base),
+					secretdata.GetSecret(s.base),
 					new(big.Int).Lsh(big.NewInt(1), i),
-					secretdata.getSecret(s.mod))))
+					secretdata.GetSecret(s.mod))))
 	}
 
 	// Start pederson
@@ -327,16 +327,16 @@ func (s *expProofStructure) generateCommitmentsFromSecrets(g group, list []*big.
 	curInterRes := big.NewInt(1)
 	commit.interResPederson = []pedersonSecret{}
 	for i := uint(0); i < s.bitlen-1; i++ {
-		if secretdata.getSecret(s.exponent).Bit(int(i)) == 1 {
+		if secretdata.GetSecret(s.exponent).Bit(int(i)) == 1 {
 			curInterRes.Mod(
 				new(big.Int).Mul(
 					curInterRes,
 					new(big.Int).Exp(
-						secretdata.getSecret(s.base),
+						secretdata.GetSecret(s.base),
 						new(big.Int).Lsh(big.NewInt(1), i),
-						secretdata.getSecret(s.mod))),
-				secretdata.getSecret(s.mod))
-			if curInterRes.Cmp(new(big.Int).Sub(secretdata.getSecret(s.mod), big.NewInt(1))) == 0 {
+						secretdata.GetSecret(s.mod))),
+				secretdata.GetSecret(s.mod))
+			if curInterRes.Cmp(new(big.Int).Sub(secretdata.GetSecret(s.mod), big.NewInt(1))) == 0 {
 				curInterRes.SetInt64(-1) // ugly(ish) hack to make comparisons to -1 work
 			}
 		}
@@ -349,8 +349,8 @@ func (s *expProofStructure) generateCommitmentsFromSecrets(g group, list []*big.
 	}
 
 	// inner bases and secrets (this is ugly code, hopefully go2 will make this better someday)
-	baseList := []baseLookup{}
-	secretList := []secretLookup{}
+	baseList := []BaseLookup{}
+	secretList := []SecretLookup{}
 	for i, _ := range commit.expBitPederson {
 		baseList = append(baseList, &commit.expBitPederson[i])
 		secretList = append(secretList, &commit.expBitPederson[i])
@@ -368,8 +368,8 @@ func (s *expProofStructure) generateCommitmentsFromSecrets(g group, list []*big.
 	baseList = append(baseList, bases)
 	secretList = append(secretList, secretdata)
 	secretList = append(secretList, &commit)
-	innerBases := newBaseMerge(baseList...)
-	innerSecrets := newSecretMerge(secretList...)
+	innerBases := NewBaseMerge(baseList...)
+	innerSecrets := NewSecretMerge(secretList...)
 
 	// bits
 	for i, _ := range commit.expBitPederson {
@@ -389,7 +389,7 @@ func (s *expProofStructure) generateCommitmentsFromSecrets(g group, list []*big.
 	}
 	list = s.expBitEq.generateCommitmentsFromSecrets(g, list, &innerBases, &innerSecrets)
 
-	//base
+	//Base
 	for i, _ := range commit.basePowPederson {
 		list = commit.basePowPederson[i].generateCommitments(list)
 	}
@@ -514,11 +514,11 @@ func (s *expProofStructure) generateCommitmentsFromSecrets(g group, list []*big.
 	return list, commit
 }
 
-func (s *expProofStructure) buildProof(g group, challenge *big.Int, commit expProofCommit, secretdata secretLookup) ExpProof {
+func (s *expProofStructure) buildProof(g group, challenge *big.Int, commit expProofCommit, secretdata SecretLookup) ExpProof {
 	var proof ExpProof
 
 	// inner secret data
-	secretList := []secretLookup{}
+	secretList := []SecretLookup{}
 	for i, _ := range commit.expBitPederson {
 		secretList = append(secretList, &commit.expBitPederson[i])
 	}
@@ -531,7 +531,7 @@ func (s *expProofStructure) buildProof(g group, challenge *big.Int, commit expPr
 	}
 	secretList = append(secretList, secretdata)
 	secretList = append(secretList, &commit)
-	innerSecrets := newSecretMerge(secretList...)
+	innerSecrets := NewSecretMerge(secretList...)
 
 	//bit proofs
 	proof.ExpBitProofs = []PedersonProof{}
@@ -539,7 +539,7 @@ func (s *expProofStructure) buildProof(g group, challenge *big.Int, commit expPr
 		proof.ExpBitProofs = append(proof.ExpBitProofs, expbit.buildProof(g, challenge))
 	}
 
-	//base proofs
+	//Base proofs
 	proof.BasePowProofs = []PedersonProof{}
 	for _, basePow := range commit.basePowPederson {
 		proof.BasePowProofs = append(proof.BasePowProofs, basePow.buildProof(g, challenge))
@@ -639,7 +639,7 @@ func (s *expProofStructure) verifyProofStructure(challenge *big.Int, proof ExpPr
 		}
 	}
 
-	// check base proofs
+	// check Base proofs
 	if len(proof.BasePowProofs) != int(s.bitlen) || len(proof.BasePowRangeProofs) != int(s.bitlen) || len(proof.BasePowRelProofs) != int(s.bitlen) {
 		return false
 	}
@@ -680,10 +680,10 @@ func (s *expProofStructure) verifyProofStructure(challenge *big.Int, proof ExpPr
 	return true
 }
 
-func (s *expProofStructure) generateCommitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases baseLookup, proofdata proofLookup, proof ExpProof) []*big.Int {
+func (s *expProofStructure) generateCommitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases BaseLookup, proofdata ProofLookup, proof ExpProof) []*big.Int {
 	// inner bases and proofs (again hopefully go2 will make this better)
-	baseList := []baseLookup{}
-	proofList := []proofLookup{}
+	baseList := []BaseLookup{}
+	proofList := []ProofLookup{}
 	for i, _ := range proof.ExpBitProofs {
 		proof.ExpBitProofs[i].setName(strings.Join([]string{s.myname, "bit", fmt.Sprintf("%v", i)}, "_"))
 		baseList = append(baseList, &proof.ExpBitProofs[i])
@@ -706,8 +706,8 @@ func (s *expProofStructure) generateCommitmentsFromProof(g group, list []*big.In
 	proofList = append(proofList, proofdata)
 	proof.nameBitEqHider = strings.Join([]string{s.myname, "biteqhider"}, "_")
 	proofList = append(proofList, &proof)
-	innerBases := newBaseMerge(baseList...)
-	innerProof := newProofMerge(proofList...)
+	innerBases := NewBaseMerge(baseList...)
+	innerProof := NewProofMerge(proofList...)
 
 	// Generate commitment list
 	var todo []func([]*big.Int)
@@ -731,7 +731,7 @@ func (s *expProofStructure) generateCommitmentsFromProof(g group, list []*big.In
 	}
 	list = s.expBitEq.generateCommitmentsFromProof(g, list, challenge, &innerBases, &innerProof)
 
-	//base
+	//Base
 	for i, _ := range proof.BasePowProofs {
 		list = proof.BasePowProofs[i].generateCommitments(list)
 	}
@@ -840,18 +840,18 @@ func (s *expProofStructure) generateCommitmentsFromProof(g group, list []*big.In
 	return list
 }
 
-func (s *expProofStructure) isTrue(secretdata secretLookup) bool {
+func (s *expProofStructure) isTrue(secretdata SecretLookup) bool {
 	div := new(big.Int)
 	mod := new(big.Int)
 
 	div.DivMod(
 		new(big.Int).Sub(
 			new(big.Int).Exp(
-				secretdata.getSecret(s.base),
-				secretdata.getSecret(s.exponent),
-				secretdata.getSecret(s.mod)),
-			secretdata.getSecret(s.result)),
-		secretdata.getSecret(s.mod),
+				secretdata.GetSecret(s.base),
+				secretdata.GetSecret(s.exponent),
+				secretdata.GetSecret(s.mod)),
+			secretdata.GetSecret(s.result)),
+		secretdata.GetSecret(s.mod),
 		mod)
 
 	return mod.Cmp(big.NewInt(0)) == 0 && uint(div.BitLen()) <= s.bitlen

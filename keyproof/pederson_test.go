@@ -13,20 +13,20 @@ func TestPedersonSecret(t *testing.T) {
 
 	testSecret := newPedersonSecret(g, "x", big.NewInt(15))
 
-	x := testSecret.getSecret("x")
+	x := testSecret.GetSecret("x")
 	if x == nil || x.Cmp(big.NewInt(15)) != 0 {
 		t.Error("Improper inclusion of secret.")
 	}
-	if testSecret.getRandomizer("x") == nil {
+	if testSecret.GetRandomizer("x") == nil {
 		t.Error("Missing randomizer for secret")
 	}
-	if testSecret.getSecret("x_hider") == nil {
+	if testSecret.GetSecret("x_hider") == nil {
 		t.Error("Missing hider")
 	}
-	if testSecret.getRandomizer("x") == nil {
+	if testSecret.GetRandomizer("x") == nil {
 		t.Error("Missing ramdomizer for hider")
 	}
-	if testSecret.getBase("x") == nil {
+	if testSecret.GetBase("x") == nil {
 		t.Error("Missing commitment")
 	}
 }
@@ -45,13 +45,13 @@ func TestPedersonProof(t *testing.T) {
 
 	testProof.setName("x")
 
-	if testProof.getBase("x") == nil {
+	if testProof.GetBase("x") == nil {
 		t.Error("Missing commitment")
 	}
-	if testProof.getResult("x") == nil {
+	if testProof.GetResult("x") == nil {
 		t.Error("Missing result for secret")
 	}
-	if testProof.getResult("x_hider") == nil {
+	if testProof.GetResult("x_hider") == nil {
 		t.Error("Missing result for hider")
 	}
 	if !listCmp(listSecrets, listProof) {
@@ -70,8 +70,8 @@ func TestPedersonRepresentationFlow(t *testing.T) {
 	testProof := testSecret.buildProof(g, big.NewInt(2))
 	testProof.setName("x")
 
-	secretBases := newBaseMerge(&g, &testSecret)
-	proofBases := newBaseMerge(&g, &testProof)
+	secretBases := NewBaseMerge(&g, &testSecret)
+	proofBases := NewBaseMerge(&g, &testProof)
 
 	s := newPedersonRepresentationProofStructure("x")
 
@@ -98,8 +98,8 @@ func TestPedersonRangeFlow(t *testing.T) {
 	testProof := testSecret.buildProof(g, big.NewInt(2))
 	testProof.setName("x")
 
-	secretBases := newBaseMerge(&g, &testSecret)
-	proofBases := newBaseMerge(&g, &testProof)
+	secretBases := NewBaseMerge(&g, &testSecret)
+	proofBases := NewBaseMerge(&g, &testProof)
 
 	s := newPedersonRangeProofStructure("x", 4, 2)
 

@@ -9,7 +9,7 @@ type RangeTestSecret struct {
 	randomizers map[string]*big.Int
 }
 
-func (rs *RangeTestSecret) getSecret(name string) *big.Int {
+func (rs *RangeTestSecret) GetSecret(name string) *big.Int {
 	res, ok := rs.secrets[name]
 	if ok {
 		return res
@@ -17,7 +17,7 @@ func (rs *RangeTestSecret) getSecret(name string) *big.Int {
 	return nil
 }
 
-func (rs *RangeTestSecret) getRandomizer(name string) *big.Int {
+func (rs *RangeTestSecret) GetRandomizer(name string) *big.Int {
 	res, ok := rs.randomizers[name]
 	if ok {
 		return res
@@ -29,21 +29,21 @@ type RangeTestCommit struct {
 	commits map[string]*big.Int
 }
 
-func (rc *RangeTestCommit) names() (ret []string) {
+func (rc *RangeTestCommit) GetNames() (ret []string) {
 	for name := range rc.commits {
 		ret = append(ret, name)
 	}
 	return
 }
-func (rc *RangeTestCommit) getBase(name string) *big.Int {
+func (rc *RangeTestCommit) GetBase(name string) *big.Int {
 	res, ok := rc.commits[name]
 	if ok {
 		return res
 	}
 	return nil
 }
-func (rc *RangeTestCommit) exp(ret *big.Int, name string, exp, P *big.Int) bool {
-	base := rc.getBase(name)
+func (rc *RangeTestCommit) Exp(ret *big.Int, name string, exp, P *big.Int) bool {
+	base := rc.GetBase(name)
 	ret.Exp(base, exp, P)
 	return true
 }
@@ -73,11 +73,11 @@ func TestRangeProofBasic(t *testing.T) {
 	Follower.(*TestFollower).count = 0
 
 	var s rangeProofStructure
-	s.lhs = []lhsContribution{
-		lhsContribution{"x", big.NewInt(1)},
+	s.Lhs = []LhsContribution{
+		LhsContribution{"x", big.NewInt(1)},
 	}
-	s.rhs = []rhsContribution{
-		rhsContribution{"g", "x", 1},
+	s.Rhs = []RhsContribution{
+		RhsContribution{"g", "x", 1},
 	}
 	s.rangeSecret = "x"
 	s.l1 = 3
@@ -94,7 +94,7 @@ func TestRangeProofBasic(t *testing.T) {
 		"x": new(big.Int).Exp(g.g, big.NewInt(7), g.p),
 	}
 
-	bases := newBaseMerge(&g, &commit)
+	bases := NewBaseMerge(&g, &commit)
 
 	if !s.isTrue(g, &bases, &secret) {
 		t.Error("Statement incorrectly declared false")
@@ -139,12 +139,12 @@ func TestRangeProofComplex(t *testing.T) {
 	Follower.(*TestFollower).count = 0
 
 	var s rangeProofStructure
-	s.lhs = []lhsContribution{
-		lhsContribution{"c", big.NewInt(1)},
+	s.Lhs = []LhsContribution{
+		LhsContribution{"c", big.NewInt(1)},
 	}
-	s.rhs = []rhsContribution{
-		rhsContribution{"g", "x", 1},
-		rhsContribution{"h", "xh", 1},
+	s.Rhs = []RhsContribution{
+		RhsContribution{"g", "x", 1},
+		RhsContribution{"h", "xh", 1},
 	}
 	s.l1 = 3
 	s.l2 = 2
@@ -165,7 +165,7 @@ func TestRangeProofComplex(t *testing.T) {
 			g.p),
 	}
 
-	bases := newBaseMerge(&g, &commit)
+	bases := NewBaseMerge(&g, &commit)
 
 	if !s.isTrue(g, &bases, &secret) {
 		t.Error("Statement incorrectly declared false")
@@ -203,12 +203,12 @@ func TestRangeProofComplex(t *testing.T) {
 func TestRangeProofVerifyStructureEmpty(t *testing.T) {
 	var proof RangeProof
 	var s rangeProofStructure
-	s.lhs = []lhsContribution{
-		lhsContribution{"c", big.NewInt(1)},
+	s.Lhs = []LhsContribution{
+		LhsContribution{"c", big.NewInt(1)},
 	}
-	s.rhs = []rhsContribution{
-		rhsContribution{"g", "x", 1},
-		rhsContribution{"h", "xh", 1},
+	s.Rhs = []RhsContribution{
+		RhsContribution{"g", "x", 1},
+		RhsContribution{"h", "xh", 1},
 	}
 	s.l1 = 3
 	s.l2 = 2
@@ -221,12 +221,12 @@ func TestRangeProofVerifyStructureEmpty(t *testing.T) {
 func TestRangeProofVerifyStructureMissingVar(t *testing.T) {
 	var proof RangeProof
 	var s rangeProofStructure
-	s.lhs = []lhsContribution{
-		lhsContribution{"c", big.NewInt(1)},
+	s.Lhs = []LhsContribution{
+		LhsContribution{"c", big.NewInt(1)},
 	}
-	s.rhs = []rhsContribution{
-		rhsContribution{"g", "x", 1},
-		rhsContribution{"h", "xh", 1},
+	s.Rhs = []RhsContribution{
+		RhsContribution{"g", "x", 1},
+		RhsContribution{"h", "xh", 1},
 	}
 	s.l1 = 3
 	s.l2 = 2
@@ -248,12 +248,12 @@ func TestRangeProofVerifyStructureMissingVar(t *testing.T) {
 func TestRangeProofVerifyStructureTooShortVar(t *testing.T) {
 	var proof RangeProof
 	var s rangeProofStructure
-	s.lhs = []lhsContribution{
-		lhsContribution{"c", big.NewInt(1)},
+	s.Lhs = []LhsContribution{
+		LhsContribution{"c", big.NewInt(1)},
 	}
-	s.rhs = []rhsContribution{
-		rhsContribution{"g", "x", 1},
-		rhsContribution{"h", "xh", 1},
+	s.Rhs = []RhsContribution{
+		RhsContribution{"g", "x", 1},
+		RhsContribution{"h", "xh", 1},
 	}
 	s.l1 = 3
 	s.l2 = 2
@@ -284,12 +284,12 @@ func TestRangeProofVerifyStructureTooShortVar(t *testing.T) {
 func TestRangeProofVerifyStructureMissingNo(t *testing.T) {
 	var proof RangeProof
 	var s rangeProofStructure
-	s.lhs = []lhsContribution{
-		lhsContribution{"c", big.NewInt(1)},
+	s.Lhs = []LhsContribution{
+		LhsContribution{"c", big.NewInt(1)},
 	}
-	s.rhs = []rhsContribution{
-		rhsContribution{"g", "x", 1},
-		rhsContribution{"h", "xh", 1},
+	s.Rhs = []RhsContribution{
+		RhsContribution{"g", "x", 1},
+		RhsContribution{"h", "xh", 1},
 	}
 	s.l1 = 3
 	s.l2 = 2
@@ -324,12 +324,12 @@ func TestRangeProofFake(t *testing.T) {
 	}
 
 	var s rangeProofStructure
-	s.lhs = []lhsContribution{
-		lhsContribution{"c", big.NewInt(1)},
+	s.Lhs = []LhsContribution{
+		LhsContribution{"c", big.NewInt(1)},
 	}
-	s.rhs = []rhsContribution{
-		rhsContribution{"g", "x", 1},
-		rhsContribution{"h", "xh", 1},
+	s.Rhs = []RhsContribution{
+		RhsContribution{"g", "x", 1},
+		RhsContribution{"h", "xh", 1},
 	}
 	s.l1 = 3
 	s.l2 = 2
@@ -348,12 +348,12 @@ func TestRangeProofJSON(t *testing.T) {
 	}
 
 	var s rangeProofStructure
-	s.lhs = []lhsContribution{
-		lhsContribution{"c", big.NewInt(1)},
+	s.Lhs = []LhsContribution{
+		LhsContribution{"c", big.NewInt(1)},
 	}
-	s.rhs = []rhsContribution{
-		rhsContribution{"g", "x", 1},
-		rhsContribution{"h", "xh", 1},
+	s.Rhs = []RhsContribution{
+		RhsContribution{"g", "x", 1},
+		RhsContribution{"h", "xh", 1},
 	}
 	s.l1 = 3
 	s.l2 = 2

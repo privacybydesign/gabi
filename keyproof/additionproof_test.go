@@ -23,8 +23,8 @@ func TestAdditionProofFlow(t *testing.T) {
 	mod := newPedersonSecret(g, "mod", big.NewInt(n))
 	result := newPedersonSecret(g, "result", big.NewInt(d))
 
-	bases := newBaseMerge(&g, &a1, &a2, &mod, &result)
-	secrets := newSecretMerge(&a1, &a2, &mod, &result)
+	bases := NewBaseMerge(&g, &a1, &a2, &mod, &result)
+	secrets := NewSecretMerge(&a1, &a2, &mod, &result)
 
 	s := newAdditionProofStructure("a1", "a2", "mod", "result", 3)
 	if !s.isTrue(&secrets) {
@@ -52,8 +52,8 @@ func TestAdditionProofFlow(t *testing.T) {
 	resultproof := result.buildProof(g, big.NewInt(12345))
 	resultproof.setName("result")
 
-	basesProof := newBaseMerge(&g, &a1proof, &a2proof, &modproof, &resultproof)
-	proofdata := newProofMerge(&a1proof, &a2proof, &modproof, &resultproof)
+	basesProof := NewBaseMerge(&g, &a1proof, &a2proof, &modproof, &resultproof)
+	proofdata := NewProofMerge(&a1proof, &a2proof, &modproof, &resultproof)
 
 	if !s.verifyProofStructure(proof) {
 		t.Error("Proof structure marked as invalid.\n")

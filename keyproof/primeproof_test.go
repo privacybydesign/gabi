@@ -17,7 +17,7 @@ func TestPrimeProofFlow(t *testing.T) {
 
 	const p = 11
 	pCommit := newPedersonSecret(g, "p", big.NewInt(p))
-	bases := newBaseMerge(&g, &pCommit)
+	bases := NewBaseMerge(&g, &pCommit)
 
 	listSecrets, commit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &bases, &pCommit)
 
@@ -34,7 +34,7 @@ func TestPrimeProofFlow(t *testing.T) {
 	pProof := pCommit.buildProof(g, big.NewInt(12345))
 	pProof.setName("p")
 
-	basesProof := newBaseMerge(&g, &pProof)
+	basesProof := NewBaseMerge(&g, &pProof)
 
 	if !s.verifyProofStructure(big.NewInt(12345), proof) {
 		t.Error("Proof structure rejected.\n")

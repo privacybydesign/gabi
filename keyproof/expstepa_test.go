@@ -17,8 +17,8 @@ func TestExpStepAFlow(t *testing.T) {
 	prePederson := newPedersonSecret(g, "pre", big.NewInt(5))
 	postPederson := newPedersonSecret(g, "post", big.NewInt(5))
 
-	bases := newBaseMerge(&g, &bitPederson, &prePederson, &postPederson)
-	secrets := newSecretMerge(&bitPederson, &prePederson, &postPederson)
+	bases := NewBaseMerge(&g, &bitPederson, &prePederson, &postPederson)
+	secrets := NewSecretMerge(&bitPederson, &prePederson, &postPederson)
 
 	s := newExpStepAStructure("bit", "pre", "post")
 
@@ -51,7 +51,7 @@ func TestExpStepAFlow(t *testing.T) {
 	postProof := postPederson.buildProof(g, big.NewInt(12345))
 	postProof.setName("post")
 
-	proofBases := newBaseMerge(&g, &bitProof, &preProof, &postProof)
+	proofBases := NewBaseMerge(&g, &bitProof, &preProof, &postProof)
 
 	listProof := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &proofBases, proof)
 

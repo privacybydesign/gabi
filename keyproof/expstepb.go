@@ -8,8 +8,8 @@ type expStepBStructure struct {
 	bitname    string
 	mulname    string
 	myname     string
-	bitRep     representationProofStructure
-	mulRep     representationProofStructure
+	bitRep     RepresentationProofStructure
+	mulRep     RepresentationProofStructure
 	prePostMul multiplicationProofStructure
 }
 
@@ -33,7 +33,7 @@ type expStepBCommit struct {
 	multiplicationCommit multiplicationProofCommit
 }
 
-func (p *ExpStepBProof) getResult(name string) *big.Int {
+func (p *ExpStepBProof) GetResult(name string) *big.Int {
 	if name == p.bitname {
 		return p.BitHiderResult
 	}
@@ -46,11 +46,11 @@ func (p *ExpStepBProof) getResult(name string) *big.Int {
 	return nil
 }
 
-func (c *expStepBCommit) getSecret(name string) *big.Int {
+func (c *expStepBCommit) GetSecret(name string) *big.Int {
 	return nil
 }
 
-func (c *expStepBCommit) getRandomizer(name string) *big.Int {
+func (c *expStepBCommit) GetRandomizer(name string) *big.Int {
 	if name == c.bitname {
 		return c.bitHiderRandomizer
 	}
@@ -68,12 +68,12 @@ func newExpStepBStructure(bitname, prename, postname, mulname, modname string, b
 	structure.bitname = bitname
 	structure.mulname = mulname
 	structure.myname = strings.Join([]string{bitname, prename, postname, "expb"}, "_")
-	structure.bitRep = representationProofStructure{
-		[]lhsContribution{
+	structure.bitRep = RepresentationProofStructure{
+		[]LhsContribution{
 			{bitname, big.NewInt(1)},
 			{"g", big.NewInt(-1)},
 		},
-		[]rhsContribution{
+		[]RhsContribution{
 			{"h", strings.Join([]string{bitname, "hider"}, "_"), 1},
 		},
 	}
@@ -90,7 +90,7 @@ func (s *expStepBStructure) numCommitments() int {
 	return s.bitRep.numCommitments() + s.mulRep.numCommitments() + s.prePostMul.numCommitments()
 }
 
-func (s *expStepBStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, expStepBCommit) {
+func (s *expStepBStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases BaseLookup, secretdata SecretLookup) ([]*big.Int, expStepBCommit) {
 	var commit expStepBCommit
 
 	// build up commit structure
@@ -102,7 +102,7 @@ func (s *expStepBStructure) generateCommitmentsFromSecrets(g group, list []*big.
 	commit.bitHiderRandomizer = common.FastRandomBigInt(g.order)
 
 	// Inner secrets
-	secrets := newSecretMerge(&commit, secretdata)
+	secrets := NewSecretMerge(&commit, secretdata)
 
 	// Generate commitment list
 	list = s.bitRep.generateCommitmentsFromSecrets(g, list, bases, &secrets)
@@ -112,9 +112,9 @@ func (s *expStepBStructure) generateCommitmentsFromSecrets(g group, list []*big.
 	return list, commit
 }
 
-func (s *expStepBStructure) buildProof(g group, challenge *big.Int, commit expStepBCommit, secretdata secretLookup) ExpStepBProof {
+func (s *expStepBStructure) buildProof(g group, challenge *big.Int, commit expStepBCommit, secretdata SecretLookup) ExpStepBProof {
 	// inner secrets
-	secrets := newSecretMerge(&commit, secretdata)
+	secrets := NewSecretMerge(&commit, secretdata)
 
 	// Build proof
 	var proof ExpStepBProof
@@ -123,21 +123,21 @@ func (s *expStepBStructure) buildProof(g group, challenge *big.Int, commit expSt
 			commit.mulRandomizer,
 			new(big.Int).Mul(
 				challenge,
-				secretdata.getSecret(s.mulname))),
+				secretdata.GetSecret(s.mulname))),
 		g.order)
 	proof.MulHiderResult = new(big.Int).Mod(
 		new(big.Int).Sub(
 			commit.mulHiderRandomizer,
 			new(big.Int).Mul(
 				challenge,
-				secretdata.getSecret(strings.Join([]string{s.mulname, "hider"}, "_")))),
+				secretdata.GetSecret(strings.Join([]string{s.mulname, "hider"}, "_")))),
 		g.order)
 	proof.BitHiderResult = new(big.Int).Mod(
 		new(big.Int).Sub(
 			commit.bitHiderRandomizer,
 			new(big.Int).Mul(
 				challenge,
-				secretdata.getSecret(strings.Join([]string{s.bitname, "hider"}, "_")))),
+				secretdata.GetSecret(strings.Join([]string{s.bitname, "hider"}, "_")))),
 		g.order)
 	proof.MultiplicationProof = s.prePostMul.buildProof(g, challenge, commit.multiplicationCommit, &secrets)
 	return proof
@@ -160,7 +160,7 @@ func (s *expStepBStructure) verifyProofStructure(proof ExpStepBProof) bool {
 	return proof.MulResult != nil && proof.MulHiderResult != nil && proof.BitHiderResult != nil
 }
 
-func (s *expStepBStructure) generateCommitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases baseLookup, proof ExpStepBProof) []*big.Int {
+func (s *expStepBStructure) generateCommitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases BaseLookup, proof ExpStepBProof) []*big.Int {
 	// inner proof
 	proof.bitname = strings.Join([]string{s.bitname, "hider"}, "_")
 	proof.mulname = s.mulname
@@ -174,8 +174,8 @@ func (s *expStepBStructure) generateCommitmentsFromProof(g group, list []*big.In
 	return list
 }
 
-func (s *expStepBStructure) isTrue(secretdata secretLookup) bool {
-	if secretdata.getSecret(s.bitname).Cmp(big.NewInt(1)) != 0 {
+func (s *expStepBStructure) isTrue(secretdata SecretLookup) bool {
+	if secretdata.GetSecret(s.bitname).Cmp(big.NewInt(1)) != 0 {
 		return false
 	}
 	return s.prePostMul.isTrue(secretdata)

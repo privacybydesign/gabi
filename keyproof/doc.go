@@ -137,7 +137,7 @@ Finally, each proof has a number of utility functions:
 
 To make it possible to chain these proofs together, and to hand off needed
 values between complicated subproofs, this library contains structures to aid
-in lookup of such values. These are baseLookup, secretLookup and proofLookup.
+in lookup of such values. These are BaseLookup, SecretLookup and ProofLookup.
 Any proof that needs to provides bases, secrets or proofdata to other
 subproofs construct these. They provide lookup functions that can provide
 bases, secrets, hiders and proof results given the name of the relevant
@@ -147,8 +147,8 @@ going to use. This flexibility is needed because some subproofs are repeated
 many times in the overal proof that the key is properly generated.
 
 Finally, pederson contains the container for storing variables. It also exposes
-lookup interfaces for base, secret and proofdata related to its variable. It is
-pedersons that are typically combined by proofs to construct base, secret and
+lookup interfaces for Base, secret and proofdata related to its variable. It is
+pedersons that are typically combined by proofs to construct Base, secret and
 prooflookups for their subproofs.
 
 Having outlined these tools, we can now take a closer look at the proofs

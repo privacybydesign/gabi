@@ -30,7 +30,7 @@ func almostSafePrimeProductBuildCommitments(list []*big.Int, Pprime *big.Int, Qp
 	commit.nonce = common.FastRandomBigInt(nonceMax)
 
 	for i := 0; i < almostSafePrimeProductIters; i++ {
-		// Calculate base from nonce
+		// Calculate Base from nonce
 		curc := common.GetHashNumber(commit.nonce, nil, i, uint(N.BitLen()))
 		curc.Mod(curc, N)
 
@@ -140,7 +140,7 @@ func almostSafePrimeProductVerifyProof(N *big.Int, challenge *big.Int, index *bi
 
 	// Check responses
 	for i := 0; i < almostSafePrimeProductIters; i++ {
-		// Generate base
+		// Generate Base
 		base := common.GetHashNumber(proof.Nonce, nil, i, uint(N.BitLen()))
 		base.Mod(base, N)
 

@@ -10,8 +10,8 @@ type multiplicationProofStructure struct {
 	mod                   string
 	result                string
 	myname                string
-	multRepresentation    representationProofStructure
-	modMultRepresentation representationProofStructure
+	multRepresentation    RepresentationProofStructure
+	modMultRepresentation RepresentationProofStructure
 	modMultRange          rangeProofStructure
 }
 
@@ -30,21 +30,21 @@ type multiplicationProofCommit struct {
 	rangeCommit     rangeCommit
 }
 
-func (p *MultiplicationProof) getResult(name string) *big.Int {
+func (p *MultiplicationProof) GetResult(name string) *big.Int {
 	if name == p.nameHider {
 		return p.HiderResult
 	}
 	return nil
 }
 
-func (c *multiplicationProofCommit) getSecret(name string) *big.Int {
+func (c *multiplicationProofCommit) GetSecret(name string) *big.Int {
 	if name == c.nameHider {
 		return c.hider
 	}
 	return nil
 }
 
-func (c *multiplicationProofCommit) getRandomizer(name string) *big.Int {
+func (c *multiplicationProofCommit) GetRandomizer(name string) *big.Int {
 	if name == c.nameHider {
 		return c.hiderRandomizer
 	}
@@ -59,11 +59,11 @@ func newMultiplicationProofStructure(m1, m2, mod, result string, l uint) multipl
 	structure.mod = mod
 	structure.result = result
 	structure.myname = strings.Join([]string{m1, m2, mod, result, "mul"}, "_")
-	structure.multRepresentation = representationProofStructure{
-		[]lhsContribution{
+	structure.multRepresentation = RepresentationProofStructure{
+		[]LhsContribution{
 			{result, big.NewInt(1)},
 		},
-		[]rhsContribution{
+		[]RhsContribution{
 			{m2, m1, 1},
 			{mod, strings.Join([]string{structure.myname, "mod"}, "_"), -1},
 			{"h", strings.Join([]string{structure.myname, "hider"}, "_"), 1},
@@ -85,7 +85,7 @@ func (s *multiplicationProofStructure) numCommitments() int {
 		1
 }
 
-func (s *multiplicationProofStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, multiplicationProofCommit) {
+func (s *multiplicationProofStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases BaseLookup, secretdata SecretLookup) ([]*big.Int, multiplicationProofCommit) {
 	var commit multiplicationProofCommit
 
 	// Generate the neccesary commit data for our parts of the proof
@@ -96,25 +96,25 @@ func (s *multiplicationProofStructure) generateCommitmentsFromSecrets(g group, l
 		new(big.Int).Div(
 			new(big.Int).Sub(
 				new(big.Int).Mul(
-					secretdata.getSecret(s.m1),
-					secretdata.getSecret(s.m2)),
-				secretdata.getSecret(s.result)),
-			secretdata.getSecret(s.mod)))
+					secretdata.GetSecret(s.m1),
+					secretdata.GetSecret(s.m2)),
+				secretdata.GetSecret(s.result)),
+			secretdata.GetSecret(s.mod)))
 	commit.hider = new(big.Int).Mod(
 		new(big.Int).Add(
 			new(big.Int).Sub(
-				secretdata.getSecret(strings.Join([]string{s.result, "hider"}, "_")),
+				secretdata.GetSecret(strings.Join([]string{s.result, "hider"}, "_")),
 				new(big.Int).Mul(
-					secretdata.getSecret(s.m1),
-					secretdata.getSecret(strings.Join([]string{s.m2, "hider"}, "_")))),
+					secretdata.GetSecret(s.m1),
+					secretdata.GetSecret(strings.Join([]string{s.m2, "hider"}, "_")))),
 			new(big.Int).Mul(
 				commit.modMultPederson.secret,
-				secretdata.getSecret(strings.Join([]string{s.mod, "hider"}, "_")))),
+				secretdata.GetSecret(strings.Join([]string{s.mod, "hider"}, "_")))),
 		g.order)
 	commit.hiderRandomizer = common.FastRandomBigInt(g.order)
 
 	// Build inner secrets
-	secrets := newSecretMerge(&commit, &commit.modMultPederson, secretdata)
+	secrets := NewSecretMerge(&commit, &commit.modMultPederson, secretdata)
 
 	// Generate commitments for the two proofs
 	list = commit.modMultPederson.generateCommitments(list)
@@ -125,11 +125,11 @@ func (s *multiplicationProofStructure) generateCommitmentsFromSecrets(g group, l
 	return list, commit
 }
 
-func (s *multiplicationProofStructure) buildProof(g group, challenge *big.Int, commit multiplicationProofCommit, secretdata secretLookup) MultiplicationProof {
+func (s *multiplicationProofStructure) buildProof(g group, challenge *big.Int, commit multiplicationProofCommit, secretdata SecretLookup) MultiplicationProof {
 	var proof MultiplicationProof
 
 	// Generate the proofs
-	rangeSecrets := newSecretMerge(&commit, &commit.modMultPederson, secretdata)
+	rangeSecrets := NewSecretMerge(&commit, &commit.modMultPederson, secretdata)
 	proof.RangeProof = s.modMultRange.buildProof(g, challenge, commit.rangeCommit, &rangeSecrets)
 	proof.ModMultProof = commit.modMultPederson.buildProof(g, challenge)
 	proof.HiderResult = new(big.Int).Mod(
@@ -161,12 +161,12 @@ func (s *multiplicationProofStructure) verifyProofStructure(proof Multiplication
 	return true
 }
 
-func (s *multiplicationProofStructure) generateCommitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases baseLookup, proofdata proofLookup, proof MultiplicationProof) []*big.Int {
+func (s *multiplicationProofStructure) generateCommitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases BaseLookup, proofdata ProofLookup, proof MultiplicationProof) []*big.Int {
 	// Build inner proof lookup
 	proof.ModMultProof.setName(strings.Join([]string{s.myname, "mod"}, "_"))
 	proof.nameHider = strings.Join([]string{s.myname, "hider"}, "_")
-	proofs := newProofMerge(&proof, &proof.ModMultProof, proofdata)
-	innerBases := newBaseMerge(&proof.ModMultProof, bases)
+	proofs := NewProofMerge(&proof, &proof.ModMultProof, proofdata)
+	innerBases := NewBaseMerge(&proof.ModMultProof, bases)
 
 	// And regenerate the commitments
 	list = proof.ModMultProof.generateCommitments(list)
@@ -177,17 +177,17 @@ func (s *multiplicationProofStructure) generateCommitmentsFromProof(g group, lis
 	return list
 }
 
-func (s *multiplicationProofStructure) isTrue(secretdata secretLookup) bool {
+func (s *multiplicationProofStructure) isTrue(secretdata SecretLookup) bool {
 	div := new(big.Int)
 	mod := new(big.Int)
 
 	div.DivMod(
 		new(big.Int).Sub(
 			new(big.Int).Mul(
-				secretdata.getSecret(s.m1),
-				secretdata.getSecret(s.m2)),
-			secretdata.getSecret(s.result)),
-		secretdata.getSecret(s.mod),
+				secretdata.GetSecret(s.m1),
+				secretdata.GetSecret(s.m2)),
+			secretdata.GetSecret(s.result)),
+		secretdata.GetSecret(s.mod),
 		mod)
 
 	return mod.Cmp(big.NewInt(0)) == 0 && uint(div.BitLen()) <= s.modMultRange.l2

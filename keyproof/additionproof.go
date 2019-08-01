@@ -10,7 +10,7 @@ type additionProofStructure struct {
 	mod               string
 	result            string
 	myname            string
-	addRepresentation representationProofStructure
+	addRepresentation RepresentationProofStructure
 	addRange          rangeProofStructure
 }
 
@@ -32,7 +32,7 @@ type additionProofCommit struct {
 	rangeCommit      rangeCommit
 }
 
-func (p *AdditionProof) getResult(name string) *big.Int {
+func (p *AdditionProof) GetResult(name string) *big.Int {
 	if name == p.nameMod {
 		return p.ModAddResult
 	}
@@ -42,7 +42,7 @@ func (p *AdditionProof) getResult(name string) *big.Int {
 	return nil
 }
 
-func (c *additionProofCommit) getSecret(name string) *big.Int {
+func (c *additionProofCommit) GetSecret(name string) *big.Int {
 	if name == c.nameMod {
 		return c.modAdd
 	}
@@ -52,7 +52,7 @@ func (c *additionProofCommit) getSecret(name string) *big.Int {
 	return nil
 }
 
-func (c *additionProofCommit) getRandomizer(name string) *big.Int {
+func (c *additionProofCommit) GetRandomizer(name string) *big.Int {
 	if name == c.nameMod {
 		return c.modAddRandomizer
 	}
@@ -69,13 +69,13 @@ func newAdditionProofStructure(a1, a2, mod, result string, l uint) additionProof
 	structure.mod = mod
 	structure.result = result
 	structure.myname = strings.Join([]string{a1, a2, mod, result, "add"}, "_")
-	structure.addRepresentation = representationProofStructure{
-		[]lhsContribution{
+	structure.addRepresentation = RepresentationProofStructure{
+		[]LhsContribution{
 			{result, big.NewInt(1)},
 			{a1, big.NewInt(-1)},
 			{a2, big.NewInt(-1)},
 		},
-		[]rhsContribution{
+		[]RhsContribution{
 			{mod, strings.Join([]string{structure.myname, "mod"}, "_"), 1},
 			{"h", strings.Join([]string{structure.myname, "hider"}, "_"), 1},
 		},
@@ -97,7 +97,7 @@ func (s *additionProofStructure) numCommitments() int {
 	return s.addRepresentation.numCommitments() + s.addRange.numCommitments()
 }
 
-func (s *additionProofStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, additionProofCommit) {
+func (s *additionProofStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases BaseLookup, secretdata SecretLookup) ([]*big.Int, additionProofCommit) {
 	var commit additionProofCommit
 
 	// Generate needed commit data
@@ -105,27 +105,27 @@ func (s *additionProofStructure) generateCommitmentsFromSecrets(g group, list []
 	commit.nameHider = strings.Join([]string{s.myname, "hider"}, "_")
 	commit.modAdd = new(big.Int).Div(
 		new(big.Int).Sub(
-			secretdata.getSecret(s.result),
+			secretdata.GetSecret(s.result),
 			new(big.Int).Add(
-				secretdata.getSecret(s.a1),
-				secretdata.getSecret(s.a2))),
-		secretdata.getSecret(s.mod))
+				secretdata.GetSecret(s.a1),
+				secretdata.GetSecret(s.a2))),
+		secretdata.GetSecret(s.mod))
 	commit.modAddRandomizer = common.FastRandomBigInt(g.order)
 	commit.hider = new(big.Int).Mod(
 		new(big.Int).Sub(
-			secretdata.getSecret(strings.Join([]string{s.result, "hider"}, "_")),
+			secretdata.GetSecret(strings.Join([]string{s.result, "hider"}, "_")),
 			new(big.Int).Add(
 				new(big.Int).Add(
-					secretdata.getSecret(strings.Join([]string{s.a1, "hider"}, "_")),
-					secretdata.getSecret(strings.Join([]string{s.a2, "hider"}, "_"))),
+					secretdata.GetSecret(strings.Join([]string{s.a1, "hider"}, "_")),
+					secretdata.GetSecret(strings.Join([]string{s.a2, "hider"}, "_"))),
 				new(big.Int).Mul(
-					secretdata.getSecret(strings.Join([]string{s.mod, "hider"}, "_")),
+					secretdata.GetSecret(strings.Join([]string{s.mod, "hider"}, "_")),
 					commit.modAdd))),
 		g.order)
 	commit.hiderRandomizer = common.FastRandomBigInt(g.order)
 
 	// build inner secrets
-	secrets := newSecretMerge(&commit, secretdata)
+	secrets := NewSecretMerge(&commit, secretdata)
 
 	// And build commits
 	list = s.addRepresentation.generateCommitmentsFromSecrets(g, list, bases, &secrets)
@@ -134,10 +134,10 @@ func (s *additionProofStructure) generateCommitmentsFromSecrets(g group, list []
 	return list, commit
 }
 
-func (s *additionProofStructure) buildProof(g group, challenge *big.Int, commit additionProofCommit, secretdata secretLookup) AdditionProof {
+func (s *additionProofStructure) buildProof(g group, challenge *big.Int, commit additionProofCommit, secretdata SecretLookup) AdditionProof {
 	var proof AdditionProof
 
-	rangeSecrets := newSecretMerge(&commit, secretdata)
+	rangeSecrets := NewSecretMerge(&commit, secretdata)
 	proof.RangeProof = s.addRange.buildProof(g, challenge, commit.rangeCommit, &rangeSecrets)
 	proof.ModAddResult = new(big.Int).Mod(
 		new(big.Int).Sub(
@@ -177,11 +177,11 @@ func (s *additionProofStructure) verifyProofStructure(proof AdditionProof) bool 
 	return true
 }
 
-func (s *additionProofStructure) generateCommitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases baseLookup, proofdata proofLookup, proof AdditionProof) []*big.Int {
+func (s *additionProofStructure) generateCommitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases BaseLookup, proofdata ProofLookup, proof AdditionProof) []*big.Int {
 	// build inner proof lookup
 	proof.nameMod = strings.Join([]string{s.myname, "mod"}, "_")
 	proof.nameHider = strings.Join([]string{s.myname, "hider"}, "_")
-	proofs := newProofMerge(&proof, proofdata)
+	proofs := NewProofMerge(&proof, proofdata)
 
 	// build commitments
 	list = s.addRepresentation.generateCommitmentsFromProof(g, list, challenge, bases, &proofs)
@@ -190,17 +190,17 @@ func (s *additionProofStructure) generateCommitmentsFromProof(g group, list []*b
 	return list
 }
 
-func (s *additionProofStructure) isTrue(secretdata secretLookup) bool {
+func (s *additionProofStructure) isTrue(secretdata SecretLookup) bool {
 	div := new(big.Int)
 	mod := new(big.Int)
 
 	div.DivMod(
 		new(big.Int).Sub(
-			secretdata.getSecret(s.result),
+			secretdata.GetSecret(s.result),
 			new(big.Int).Add(
-				secretdata.getSecret(s.a1),
-				secretdata.getSecret(s.a2))),
-		secretdata.getSecret(s.mod),
+				secretdata.GetSecret(s.a1),
+				secretdata.GetSecret(s.a2))),
+		secretdata.GetSecret(s.mod),
 		mod)
 
 	return mod.Cmp(big.NewInt(0)) == 0 && uint(div.BitLen()) <= s.addRange.l2

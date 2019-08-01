@@ -8,7 +8,7 @@ type RepTestSecret struct {
 	randomizers map[string]*big.Int
 }
 
-func (rs *RepTestSecret) getSecret(name string) *big.Int {
+func (rs *RepTestSecret) GetSecret(name string) *big.Int {
 	res, ok := rs.secrets[name]
 	if ok {
 		return res
@@ -16,7 +16,7 @@ func (rs *RepTestSecret) getSecret(name string) *big.Int {
 	return nil
 }
 
-func (rs *RepTestSecret) getRandomizer(name string) *big.Int {
+func (rs *RepTestSecret) GetRandomizer(name string) *big.Int {
 	res, ok := rs.randomizers[name]
 	if ok {
 		return res
@@ -28,7 +28,7 @@ type RepTestProof struct {
 	results map[string]*big.Int
 }
 
-func (rp *RepTestProof) getResult(name string) *big.Int {
+func (rp *RepTestProof) GetResult(name string) *big.Int {
 	res, ok := rp.results[name]
 	if ok {
 		return res
@@ -40,19 +40,19 @@ type RepTestCommit struct {
 	commits map[string]*big.Int
 }
 
-func (rc *RepTestCommit) getBase(name string) *big.Int {
+func (rc *RepTestCommit) GetBase(name string) *big.Int {
 	res, ok := rc.commits[name]
 	if ok {
 		return res
 	}
 	return nil
 }
-func (rc *RepTestCommit) exp(ret *big.Int, name string, exp, P *big.Int) bool {
-	base := rc.getBase(name)
+func (rc *RepTestCommit) Exp(ret *big.Int, name string, exp, P *big.Int) bool {
+	base := rc.GetBase(name)
 	ret.Exp(base, exp, P)
 	return true
 }
-func (rc *RepTestCommit) names() (ret []string) {
+func (rc *RepTestCommit) GetNames() (ret []string) {
 	for name := range rc.commits {
 		ret = append(ret, name)
 	}
@@ -68,12 +68,12 @@ func TestRepresentationProofBasics(t *testing.T) {
 
 	Follower.(*TestFollower).count = 0
 
-	var s representationProofStructure
-	s.lhs = []lhsContribution{
-		lhsContribution{"x", big.NewInt(1)},
+	var s RepresentationProofStructure
+	s.Lhs = []LhsContribution{
+		LhsContribution{"x", big.NewInt(1)},
 	}
-	s.rhs = []rhsContribution{
-		rhsContribution{"g", "x", 1},
+	s.Rhs = []RhsContribution{
+		RhsContribution{"g", "x", 1},
 	}
 
 	var secret RepTestSecret
@@ -86,7 +86,7 @@ func TestRepresentationProofBasics(t *testing.T) {
 	var proof RepTestProof
 	proof.results = map[string]*big.Int{"x": big.NewInt(5)}
 
-	bases := newBaseMerge(&g, &commit)
+	bases := NewBaseMerge(&g, &commit)
 
 	listSecrets := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &bases, &secret)
 
@@ -127,13 +127,13 @@ func TestRepresentationProofComplex(t *testing.T) {
 		return
 	}
 
-	var s representationProofStructure
-	s.lhs = []lhsContribution{
-		lhsContribution{"c", big.NewInt(4)},
+	var s RepresentationProofStructure
+	s.Lhs = []LhsContribution{
+		LhsContribution{"c", big.NewInt(4)},
 	}
-	s.rhs = []rhsContribution{
-		rhsContribution{"g", "x", 2},
-		rhsContribution{"h", "y", 1},
+	s.Rhs = []RhsContribution{
+		RhsContribution{"g", "x", 2},
+		RhsContribution{"h", "y", 1},
 	}
 
 	Follower.(*TestFollower).count = 0
@@ -163,7 +163,7 @@ func TestRepresentationProofComplex(t *testing.T) {
 		"y": big.NewInt(17),
 	}
 
-	bases := newBaseMerge(&g, &commit)
+	bases := NewBaseMerge(&g, &commit)
 
 	listSecrets := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &bases, &secret)
 

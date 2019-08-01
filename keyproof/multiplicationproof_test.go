@@ -23,8 +23,8 @@ func TestMultiplicationProofFlow(t *testing.T) {
 	mod := newPedersonSecret(g, "mod", big.NewInt(n))
 	result := newPedersonSecret(g, "result", big.NewInt(d))
 
-	bases := newBaseMerge(&g, &m1, &m2, &mod, &result)
-	secrets := newSecretMerge(&m1, &m2, &mod, &result)
+	bases := NewBaseMerge(&g, &m1, &m2, &mod, &result)
+	secrets := NewSecretMerge(&m1, &m2, &mod, &result)
 
 	s := newMultiplicationProofStructure("m1", "m2", "mod", "result", 3)
 	if !s.isTrue(&secrets) {
@@ -52,8 +52,8 @@ func TestMultiplicationProofFlow(t *testing.T) {
 	resultproof := result.buildProof(g, big.NewInt(12345))
 	resultproof.setName("result")
 
-	basesProof := newBaseMerge(&g, &m1proof, &m2proof, &modproof, &resultproof)
-	proofdata := newProofMerge(&m1proof, &m2proof, &modproof, &resultproof)
+	basesProof := NewBaseMerge(&g, &m1proof, &m2proof, &modproof, &resultproof)
+	proofdata := NewProofMerge(&m1proof, &m2proof, &modproof, &resultproof)
 
 	if !s.verifyProofStructure(proof) {
 		t.Error("Proof structure marked as invalid.\n")

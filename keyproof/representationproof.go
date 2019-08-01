@@ -2,41 +2,41 @@ package keyproof
 
 import "github.com/privacybydesign/gabi/big"
 
-type lhsContribution struct {
-	base  string
-	power *big.Int
+type LhsContribution struct {
+	Base  string
+	Power *big.Int
 }
 
-type rhsContribution struct {
-	base   string
-	secret string
-	power  int64
+type RhsContribution struct {
+	Base   string
+	Secret string
+	Power  int64
 }
 
-type representationProofStructure struct {
-	lhs []lhsContribution
-	rhs []rhsContribution
+type RepresentationProofStructure struct {
+	Lhs []LhsContribution
+	Rhs []RhsContribution
 }
 
-func (s *representationProofStructure) numRangeProofs() int {
+func (s *RepresentationProofStructure) numRangeProofs() int {
 	return 0
 }
 
-func (s *representationProofStructure) numCommitments() int {
+func (s *RepresentationProofStructure) numCommitments() int {
 	return 1
 }
 
-func (s *representationProofStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) []*big.Int {
+func (s *RepresentationProofStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases BaseLookup, secretdata SecretLookup) []*big.Int {
 	commitment := big.NewInt(1)
 	var exp, contribution big.Int
 
-	for _, curRhs := range s.rhs {
-		// base := bases.Exp(curRhs.Base, big.NewInt(curRhs.Power), g.P)
-		// contribution := new(big.Int).Exp(base, secretdata.GetRandomizer(curRhs.Secret), g.P)
-		exp.Set(big.NewInt(curRhs.power))
-		exp.Mul(&exp, secretdata.getRandomizer(curRhs.secret))
+	for _, curRhs := range s.Rhs {
+		// Base := bases.Exp(curRhs.Base, big.NewInt(curRhs.Power), g.P)
+		// contribution := new(big.Int).Exp(Base, secretdata.GetRandomizer(curRhs.Secret), g.P)
+		exp.Set(big.NewInt(curRhs.Power))
+		exp.Mul(&exp, secretdata.GetRandomizer(curRhs.Secret))
 		g.orderMod.Mod(&exp, &exp)
-		bases.exp(&contribution, curRhs.base, &exp, g.p)
+		bases.Exp(&contribution, curRhs.Base, &exp, g.p)
 		commitment.Mul(commitment, &contribution)
 		g.pMod.Mod(commitment, commitment)
 	}
@@ -44,23 +44,23 @@ func (s *representationProofStructure) generateCommitmentsFromSecrets(g group, l
 	return append(list, commitment)
 }
 
-func (s *representationProofStructure) generateCommitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases baseLookup, proofdata proofLookup) []*big.Int {
+func (s *RepresentationProofStructure) generateCommitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases BaseLookup, proofdata ProofLookup) []*big.Int {
 	var base, tmp, lhs big.Int
 	lhs.SetUint64(1)
-	for _, curLhs := range s.lhs {
-		bases.exp(&base, curLhs.base, curLhs.power, g.p)
+	for _, curLhs := range s.Lhs {
+		bases.Exp(&base, curLhs.Base, curLhs.Power, g.p)
 		tmp.Mul(&lhs, &base)
 		g.pMod.Mod(&lhs, &tmp)
 	}
 
 	commitment := new(big.Int).Exp(&lhs, challenge, g.p)
 	var exp, contribution big.Int
-	for _, curRhs := range s.rhs {
-		// base := bases.Exp(curRhs.Base, big.NewInt(curRhs.Power), g.P)
-		// contribution := new(big.Int).Exp(base, proofdata.GetResult(curRhs.Secret), g.P)
-		exp.Mul(big.NewInt(curRhs.power), proofdata.getResult(curRhs.secret))
+	for _, curRhs := range s.Rhs {
+		// Base := bases.Exp(curRhs.Base, big.NewInt(curRhs.Power), g.P)
+		// contribution := new(big.Int).Exp(Base, proofdata.GetResult(curRhs.Secret), g.P)
+		exp.Mul(big.NewInt(curRhs.Power), proofdata.GetResult(curRhs.Secret))
 		g.orderMod.Mod(&exp, &exp)
-		bases.exp(&contribution, curRhs.base, &exp, g.p)
+		bases.Exp(&contribution, curRhs.Base, &exp, g.p)
 		commitment.Mul(commitment, &contribution)
 		g.pMod.Mod(commitment, commitment)
 	}
@@ -68,22 +68,22 @@ func (s *representationProofStructure) generateCommitmentsFromProof(g group, lis
 	return append(list, commitment)
 }
 
-func (s *representationProofStructure) isTrue(g group, bases baseLookup, secretdata secretLookup) bool {
+func (s *RepresentationProofStructure) isTrue(g group, bases BaseLookup, secretdata SecretLookup) bool {
 	var base, tmp, lhs, rhs big.Int
 	lhs.SetUint64(1)
-	for _, curLhs := range s.lhs {
-		bases.exp(&base, curLhs.base, curLhs.power, g.p)
+	for _, curLhs := range s.Lhs {
+		bases.Exp(&base, curLhs.Base, curLhs.Power, g.p)
 		tmp.Mul(&lhs, &base)
 		g.pMod.Mod(&lhs, &tmp)
 	}
 
 	rhs.SetUint64(1)
 	var exp, contribution big.Int
-	for _, curRhs := range s.rhs {
-		exp.SetInt64(curRhs.power)
-		tmp.Mul(&exp, secretdata.getSecret(curRhs.secret))
+	for _, curRhs := range s.Rhs {
+		exp.SetInt64(curRhs.Power)
+		tmp.Mul(&exp, secretdata.GetSecret(curRhs.Secret))
 		g.orderMod.Mod(&exp, &tmp)
-		bases.exp(&contribution, curRhs.base, &exp, g.p)
+		bases.Exp(&contribution, curRhs.Base, &exp, g.p)
 		tmp.Mul(&rhs, &contribution)
 		g.pMod.Mod(&rhs, &tmp)
 	}

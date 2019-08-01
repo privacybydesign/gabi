@@ -24,12 +24,12 @@ type PedersonProof struct {
 	Hresult *big.Int
 }
 
-func newPedersonRepresentationProofStructure(name string) representationProofStructure {
-	var structure representationProofStructure
-	structure.lhs = []lhsContribution{
+func newPedersonRepresentationProofStructure(name string) RepresentationProofStructure {
+	var structure RepresentationProofStructure
+	structure.Lhs = []LhsContribution{
 		{name, big.NewInt(1)},
 	}
-	structure.rhs = []rhsContribution{
+	structure.Rhs = []RhsContribution{
 		{"g", name, 1},
 		{"h", strings.Join([]string{name, "hider"}, "_"), 1},
 	}
@@ -38,10 +38,10 @@ func newPedersonRepresentationProofStructure(name string) representationProofStr
 
 func newPedersonRangeProofStructure(name string, l1 uint, l2 uint) rangeProofStructure {
 	var structure rangeProofStructure
-	structure.lhs = []lhsContribution{
+	structure.Lhs = []LhsContribution{
 		{name, big.NewInt(1)},
 	}
-	structure.rhs = []rhsContribution{
+	structure.Rhs = []RhsContribution{
 		{"g", name, 1},
 		{"h", strings.Join([]string{name, "hider"}, "_"), 1},
 	}
@@ -60,8 +60,8 @@ func newPedersonSecret(g group, name string, value *big.Int) pedersonSecret {
 	result.hider = common.FastRandomBigInt(g.order)
 	result.hiderRandomizer = common.FastRandomBigInt(g.order)
 	var gCommit, hCommit big.Int
-	g.exp(&gCommit, "g", result.secret, g.p)
-	g.exp(&hCommit, "h", result.hider, g.p)
+	g.Exp(&gCommit, "g", result.secret, g.p)
+	g.Exp(&hCommit, "h", result.hider, g.p)
 	result.commit = new(big.Int)
 	result.commit.Mul(&gCommit, &hCommit)
 	result.commit.Mod(result.commit, g.p)
@@ -72,8 +72,8 @@ func newPedersonSecret(g group, name string, value *big.Int) pedersonSecret {
 func newPedersonFakeProof(g group) PedersonProof {
 	var result PedersonProof
 	var gCommit, hCommit big.Int
-	g.exp(&gCommit, "g", common.FastRandomBigInt(g.order), g.p)
-	g.exp(&hCommit, "h", common.FastRandomBigInt(g.order), g.p)
+	g.Exp(&gCommit, "g", common.FastRandomBigInt(g.order), g.p)
+	g.Exp(&hCommit, "h", common.FastRandomBigInt(g.order), g.p)
 	result.Commit = new(big.Int)
 	result.Commit.Mul(&gCommit, &hCommit)
 	result.Commit.Mod(result.Commit, g.p)
@@ -94,7 +94,7 @@ func (s *pedersonSecret) generateCommitments(list []*big.Int) []*big.Int {
 	return append(list, s.commit)
 }
 
-func (s *pedersonSecret) getSecret(name string) *big.Int {
+func (s *pedersonSecret) GetSecret(name string) *big.Int {
 	if name == s.name {
 		return s.secret
 	}
@@ -104,7 +104,7 @@ func (s *pedersonSecret) getSecret(name string) *big.Int {
 	return nil
 }
 
-func (s *pedersonSecret) getRandomizer(name string) *big.Int {
+func (s *pedersonSecret) GetRandomizer(name string) *big.Int {
 	if name == s.name {
 		return s.secretRandomizer
 	}
@@ -113,7 +113,7 @@ func (s *pedersonSecret) getRandomizer(name string) *big.Int {
 	}
 	return nil
 }
-func (s *pedersonSecret) exp(ret *big.Int, name string, exp, P *big.Int) bool {
+func (s *pedersonSecret) Exp(ret *big.Int, name string, exp, P *big.Int) bool {
 	if name != s.name {
 		return false
 	}
@@ -124,19 +124,19 @@ func (s *pedersonSecret) exp(ret *big.Int, name string, exp, P *big.Int) bool {
 	s.g.orderMod.Mod(&exp1, &tmp)
 	tmp.Mul(s.hider, exp)
 	s.g.orderMod.Mod(&exp2, &tmp)
-	s.g.exp(&ret1, "g", &exp1, s.g.p)
-	s.g.exp(&ret2, "h", &exp2, s.g.p)
+	s.g.Exp(&ret1, "g", &exp1, s.g.p)
+	s.g.Exp(&ret2, "h", &exp2, s.g.p)
 	tmp.Mul(&ret1, &ret2)
 	s.g.pMod.Mod(ret, &tmp)
 	return true
 }
-func (s *pedersonSecret) getBase(name string) *big.Int {
+func (s *pedersonSecret) GetBase(name string) *big.Int {
 	if name == s.name {
 		return s.commit
 	}
 	return nil
 }
-func (s *pedersonSecret) names() []string {
+func (s *pedersonSecret) GetNames() []string {
 	return []string{s.name}
 }
 
@@ -153,26 +153,26 @@ func (p *PedersonProof) verifyStructure() bool {
 	return p.Commit != nil && p.Sresult != nil && p.Hresult != nil
 }
 
-func (p *PedersonProof) exp(ret *big.Int, name string, exp, P *big.Int) bool {
-	base := p.getBase(name)
+func (p *PedersonProof) Exp(ret *big.Int, name string, exp, P *big.Int) bool {
+	base := p.GetBase(name)
 	if base == nil {
 		return false
 	}
 	ret.Exp(base, exp, P)
 	return true
 }
-func (p *PedersonProof) names() []string {
+func (p *PedersonProof) GetNames() []string {
 	return []string{p.name}
 }
 
-func (p *PedersonProof) getBase(name string) *big.Int {
+func (p *PedersonProof) GetBase(name string) *big.Int {
 	if name == p.name {
 		return p.Commit
 	}
 	return nil
 }
 
-func (p *PedersonProof) getResult(name string) *big.Int {
+func (p *PedersonProof) GetResult(name string) *big.Int {
 	if name == p.name {
 		return p.Sresult
 	}

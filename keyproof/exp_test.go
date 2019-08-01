@@ -23,8 +23,8 @@ func TestExpProofFlow(t *testing.T) {
 	nPederson := newPedersonSecret(g, "n", big.NewInt(n))
 	rPederson := newPedersonSecret(g, "r", big.NewInt(r))
 
-	bases := newBaseMerge(&g, &aPederson, &bPederson, &nPederson, &rPederson)
-	secrets := newSecretMerge(&aPederson, &bPederson, &nPederson, &rPederson)
+	bases := NewBaseMerge(&g, &aPederson, &bPederson, &nPederson, &rPederson)
+	secrets := NewSecretMerge(&aPederson, &bPederson, &nPederson, &rPederson)
 
 	s := newExpProofStructure("a", "b", "n", "r", 4)
 
@@ -59,8 +59,8 @@ func TestExpProofFlow(t *testing.T) {
 	rProof := rPederson.buildProof(g, big.NewInt(12345))
 	rProof.setName("r")
 
-	proofBases := newBaseMerge(&g, &aProof, &bProof, &nProof, &rProof)
-	proofs := newProofMerge(&aProof, &bProof, &nProof, &rProof)
+	proofBases := NewBaseMerge(&g, &aProof, &bProof, &nProof, &rProof)
+	proofs := NewProofMerge(&aProof, &bProof, &nProof, &rProof)
 
 	listProof := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &proofBases, &proofs, proof)
 

@@ -9,10 +9,10 @@ type isSquareProofStructure struct {
 	n       *big.Int
 	squares []*big.Int
 
-	nRep representationProofStructure
+	nRep RepresentationProofStructure
 
-	squaresRep []representationProofStructure
-	rootsRep   []representationProofStructure
+	squaresRep []RepresentationProofStructure
+	rootsRep   []RepresentationProofStructure
 	rootsRange []rangeProofStructure
 	rootsValid []multiplicationProofStructure
 }
@@ -45,32 +45,32 @@ func newIsSquareProofStructure(N *big.Int, Squares []*big.Int) isSquareProofStru
 	}
 
 	// Setup representation proof of N
-	result.nRep = representationProofStructure{
-		[]lhsContribution{
+	result.nRep = RepresentationProofStructure{
+		[]LhsContribution{
 			{"N", big.NewInt(-1)},
 			{"g", new(big.Int).Set(N)},
 		},
-		[]rhsContribution{
+		[]RhsContribution{
 			{"h", "N_hider", -1},
 		},
 	}
 
 	// Setup representation proofs of squares
-	result.squaresRep = make([]representationProofStructure, len(Squares))
+	result.squaresRep = make([]RepresentationProofStructure, len(Squares))
 	for i, val := range result.squares {
-		result.squaresRep[i] = representationProofStructure{
-			[]lhsContribution{
+		result.squaresRep[i] = RepresentationProofStructure{
+			[]LhsContribution{
 				{strings.Join([]string{"s", fmt.Sprintf("%v", i)}, "_"), big.NewInt(-1)},
 				{"g", new(big.Int).Set(val)},
 			},
-			[]rhsContribution{
+			[]RhsContribution{
 				{"h", strings.Join([]string{"s", fmt.Sprintf("%v", i), "hider"}, "_"), -1},
 			},
 		}
 	}
 
 	// Setup representation proofs of roots
-	result.rootsRep = make([]representationProofStructure, len(Squares))
+	result.rootsRep = make([]RepresentationProofStructure, len(Squares))
 	for i := range Squares {
 		result.rootsRep[i] = newPedersonRepresentationProofStructure(
 			strings.Join([]string{"r", fmt.Sprintf("%v", i)}, "_"))
@@ -148,8 +148,8 @@ func (s *isSquareProofStructure) generateCommitmentsFromSecrets(g group, list []
 	commit.n = newPedersonSecret(g, "N", s.n)
 
 	// Build up bases and secrets (this is ugly code, hopefully go2 will make this better someday)
-	baseList := []baseLookup{}
-	secretList := []secretLookup{}
+	baseList := []BaseLookup{}
+	secretList := []SecretLookup{}
 	for i := range commit.squares {
 		baseList = append(baseList, &commit.squares[i])
 		secretList = append(secretList, &commit.squares[i])
@@ -161,8 +161,8 @@ func (s *isSquareProofStructure) generateCommitmentsFromSecrets(g group, list []
 	baseList = append(baseList, &commit.n)
 	secretList = append(secretList, &commit.n)
 	baseList = append(baseList, &g)
-	bases := newBaseMerge(baseList...)
-	secrets := newSecretMerge(secretList...)
+	bases := NewBaseMerge(baseList...)
+	secrets := NewSecretMerge(secretList...)
 
 	// Generate commitments
 	commit.rootRangeCommit = make([]rangeCommit, len(s.squares))
@@ -197,7 +197,7 @@ func (s *isSquareProofStructure) generateCommitmentsFromSecrets(g group, list []
 
 func (s *isSquareProofStructure) buildProof(g group, challenge *big.Int, commit isSquareProofCommit) IsSquareProof {
 	// Build up secrets (this is ugly code, hopefully go2 will make this better someday)
-	secretList := []secretLookup{}
+	secretList := []SecretLookup{}
 	for i := range commit.squares {
 		secretList = append(secretList, &commit.squares[i])
 	}
@@ -205,7 +205,7 @@ func (s *isSquareProofStructure) buildProof(g group, challenge *big.Int, commit 
 		secretList = append(secretList, &commit.roots[i])
 	}
 	secretList = append(secretList, &commit.n)
-	secrets := newSecretMerge(secretList...)
+	secrets := NewSecretMerge(secretList...)
 
 	// Calculate proofs
 	var proof IsSquareProof
@@ -264,8 +264,8 @@ func (s *isSquareProofStructure) generateCommitmentsFromProof(g group, list []*b
 	}
 
 	// Build up bases and proofs mergers
-	baseList := []baseLookup{}
-	proofList := []proofLookup{}
+	baseList := []BaseLookup{}
+	proofList := []ProofLookup{}
 	for i := range s.squares {
 		baseList = append(baseList, &proof.SquaresProof[i])
 		proofList = append(proofList, &proof.SquaresProof[i])
@@ -277,8 +277,8 @@ func (s *isSquareProofStructure) generateCommitmentsFromProof(g group, list []*b
 	baseList = append(baseList, &proof.NProof)
 	proofList = append(proofList, &proof.NProof)
 	baseList = append(baseList, &g)
-	var bases = newBaseMerge(baseList...)
-	var proofs = newProofMerge(proofList...)
+	var bases = NewBaseMerge(baseList...)
+	var proofs = NewProofMerge(proofList...)
 
 	// Build up commitment list
 	list = append(list, s.n)

@@ -1,6 +1,8 @@
 package keyproof
 
 import (
+	"fmt"
+
 	"github.com/privacybydesign/gabi/big"
 
 	"github.com/privacybydesign/gabi/internal/common"
@@ -45,4 +47,40 @@ func buildGroup(prime *big.Int) (group, bool) {
 	result.orderMod.Set(result.order)
 
 	return result, true
+}
+
+func (g *group) Exp(ret *big.Int, name string, exp, P *big.Int) bool {
+	var table *exptable.Table
+	if name == "g" {
+		table = &g.gTable
+	} else if name == "h" {
+		table = &g.hTable
+	} else {
+		return false
+	}
+	var exp2 big.Int
+	if exp.Sign() == -1 {
+		exp2.Add(exp, g.order)
+		exp = &exp2
+	}
+	if exp.Cmp(g.order) >= 0 {
+		panic(fmt.Sprintf("scalar out of bounds: %v %v", exp, g.order))
+	}
+	// exp2.Mod(exp, g.order)
+	table.Exp(ret.Value(), exp.Value())
+	return true
+}
+
+func (g *group) GetNames() []string {
+	return []string{"g", "h"}
+}
+
+func (g *group) GetBase(name string) *big.Int {
+	if name == "g" {
+		return g.g
+	}
+	if name == "h" {
+		return g.h
+	}
+	return nil
 }
