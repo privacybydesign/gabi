@@ -94,7 +94,7 @@ func (rdb *DB) Revoke(sk *PrivateKey, key []byte) error {
 func (rdb *DB) RevocationRecords(index int) ([]Record, error) {
 	var err error
 	var records []Record
-	if err = rdb.bolt.Find(&records, bolthold.Where(bolthold.Key).Ge(index)); err != nil {
+	if err = rdb.bolt.Find(&records, bolthold.Where(bolthold.Key).Ge(uint64(index))); err != nil {
 		return nil, err
 	}
 	if len(records) == 0 {
@@ -124,7 +124,7 @@ func (rdb *DB) KeyExists(key []byte) (bool, error) {
 }
 
 func (rdb *DB) AddIssuanceRecord(r *IssuanceRecord) error {
-	return rdb.bolt.Insert(r.Key, r)
+	return rdb.bolt.Insert([]byte(r.Key), r)
 }
 
 func (rdb *DB) IssuanceRecord(key []byte) (*IssuanceRecord, error) {
@@ -165,7 +165,7 @@ func (rdb *DB) add(update AccumulatorUpdate, updateMsg signed.Message, pkCounter
 	}); err != nil {
 		return err
 	}
-	if err = rdb.bolt.TxUpdate(tx, boltCurrentIndexKey, &currentRecord{update.Accumulator.Index}); err != nil {
+	if err = rdb.bolt.TxUpsert(tx, boltCurrentIndexKey, &currentRecord{update.Accumulator.Index}); err != nil {
 		return err
 	}
 
@@ -195,7 +195,12 @@ func (rdb *DB) LoadCurrent() error {
 	if err != nil {
 		return err
 	}
-	return signed.UnmarshalVerify(pk.ECDSA, record.Message, &rdb.Current)
+	var u AccumulatorUpdate
+	if err = signed.UnmarshalVerify(pk.ECDSA, record.Message, &u); err != nil {
+		return err
+	}
+	rdb.Current = u.Accumulator
+	return nil
 }
 
 func (rdb *DB) revokeAttr(sk *PrivateKey, e *big.Int, tx *bolt.Tx) error {
@@ -218,6 +223,13 @@ func (rdb *DB) revokeAttr(sk *PrivateKey, e *big.Int, tx *bolt.Tx) error {
 		return err
 	}
 	rdb.Current = *newAcc
+	return nil
+}
+
+func (rdb *DB) Close() error {
+	if rdb.bolt != nil {
+		return rdb.bolt.Close()
+	}
 	return nil
 }
 

@@ -135,7 +135,7 @@ func NewAccumulator(sk *PrivateKey) (signed.Message, Accumulator, error) {
 
 // Remove returns a new accumulator with the specified e removed from it, and an increased index.
 func (b *Accumulator) Remove(sk *PrivateKey, e *big.Int) (*Accumulator, error) {
-	eInverse, ok := common.ModInverse(b.Nu, new(big.Int).Mul(sk.P, sk.Q))
+	eInverse, ok := common.ModInverse(e, new(big.Int).Mul(sk.P, sk.Q))
 	if !ok {
 		// since N = P*Q and P, Q prime, e has no inverse if and only if e equals either P or Q
 		return nil, errors.New("revocation attribute has no inverse")

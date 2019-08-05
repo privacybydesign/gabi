@@ -176,5 +176,8 @@ func UnmarshalVerify(pk *ecdsa.PublicKey, signed Message, dst interface{}) error
 	if u, ok := dst.(encoding.BinaryUnmarshaler); ok {
 		return u.UnmarshalBinary(tmp.Msg)
 	}
-	return gob.NewDecoder(bytes.NewBuffer(tmp.Msg)).Decode(dst)
+	if err = gob.NewDecoder(bytes.NewBuffer(tmp.Msg)).Decode(dst); err != nil {
+		return err
+	}
+	return nil
 }
