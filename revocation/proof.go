@@ -245,7 +245,7 @@ func (w *Witness) update(pk *PublicKey, message signed.Message) error {
 	// u' = u^b * newNu^a mod n
 	newU := new(big.Int)
 	newU.Mul(
-		new(big.Int).Exp(newU, &b, pk.Group.N),
+		new(big.Int).Exp(w.U, &b, pk.Group.N),
 		new(big.Int).Exp(update.Accumulator.Nu, &a, pk.Group.N),
 	).Mod(newU, pk.Group.N)
 
