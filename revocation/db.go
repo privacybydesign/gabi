@@ -41,6 +41,10 @@ type (
 		ValidUntil int64
 		RevokedAt  int64 // 0 if not currently revoked
 	}
+
+	currentRecord struct {
+		Index uint64
+	}
 )
 
 func LoadDB(path string, keystore Keystore) (*DB, error) {
@@ -161,7 +165,7 @@ func (rdb *DB) add(update AccumulatorUpdate, updateMsg signed.Message, pkCounter
 	}); err != nil {
 		return err
 	}
-	if err = rdb.bolt.TxUpdate(tx, boltCurrentIndexKey, update.Accumulator.Index); err != nil {
+	if err = rdb.bolt.TxUpdate(tx, boltCurrentIndexKey, &currentRecord{update.Accumulator.Index}); err != nil {
 		return err
 	}
 
@@ -170,13 +174,13 @@ func (rdb *DB) add(update AccumulatorUpdate, updateMsg signed.Message, pkCounter
 }
 
 func (rdb *DB) Enabled() bool {
-	var currentIndex int
+	var currentIndex currentRecord
 	err := rdb.bolt.Get(boltCurrentIndexKey, &currentIndex)
 	return err == nil
 }
 
 func (rdb *DB) LoadCurrent() error {
-	var currentIndex int
+	var currentIndex currentRecord
 	if err := rdb.bolt.Get(boltCurrentIndexKey, &currentIndex); err == bolthold.ErrNotFound {
 		return errors.New("revocation database not initialized")
 	} else if err != nil {
@@ -184,7 +188,7 @@ func (rdb *DB) LoadCurrent() error {
 	}
 
 	var record Record
-	if err := rdb.bolt.Get(currentIndex, &record); err != nil {
+	if err := rdb.bolt.Get(currentIndex.Index, &record); err != nil {
 		return err
 	}
 	pk, err := rdb.keystore.PublicKey(record.PublicKeyIndex)
