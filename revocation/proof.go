@@ -62,7 +62,7 @@ type (
 		cu, cr, nu  *big.Int
 		secrets     map[string]*big.Int
 		randomizers map[string]*big.Int
-		g           qrGroup
+		g           *qrGroup
 	}
 
 	proofStructure struct {
@@ -159,26 +159,26 @@ func NewProofCommit(grp *QrGroup, witn *Witness, randomizer *big.Int) ([]*big.In
 	}
 
 	bases := keyproof.NewBaseMerge((*qrGroup)(grp), &accumulator{Nu: witn.Nu})
-	list, commit := proofstructure.generateCommitmentsFromSecrets(qrGroup(*grp), []*big.Int{}, &bases, (*witness)(witn))
+	list, commit := proofstructure.generateCommitmentsFromSecrets((*qrGroup)(grp), []*big.Int{}, &bases, (*witness)(witn))
 	return list, (*ProofCommit)(&commit), nil
 }
 
-func (p Proof) ChallengeContributions(grp *QrGroup) []*big.Int {
+func (p *Proof) ChallengeContributions(grp *QrGroup) []*big.Int {
 	return proofstructure.generateCommitmentsFromProof(
-		qrGroup(*grp), []*big.Int{}, p.Challenge, (*qrGroup)(grp), (*proof)(&p), (*proof)(&p))
+		(*qrGroup)(grp), []*big.Int{}, p.Challenge, (*qrGroup)(grp), (*proof)(p), (*proof)(p))
 }
 
-func (p Proof) VerifyWithChallenge(reconstructedChallenge *big.Int) bool {
-	if !proofstructure.verifyProofStructure(proof(p)) {
+func (p *Proof) VerifyWithChallenge(reconstructedChallenge *big.Int) bool {
+	if !proofstructure.verifyProofStructure((*proof)(p)) {
 		return false
 	}
-	if (*proof)(&p).GetResult("alpha").Cmp(parameters.bTwoZk) > 0 {
+	if (*proof)(p).GetResult("alpha").Cmp(parameters.bTwoZk) > 0 {
 		return false
 	}
 	return p.Challenge.Cmp(reconstructedChallenge) == 0
 }
 
-func (c *ProofCommit) BuildProof(challenge *big.Int) Proof {
+func (c *ProofCommit) BuildProof(challenge *big.Int) *Proof {
 	results := make(map[string]*big.Int, 5)
 	for _, name := range secretNames {
 		results[name] = new(big.Int).Add(
@@ -189,7 +189,7 @@ func (c *ProofCommit) BuildProof(challenge *big.Int) Proof {
 		)
 	}
 
-	return Proof{
+	return &Proof{
 		Cr: c.cr, Cu: c.cu, Nu: c.nu,
 		Challenge: challenge,
 		Results:   results,
@@ -249,7 +249,7 @@ func (w *Witness) update(pk *PublicKey, message signed.Message) error {
 		new(big.Int).Exp(update.Accumulator.Nu, &a, pk.Group.N),
 	).Mod(newU, pk.Group.N)
 
-	if !verify(newU, w.E, update.Accumulator, pk.Group) {
+	if !verify(newU, w.E, &update.Accumulator, pk.Group) {
 		return errors.New("nonrevocation witness invalidated by update")
 	}
 
@@ -299,12 +299,12 @@ func (p *proof) GetResult(name string) *big.Int {
 	return p.Results[name]
 }
 
-func (p *proof) verify(g qrGroup) bool {
-	commitments := proofstructure.generateCommitmentsFromProof(g, []*big.Int{}, p.Challenge, &g, p, p)
+func (p *proof) verify(g *qrGroup) bool {
+	commitments := proofstructure.generateCommitmentsFromProof(g, []*big.Int{}, p.Challenge, g, p, p)
 	return (*Proof)(p).VerifyWithChallenge(common.HashCommit(commitments, false))
 }
 
-func (s *proofStructure) generateCommitmentsFromSecrets(g qrGroup, list []*big.Int, bases keyproof.BaseLookup, secretdata keyproof.SecretLookup) ([]*big.Int, proofCommit) {
+func (s *proofStructure) generateCommitmentsFromSecrets(g *qrGroup, list []*big.Int, bases keyproof.BaseLookup, secretdata keyproof.SecretLookup) ([]*big.Int, proofCommit) {
 	commit := proofCommit{
 		g:           g,
 		secrets:     make(map[string]*big.Int, 5),
@@ -351,7 +351,7 @@ func (s *proofStructure) generateCommitmentsFromSecrets(g qrGroup, list []*big.I
 	return list, commit
 }
 
-func (s *proofStructure) generateCommitmentsFromProof(g qrGroup, list []*big.Int, challenge *big.Int, bases keyproof.BaseLookup, proofdata keyproof.ProofLookup, proof *proof) []*big.Int {
+func (s *proofStructure) generateCommitmentsFromProof(g *qrGroup, list []*big.Int, challenge *big.Int, bases keyproof.BaseLookup, proofdata keyproof.ProofLookup, proof *proof) []*big.Int {
 	proofs := keyproof.NewProofMerge(proof, proofdata)
 
 	b := keyproof.NewBaseMerge(g, &proofCommit{cr: proof.Cr, cu: proof.Cu, nu: proof.Nu})
@@ -364,7 +364,7 @@ func (s *proofStructure) generateCommitmentsFromProof(g qrGroup, list []*big.Int
 	return list
 }
 
-func (s *proofStructure) verifyProofStructure(p proof) bool {
+func (s *proofStructure) verifyProofStructure(p *proof) bool {
 	for _, name := range secretNames {
 		if p.Results[name] == nil {
 			return false
@@ -418,7 +418,7 @@ func (w *witness) GetRandomizer(name string) *big.Int {
 
 // Helpers
 
-func verify(u, e *big.Int, acc Accumulator, grp *QrGroup) bool {
+func verify(u, e *big.Int, acc *Accumulator, grp *QrGroup) bool {
 	return new(big.Int).Exp(u, e, grp.N).Cmp(acc.Nu) == 0
 }
 

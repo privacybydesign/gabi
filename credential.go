@@ -60,8 +60,7 @@ func (b *NonRevocationProofBuilder) Commit() ([]*big.Int, error) {
 }
 
 func (b *NonRevocationProofBuilder) CreateProof(challenge *big.Int) *revocation.Proof {
-	prf := b.commit.BuildProof(challenge)
-	return &prf
+	return b.commit.BuildProof(challenge)
 }
 
 // getUndisclosedAttributes computes, given a list of (indices of) disclosed
