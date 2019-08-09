@@ -33,6 +33,11 @@ type (
 		Message        signed.Message
 	}
 
+	TimeRecord struct {
+		Index      uint64
+		Start, End int64
+	}
+
 	// IssuanceRecord contains information generated during issuance, needed for later revocation.
 	IssuanceRecord struct {
 		Key        string
@@ -165,6 +170,26 @@ func (rdb *DB) add(update AccumulatorUpdate, updateMsg signed.Message, pkCounter
 	}); err != nil {
 		return err
 	}
+
+	if err = rdb.bolt.UpdateMatching(&TimeRecord{},
+		bolthold.Where(bolthold.Key).Eq(update.Accumulator.Index-1),
+		func(record interface{}) error {
+			tr, ok := record.(*TimeRecord)
+			if !ok {
+				return errors.New("invalid type")
+			}
+			tr.End = time.Now().UnixNano()
+			return nil
+		}); err != nil {
+		return err
+	}
+	if err = rdb.bolt.TxInsert(tx, update.Accumulator.Index, &TimeRecord{
+		Index: update.Accumulator.Index,
+		Start: time.Now().UnixNano(),
+	}); err != nil {
+		return err
+	}
+
 	if err = rdb.bolt.TxUpsert(tx, boltCurrentIndexKey, &currentRecord{update.Accumulator.Index}); err != nil {
 		return err
 	}
