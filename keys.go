@@ -142,6 +142,9 @@ func (privk *PrivateKey) WriteToFile(filename string, forceOverwrite bool) (int6
 
 func (privk *PrivateKey) RevocationKey() (*revocation.PrivateKey, error) {
 	if privk.nonrevSk == nil {
+		if !privk.RevocationSupported() {
+			return nil, errors.New("private key does not support revocation")
+		}
 		bts, err := base64.StdEncoding.DecodeString(privk.ECDSA)
 		if err != nil {
 			return nil, err
@@ -361,6 +364,9 @@ func NewPublicKeyFromFile(filename string) (*PublicKey, error) {
 
 func (pubk *PublicKey) RevocationKey() (*revocation.PublicKey, error) {
 	if pubk.nonrevPk == nil {
+		if !pubk.RevocationSupported() {
+			return nil, errors.New("public key does not support revocation")
+		}
 		bts, err := base64.StdEncoding.DecodeString(pubk.ECDSA)
 		if err != nil {
 			return nil, err
