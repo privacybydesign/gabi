@@ -21,6 +21,7 @@ type (
 	// (Record instances, and IssuanceRecord instances if used by an issuer).
 	DB struct {
 		Current  Accumulator
+		onChange []func(*Record)
 		bolt     *bolthold.Store
 		keystore Keystore
 	}
@@ -162,12 +163,13 @@ const boltCurrentIndexKey = "currentIndex"
 
 func (rdb *DB) add(update AccumulatorUpdate, updateMsg signed.Message, pkCounter uint, tx *bolt.Tx) error {
 	var err error
-	if err = rdb.bolt.TxInsert(tx, update.Accumulator.Index, &Record{
+	record := &Record{
 		StartIndex:     update.StartIndex,
 		EndIndex:       update.Accumulator.Index,
 		PublicKeyIndex: pkCounter,
 		Message:        updateMsg,
-	}); err != nil {
+	}
+	if err = rdb.bolt.TxInsert(tx, update.Accumulator.Index, record); err != nil {
 		return err
 	}
 
@@ -192,6 +194,10 @@ func (rdb *DB) add(update AccumulatorUpdate, updateMsg signed.Message, pkCounter
 
 	if err = rdb.bolt.TxUpsert(tx, boltCurrentIndexKey, &currentRecord{update.Accumulator.Index}); err != nil {
 		return err
+	}
+
+	for _, f := range rdb.onChange {
+		f(record)
 	}
 
 	rdb.Current = update.Accumulator
@@ -252,10 +258,15 @@ func (rdb *DB) revokeAttr(sk *PrivateKey, e *big.Int, tx *bolt.Tx) error {
 }
 
 func (rdb *DB) Close() error {
+	rdb.onChange = nil
 	if rdb.bolt != nil {
 		return rdb.bolt.Close()
 	}
 	return nil
+}
+
+func (rdb *DB) OnChange(handler func(*Record)) {
+	rdb.onChange = append(rdb.onChange, handler)
 }
 
 func (r *Record) UnmarshalVerify(keystore Keystore) (*AccumulatorUpdate, error) {
