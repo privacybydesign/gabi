@@ -173,17 +173,14 @@ func (rdb *DB) add(update AccumulatorUpdate, updateMsg signed.Message, pkCounter
 		return err
 	}
 
-	if err = rdb.bolt.UpdateMatching(&TimeRecord{},
-		bolthold.Where(bolthold.Key).Eq(update.Accumulator.Index-1),
-		func(record interface{}) error {
-			tr, ok := record.(*TimeRecord)
-			if !ok {
-				return errors.New("invalid type")
-			}
+	if update.Accumulator.Index != 0 {
+		var tr TimeRecord
+		if err = rdb.bolt.TxGet(tx, update.Accumulator.Index-1, &tr); err == nil {
 			tr.End = time.Now().UnixNano()
-			return nil
-		}); err != nil {
-		return err
+			if err = rdb.bolt.TxUpdate(tx, update.Accumulator.Index-1, &tr); err != nil {
+				return err
+			}
+		}
 	}
 	if err = rdb.bolt.TxInsert(tx, update.Accumulator.Index, &TimeRecord{
 		Index: update.Accumulator.Index,
