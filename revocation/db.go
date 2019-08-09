@@ -97,9 +97,9 @@ func (rdb *DB) Revoke(sk *PrivateKey, key []byte) error {
 // Get returns all records that a client requires to update its revocation state if it is currently
 // at the specified index, that is, all records whose end index is greater than or equal to
 // the specified index.
-func (rdb *DB) RevocationRecords(index int) ([]Record, error) {
+func (rdb *DB) RevocationRecords(index int) ([]*Record, error) {
 	var err error
-	var records []Record
+	var records []*Record
 	if err = rdb.bolt.Find(&records, bolthold.Where(bolthold.Key).Ge(uint64(index))); err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func (rdb *DB) RevocationRecords(index int) ([]Record, error) {
 	return records, nil
 }
 
-func (rdb *DB) LatestRecords(count int) ([]Record, error) {
+func (rdb *DB) LatestRecords(count int) ([]*Record, error) {
 	c := int(rdb.Current.Index) - count + 1
 	if c < 0 {
 		c = 0

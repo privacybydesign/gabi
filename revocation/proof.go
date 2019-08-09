@@ -196,7 +196,7 @@ func (c *ProofCommit) BuildProof(challenge *big.Int) *Proof {
 	}
 }
 
-func (w *Witness) Update(msgs []Record, keystore Keystore) (bool, error) {
+func (w *Witness) Update(msgs []*Record, keystore Keystore) (bool, error) {
 	var err error
 	var pk *PublicKey
 	oldindex := w.Index
