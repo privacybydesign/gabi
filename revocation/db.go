@@ -21,6 +21,7 @@ type (
 	// (Record instances, and IssuanceRecord instances if used by an issuer).
 	DB struct {
 		Current  Accumulator
+		Updated  time.Time
 		onChange []func(*Record)
 		bolt     *bolthold.Store
 		keystore Keystore
@@ -58,10 +59,17 @@ func LoadDB(path string, keystore Keystore) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &DB{
+	db := &DB{
 		bolt:     b,
 		keystore: keystore,
-	}, nil
+	}
+	if db.Enabled() {
+		if err = db.loadCurrent(); err != nil {
+			_ = db.Close()
+			return nil, err
+		}
+	}
+	return db, nil
 }
 
 func (rdb *DB) EnableRevocation(sk *PrivateKey) error {
@@ -98,13 +106,9 @@ func (rdb *DB) Revoke(sk *PrivateKey, key []byte) error {
 // at the specified index, that is, all records whose end index is greater than or equal to
 // the specified index.
 func (rdb *DB) RevocationRecords(index int) ([]*Record, error) {
-	var err error
 	var records []*Record
-	if err = rdb.bolt.Find(&records, bolthold.Where(bolthold.Key).Ge(uint64(index))); err != nil {
+	if err := rdb.bolt.Find(&records, bolthold.Where(bolthold.Key).Ge(uint64(index))); err != nil {
 		return nil, err
-	}
-	if len(records) == 0 {
-		return nil, errors.New("not found")
 	}
 	return records, nil
 }
@@ -117,7 +121,7 @@ func (rdb *DB) LatestRecords(count int) ([]*Record, error) {
 	return rdb.RevocationRecords(c)
 }
 
-func (rdb *DB) KeyExists(key []byte) (bool, error) {
+func (rdb *DB) IssuanceRecordExists(key []byte) (bool, error) {
 	_, err := rdb.IssuanceRecord(key)
 	switch err {
 	case nil:
@@ -139,6 +143,17 @@ func (rdb *DB) IssuanceRecord(key []byte) (*IssuanceRecord, error) {
 		return nil, err
 	}
 	return r, nil
+}
+
+func (rdb *DB) AddRecords(records []*Record) error {
+	var err error
+	for _, r := range records {
+		if err = rdb.Add(r.Message, r.PublicKeyIndex); err != nil {
+			return err
+		}
+	}
+	rdb.Updated = time.Now() // TODO update this in add()?
+	return nil
 }
 
 func (rdb *DB) Add(updateMsg signed.Message, counter uint) error {
@@ -207,7 +222,7 @@ func (rdb *DB) Enabled() bool {
 	return err == nil
 }
 
-func (rdb *DB) LoadCurrent() error {
+func (rdb *DB) loadCurrent() error {
 	var currentIndex currentRecord
 	if err := rdb.bolt.Get(boltCurrentIndexKey, &currentIndex); err == bolthold.ErrNotFound {
 		return errors.New("revocation database not initialized")
@@ -229,6 +244,12 @@ func (rdb *DB) LoadCurrent() error {
 	}
 	rdb.Current = u.Accumulator
 	return nil
+}
+
+func (rdb *DB) RevokeAttr(sk *PrivateKey, e *big.Int) error {
+	return rdb.bolt.Bolt().Update(func(tx *bolt.Tx) error {
+		return rdb.revokeAttr(sk, e, tx)
+	})
 }
 
 func (rdb *DB) revokeAttr(sk *PrivateKey, e *big.Int, tx *bolt.Tx) error {
