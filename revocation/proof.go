@@ -196,25 +196,10 @@ func (c *ProofCommit) BuildProof(challenge *big.Int) *Proof {
 	}
 }
 
-func (w *Witness) Update(msgs []*Record, keystore Keystore) (bool, error) {
-	var err error
-	var pk *PublicKey
-	oldindex := w.Index
-	for _, msg := range msgs {
-		if pk, err = keystore.PublicKey(msg.PublicKeyIndex); err != nil {
-			return false, err
-		}
-		if err = w.update(pk, msg.Message); err != nil {
-			return false, err
-		}
-	}
-	return w.Index == oldindex, nil
-}
-
 // update updates the witness using the specified update message from the issuer,
 // after which the witness can be used to prove nonrevocation against the latest Accumulator
 // (contained in the update message).
-func (w *Witness) update(pk *PublicKey, message signed.Message) error {
+func (w *Witness) Update(pk *PublicKey, message signed.Message) error {
 	var err error
 	var update AccumulatorUpdate
 	if err = signed.UnmarshalVerify(pk.ECDSA, message, &update); err != nil {
