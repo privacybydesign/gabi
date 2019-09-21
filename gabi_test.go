@@ -639,7 +639,7 @@ func TestRevocation(t *testing.T) {
 	_, acc, err := revocation.NewAccumulator(revkey)
 	require.NoError(t, err)
 
-	witness, err := testPrivK.RevocationGenerateWitness(&acc)
+	witness, err := testPrivK.RevocationGenerateWitness(acc)
 	require.NoError(t, err)
 	require.Zero(t, new(big.Int).Exp(witness.U, witness.E, testPubK.N).Cmp(witness.Nu))
 

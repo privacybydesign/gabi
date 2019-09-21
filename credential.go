@@ -45,6 +45,15 @@ type NonRevocationProofBuilder struct {
 	randomizer  *big.Int
 }
 
+func (b *NonRevocationProofBuilder) UpdateCommit(witness *revocation.Witness) error {
+	if b == nil || b.commit == nil || len(b.commitments) < 5 {
+		return errors.New("cannot update noninitialized NonRevocationProofBuilder")
+	}
+	b.witness = witness
+	b.commit.Update(b.commitments, witness)
+	return nil
+}
+
 func (b *NonRevocationProofBuilder) Commit() ([]*big.Int, error) {
 	if b.commitments == nil {
 		revPk, err := b.pk.RevocationKey()
@@ -161,7 +170,7 @@ func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int, no
 		// with pre-revocation requestors)
 		if nonrev {
 			var err error
-			d.nonrevBuilder, err = ic.nonrevBuilder()
+			d.nonrevBuilder, err = ic.consumeNonrevBuilder()
 			if err != nil {
 				return nil, err
 			}
@@ -175,7 +184,7 @@ func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int, no
 	return d, nil
 }
 
-func (ic *Credential) nonrevBuilder() (*NonRevocationProofBuilder, error) {
+func (ic *Credential) consumeNonrevBuilder() (*NonRevocationProofBuilder, error) {
 	// If we don't have a builder cached, compute one now
 	if ic.nonrevBuildCache == nil {
 		if err := ic.BuildRevocationCache(); err != nil {
@@ -186,13 +195,20 @@ func (ic *Credential) nonrevBuilder() (*NonRevocationProofBuilder, error) {
 	// Ensure we use the cache only once, lest we totally break security:
 	// reusing randomizers in a second session makes it possible for the verifier
 	// to compute our revocation witness e from the proofs
-	defer func() { ic.nonrevBuildCache = nil }()
-	return ic.nonrevBuildCache, nil
+	c := ic.nonrevBuildCache
+	ic.nonrevBuildCache = nil
+	return c, nil
 }
 
-func (ic *Credential) DiscardRevocationCache() {
-	// TODO using the new u, it should be possible to update the cache instead of discarding it
-	ic.nonrevBuildCache = nil
+func (ic *Credential) UpdateRevocationCache(updated bool) error {
+	if ic.nonrevBuildCache == nil {
+		if err := ic.BuildRevocationCache(); err != nil {
+			return err
+		}
+	} else if updated {
+		return ic.nonrevBuildCache.UpdateCommit(ic.NonRevocationWitness)
+	}
+	return nil
 }
 
 func (ic *Credential) BuildRevocationCache() error {

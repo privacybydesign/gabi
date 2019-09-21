@@ -196,6 +196,20 @@ func (c *ProofCommit) BuildProof(challenge *big.Int) *Proof {
 	}
 }
 
+func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
+	c.cu = new(big.Int).Exp(c.g.H, c.secrets["epsilon"], c.g.N)
+	c.cu.Mul(c.cu, witness.U)
+	c.nu = witness.Nu
+
+	commit := (*proofCommit)(c)
+	b := keyproof.NewBaseMerge(c.g, commit)
+	l := proofstructure.nu.generateCommitmentsFromSecrets(c.g, []*big.Int{}, &b, commit)
+
+	commitments[1] = c.cu
+	commitments[2] = witness.Nu
+	commitments[4] = l[0]
+}
+
 // update updates the witness using the specified update message from the issuer,
 // after which the witness can be used to prove nonrevocation against the latest Accumulator
 // (contained in the update message).
@@ -296,7 +310,7 @@ func (s *proofStructure) generateCommitmentsFromSecrets(g *qrGroup, list []*big.
 		randomizers: make(map[string]*big.Int, 5),
 		cu:          new(big.Int),
 		cr:          new(big.Int),
-		nu:          bases.GetBase("nu"), // TODO update to updated nu here
+		nu:          bases.GetBase("nu"),
 	}
 
 	r2 := common.FastRandomBigInt(g.nDiv4)
@@ -325,7 +339,6 @@ func (s *proofStructure) generateCommitmentsFromSecrets(g *qrGroup, list []*big.
 	bases.Exp(&tmp, "h", r2, g.N)
 	commit.cu.Mul(secretdata.GetSecret("u"), &tmp).Mod(commit.cu, g.N)
 
-	// TODO update to updated nu here
 	list = append(list, commit.cr, commit.cu, commit.nu)
 
 	b := keyproof.NewBaseMerge(bases, &commit)
