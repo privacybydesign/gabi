@@ -114,7 +114,7 @@ type (
 	}
 )
 
-func NewAccumulator(sk *PrivateKey) (signed.Message, Accumulator, error) {
+func NewAccumulator(sk *PrivateKey) (signed.Message, *Accumulator, error) {
 	update := AccumulatorUpdate{
 		Accumulator: Accumulator{
 			Nu:    common.RandomQR(sk.N),
@@ -127,10 +127,10 @@ func NewAccumulator(sk *PrivateKey) (signed.Message, Accumulator, error) {
 
 	msg, err := signed.MarshalSign(sk.ECDSA, &update)
 	if err != nil {
-		return nil, Accumulator{}, err
+		return nil, nil, err
 	}
 
-	return msg, update.Accumulator, nil
+	return msg, &update.Accumulator, nil
 }
 
 // Remove returns a new accumulator with the specified e removed from it, and an increased index.
