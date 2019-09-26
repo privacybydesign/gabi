@@ -653,7 +653,7 @@ func TestRevocation(t *testing.T) {
 		Attributes:           testAttributes1,
 		NonRevocationWitness: witness,
 	}
-	require.NoError(t, cred.BuildRevocationCache())
+	require.NoError(t, cred.PrepareNonrevCache())
 
 	context, _ := common.RandomBigInt(testPubK.Params.Lh)
 	nonce, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
