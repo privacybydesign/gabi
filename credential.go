@@ -175,7 +175,7 @@ func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int, no
 		// with pre-revocation requestors)
 		if nonrev {
 			var err error
-			d.nonrevBuilder, err = ic.consumeNonrevBuilder()
+			d.nonrevBuilder, err = ic.nonrevConsumeBuilder()
 			if err != nil {
 				return nil, err
 			}
@@ -189,7 +189,7 @@ func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int, no
 	return d, nil
 }
 
-func (ic *Credential) consumeNonrevBuilder() (*NonRevocationProofBuilder, error) {
+func (ic *Credential) nonrevConsumeBuilder() (*NonRevocationProofBuilder, error) {
 	// Using either the channel value or a new one ensures that our output is used at most once,
 	// lest we totally break security: reusing randomizers in a second session makes it possible
 	// for the verifier to compute our revocation witness e from the proofs
@@ -197,14 +197,14 @@ func (ic *Credential) consumeNonrevBuilder() (*NonRevocationProofBuilder, error)
 	case b := <-ic.nonrevCache:
 		return b, b.UpdateCommit(ic.NonRevocationWitness)
 	default:
-		return ic.BuildNonrevProofBuilder()
+		return ic.NonrevBuildProofBuilder()
 	}
 }
 
-// PrepareNonrevCache ensures that the Credential's nonrevocation proof builder cache is
+// NonrevPrepareCache ensures that the Credential's nonrevocation proof builder cache is
 // usable, by creating one if it does not exist, or otherwise updating it to the latest accumulator
 // contained in the credential's witness.
-func (ic *Credential) PrepareNonrevCache() error {
+func (ic *Credential) NonrevPrepareCache() error {
 	if ic.NonRevocationWitness == nil {
 		return nil
 	}
@@ -217,13 +217,13 @@ func (ic *Credential) PrepareNonrevCache() error {
 	case b = <-ic.nonrevCache:
 		err = b.UpdateCommit(ic.NonRevocationWitness)
 	default:
-		b, err = ic.BuildNonrevProofBuilder()
+		b, err = ic.NonrevBuildProofBuilder()
 	}
 	if err != nil {
 		return err
 	}
 
-	// put it back in the channel, waiting to be consumed by consumeNonrevBuilder()
+	// put it back in the channel, waiting to be consumed by nonrevConsumeBuilder()
 	// if the channel has already been populated by another goroutine in the meantime we just discard
 	select {
 	case ic.nonrevCache <- b:
@@ -233,8 +233,8 @@ func (ic *Credential) PrepareNonrevCache() error {
 	return err
 }
 
-// BuildNonrevProofBuilder builds and returns a new commited-to NonRevocationProofBuilder.
-func (ic *Credential) BuildNonrevProofBuilder() (*NonRevocationProofBuilder, error) {
+// NonrevBuildProofBuilder builds and returns a new commited-to NonRevocationProofBuilder.
+func (ic *Credential) NonrevBuildProofBuilder() (*NonRevocationProofBuilder, error) {
 	if ic.NonRevocationWitness == nil {
 		return nil, errors.New("credential has no nonrevocation witness")
 	}
