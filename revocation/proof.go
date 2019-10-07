@@ -56,6 +56,7 @@ type (
 		Nu        *big.Int // nu = Cu^e * h^(-e*r2) = Cu^alpha * h^-beta
 		Challenge *big.Int
 		Results   map[string]*big.Int
+		Index     uint64
 	}
 
 	ProofCommit struct {
@@ -63,6 +64,7 @@ type (
 		secrets     map[string]*big.Int
 		randomizers map[string]*big.Int
 		g           *qrGroup
+		index       uint64
 	}
 
 	proofStructure struct {
@@ -160,6 +162,7 @@ func NewProofCommit(grp *QrGroup, witn *Witness, randomizer *big.Int) ([]*big.In
 
 	bases := keyproof.NewBaseMerge((*qrGroup)(grp), &accumulator{Nu: witn.Nu})
 	list, commit := proofstructure.generateCommitmentsFromSecrets((*qrGroup)(grp), []*big.Int{}, &bases, (*witness)(witn))
+	commit.index = witn.Index
 	return list, (*ProofCommit)(&commit), nil
 }
 
@@ -193,6 +196,7 @@ func (c *ProofCommit) BuildProof(challenge *big.Int) *Proof {
 		Cr: c.cr, Cu: c.cu, Nu: c.nu,
 		Challenge: challenge,
 		Results:   results,
+		Index:     c.index,
 	}
 }
 
@@ -200,6 +204,7 @@ func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
 	c.cu = new(big.Int).Exp(c.g.H, c.secrets["epsilon"], c.g.N)
 	c.cu.Mul(c.cu, witness.U)
 	c.nu = witness.Nu
+	c.index = witness.Index
 
 	commit := (*proofCommit)(c)
 	b := keyproof.NewBaseMerge(c.g, commit)
