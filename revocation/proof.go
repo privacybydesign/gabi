@@ -51,12 +51,13 @@ with the following differences.
 
 type (
 	Proof struct {
-		Cr        *big.Int // Cr = g^r2 * h^r3      = g^epsilon * h^zeta
-		Cu        *big.Int // Cu = u    * h^r2
-		Nu        *big.Int // nu = Cu^e * h^(-e*r2) = Cu^alpha * h^-beta
-		Challenge *big.Int
-		Results   map[string]*big.Int
-		Index     uint64
+		Cr          *big.Int // Cr = g^r2 * h^r3      = g^epsilon * h^zeta
+		Cu          *big.Int // Cu = u    * h^r2
+		Nu          *big.Int // nu = Cu^e * h^(-e*r2) = Cu^alpha * h^-beta
+		Challenge   *big.Int
+		Results     map[string]*big.Int
+		Record      *Record      // Record containing the accumulator against which to verify
+		Accumulator *Accumulator `json:"-"` // Extracted from Record during verification
 	}
 
 	ProofCommit struct {
@@ -64,7 +65,7 @@ type (
 		secrets     map[string]*big.Int
 		randomizers map[string]*big.Int
 		g           *qrGroup
-		index       uint64
+		record      *Record
 	}
 
 	proofStructure struct {
@@ -162,7 +163,7 @@ func NewProofCommit(grp *QrGroup, witn *Witness, randomizer *big.Int) ([]*big.In
 
 	bases := keyproof.NewBaseMerge((*qrGroup)(grp), &accumulator{Nu: witn.Nu})
 	list, commit := proofstructure.generateCommitmentsFromSecrets((*qrGroup)(grp), []*big.Int{}, &bases, (*witness)(witn))
-	commit.index = witn.Index
+	commit.record = witn.Record
 	return list, (*ProofCommit)(&commit), nil
 }
 
@@ -171,11 +172,19 @@ func (p *Proof) ChallengeContributions(grp *QrGroup) []*big.Int {
 		(*qrGroup)(grp), []*big.Int{}, p.Challenge, (*qrGroup)(grp), (*proof)(p), (*proof)(p))
 }
 
-func (p *Proof) VerifyWithChallenge(reconstructedChallenge *big.Int) bool {
+func (p *Proof) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.Int) bool {
 	if !proofstructure.verifyProofStructure((*proof)(p)) {
 		return false
 	}
 	if (*proof)(p).GetResult("alpha").Cmp(parameters.bTwoZk) > 0 {
+		return false
+	}
+	update, err := p.Record.UnmarshalVerify(pk)
+	if err != nil {
+		return false
+	}
+	p.Accumulator = &update.Accumulator
+	if p.Nu.Cmp(p.Accumulator.Nu) != 0 {
 		return false
 	}
 	return p.Challenge.Cmp(reconstructedChallenge) == 0
@@ -196,7 +205,7 @@ func (c *ProofCommit) BuildProof(challenge *big.Int) *Proof {
 		Cr: c.cr, Cu: c.cu, Nu: c.nu,
 		Challenge: challenge,
 		Results:   results,
-		Index:     c.index,
+		Record:    c.record,
 	}
 }
 
@@ -204,7 +213,7 @@ func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
 	c.cu = new(big.Int).Exp(c.g.H, c.secrets["epsilon"], c.g.N)
 	c.cu.Mul(c.cu, witness.U)
 	c.nu = witness.Nu
-	c.index = witness.Index
+	c.record = witness.Record
 
 	commit := (*proofCommit)(c)
 	b := keyproof.NewBaseMerge(c.g, commit)
@@ -215,10 +224,25 @@ func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
 	commitments[4] = l[0]
 }
 
+func (w *Witness) Update(keys Keystore, records []*Record) error {
+	var err error
+	var pk *PublicKey
+	for _, record := range records {
+		if pk, err = keys(record.PublicKeyIndex); err != nil {
+			return err
+		}
+		if err = w.update(pk, record.Message); err != nil {
+			return err
+		}
+		w.Record = record
+	}
+	return nil
+}
+
 // update updates the witness using the specified update message from the issuer,
 // after which the witness can be used to prove nonrevocation against the latest Accumulator
 // (contained in the update message).
-func (w *Witness) Update(pk *PublicKey, message signed.Message) error {
+func (w *Witness) update(pk *PublicKey, message signed.Message) error {
 	var err error
 	var update AccumulatorUpdate
 	if err = signed.UnmarshalVerify(pk.ECDSA, message, &update); err != nil {
@@ -303,9 +327,10 @@ func (p *proof) GetResult(name string) *big.Int {
 	return p.Results[name]
 }
 
-func (p *proof) verify(g *qrGroup) bool {
-	commitments := proofstructure.generateCommitmentsFromProof(g, []*big.Int{}, p.Challenge, g, p, p)
-	return (*Proof)(p).VerifyWithChallenge(common.HashCommit(commitments, false))
+func (p *proof) verify(pk *PublicKey) bool {
+	grp := (*qrGroup)(pk.Group)
+	commitments := proofstructure.generateCommitmentsFromProof(grp, []*big.Int{}, p.Challenge, grp, p, p)
+	return (*Proof)(p).VerifyWithChallenge(pk, common.HashCommit(commitments, false))
 }
 
 func (s *proofStructure) generateCommitmentsFromSecrets(g *qrGroup, list []*big.Int, bases keyproof.BaseLookup, secretdata keyproof.SecretLookup) ([]*big.Int, proofCommit) {
