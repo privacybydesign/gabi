@@ -112,6 +112,19 @@ type (
 		ECDSA   *ecdsa.PublicKey
 		Group   *QrGroup
 	}
+
+	// Record contains a signed AccumulatorUpdate and associated information and is ued
+	// by clients, issuers and verifiers to update their revocation state, so that they can create
+	// and verify nonrevocation proofs and witnesses.
+	Record struct {
+		StartIndex     uint64
+		EndIndex       uint64
+		PublicKeyIndex uint
+		Message        signed.Message // signed AccumulatorUpdate
+	}
+
+	// Keystore provides support for revocation public key rollover.
+	Keystore func(counter uint) (*PublicKey, error)
 )
 
 func NewAccumulator(sk *PrivateKey) (signed.Message, *Accumulator, error) {
@@ -145,4 +158,20 @@ func (b *Accumulator) Remove(sk *PrivateKey, e *big.Int) (*Accumulator, error) {
 		Index: b.Index + 1,
 		Nu:    new(big.Int).Exp(b.Nu, eInverse, sk.N),
 	}, nil
+}
+
+func (r *Record) UnmarshalVerify(keystore Keystore) (*AccumulatorUpdate, error) {
+	pk, err := keystore(r.PublicKeyIndex)
+	if err != nil {
+		return nil, err
+	}
+	msg := &AccumulatorUpdate{}
+	if err := signed.UnmarshalVerify(pk.ECDSA, r.Message, msg); err != nil {
+		return nil, err
+	}
+	if (r.StartIndex != msg.StartIndex) ||
+		(r.EndIndex > 0 && r.EndIndex != msg.StartIndex+uint64(len(msg.Revoked))-1) {
+		return nil, errors.New("record has invalid start or end index")
+	}
+	return msg, nil
 }
