@@ -84,8 +84,10 @@ type (
 	// Witness is a witness for the RSA-B accumulator, used for proving nonrevocation against the
 	// Accumulator with the same Index.
 	Witness struct {
-		U, E, Nu   *big.Int
-		Index      uint64
+		U, E       *big.Int
+		Nu         *big.Int `json:",omitempty"`
+		Index      uint64   `json:",omitempty"`
+		Record     *Record
 		randomizer *big.Int
 	}
 
@@ -160,11 +162,7 @@ func (b *Accumulator) Remove(sk *PrivateKey, e *big.Int) (*Accumulator, error) {
 	}, nil
 }
 
-func (r *Record) UnmarshalVerify(keystore Keystore) (*AccumulatorUpdate, error) {
-	pk, err := keystore(r.PublicKeyIndex)
-	if err != nil {
-		return nil, err
-	}
+func (r *Record) UnmarshalVerify(pk *PublicKey) (*AccumulatorUpdate, error) {
 	msg := &AccumulatorUpdate{}
 	if err := signed.UnmarshalVerify(pk.ECDSA, r.Message, msg); err != nil {
 		return nil, err
@@ -174,4 +172,17 @@ func (r *Record) UnmarshalVerify(keystore Keystore) (*AccumulatorUpdate, error) 
 		return nil, errors.New("record has invalid start or end index")
 	}
 	return msg, nil
+}
+
+func (w *Witness) Verify(pk *PublicKey) error {
+	acc, err := w.Record.UnmarshalVerify(pk)
+	if err != nil {
+		return err
+	}
+	w.Index = acc.Accumulator.Index
+	w.Nu = acc.Accumulator.Nu
+	if !verify(w.U, w.E, &acc.Accumulator, pk.Group) {
+		return errors.New("invalid witness")
+	}
+	return nil
 }

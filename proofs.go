@@ -208,7 +208,11 @@ func (p *ProofD) HasNonRevocationProof() bool {
 func (p *ProofD) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.Int) bool {
 	var notrevoked bool
 	if p.HasNonRevocationProof() {
-		notrevoked = p.NonRevocationProof.VerifyWithChallenge(reconstructedChallenge) &&
+		rpk, err := pk.RevocationKey()
+		if err != nil {
+			return false
+		}
+		notrevoked = p.NonRevocationProof.VerifyWithChallenge(rpk, reconstructedChallenge) &&
 			p.NonRevocationProof.Results["alpha"].Cmp(p.NonRevocationResponse) == 0
 	} else {
 		notrevoked = true

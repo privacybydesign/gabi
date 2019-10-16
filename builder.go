@@ -140,6 +140,13 @@ func (b *CredentialBuilder) ConstructCredential(msg *IssueSignatureMessage, attr
 	var nonrevAttr *big.Int
 	if msg.NonRevocationWitness != nil {
 		nonrevAttr = msg.NonRevocationWitness.E
+		rpk, err := b.pk.RevocationKey()
+		if err != nil {
+			return nil, err
+		}
+		if err = msg.NonRevocationWitness.Verify(rpk); err != nil {
+			return nil, err
+		}
 	}
 	if !signature.Verify(b.pk, exponents, nonrevAttr) {
 		return nil, ErrIncorrectAttributeSignature
