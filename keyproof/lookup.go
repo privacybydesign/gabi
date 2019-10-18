@@ -56,7 +56,7 @@ func (g *group) Exp(ret *big.Int, name string, exp, P *big.Int) bool {
 		panic(fmt.Sprintf("scalar out of bounds: %v %v", exp, g.order))
 	}
 	// exp2.Mod(exp, g.order)
-	table.Exp(ret.Value(), exp.Value())
+	table.Exp(ret.Go(), exp.Go())
 	return true
 }
 
