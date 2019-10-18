@@ -22,7 +22,7 @@ func HashCommit(values []*big.Int, issig bool) *big.Int {
 	tmp[offset] = gobig.NewInt(int64(len(values)))
 	offset++
 	for i, v := range values {
-		tmp[i+offset] = v.Value()
+		tmp[i+offset] = v.Go()
 	}
 	r, _ := asn1.Marshal(tmp)
 

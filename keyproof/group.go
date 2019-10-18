@@ -40,8 +40,8 @@ func buildGroup(prime *big.Int) (group, bool) {
 	result.g = new(big.Int).Exp(big.NewInt(0x41424344), big.NewInt(0x45464748), result.p)
 	result.h = new(big.Int).Exp(big.NewInt(0x494A4B4C), big.NewInt(0x4D4E4F50), result.p)
 
-	result.gTable.Compute(result.g.Value(), result.p.Value(), 7)
-	result.hTable.Compute(result.h.Value(), result.p.Value(), 7)
+	result.gTable.Compute(result.g.Go(), result.p.Go(), 7)
+	result.hTable.Compute(result.h.Go(), result.p.Go(), 7)
 
 	result.pMod.Set(result.p)
 	result.orderMod.Set(result.order)
@@ -67,7 +67,7 @@ func (g *group) Exp(ret *big.Int, name string, exp, P *big.Int) bool {
 		panic(fmt.Sprintf("scalar out of bounds: %v %v", exp, g.order))
 	}
 	// exp2.Mod(exp, g.order)
-	table.Exp(ret.Value(), exp.Value())
+	table.Exp(ret.Go(), exp.Go())
 	return true
 }
 
