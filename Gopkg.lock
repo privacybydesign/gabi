@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  digest = "1:fc31cd6fc2f965a819bc4e132c2d79bc23faa52cf15886c86cf22a45e46fd599"
+  name = "github.com/bwesterb/go-exptable"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "dd5d262925640ee5ec74905aef1111d3328493a2"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:a2c1d0e43bd3baaa071d1b9ed72c27d78169b2b269f71c105ac4ba34b1be4a39"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -40,6 +48,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/bwesterb/go-exptable",
     "github.com/go-errors/errors",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
