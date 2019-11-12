@@ -119,10 +119,9 @@ type (
 	// by clients, issuers and verifiers to update their revocation state, so that they can create
 	// and verify nonrevocation proofs and witnesses.
 	Record struct {
-		StartIndex     uint64
-		EndIndex       uint64 `gorm:"primary_key"`
-		PublicKeyIndex uint
-		Message        signed.Message // signed AccumulatorUpdate
+		StartIndex uint64
+		EndIndex   uint64         `gorm:"primary_key"`
+		Message    signed.Message // signed AccumulatorUpdate
 	}
 )
 
