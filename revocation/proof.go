@@ -2,8 +2,6 @@ package revocation
 
 import (
 	"crypto/rand"
-	"crypto/sha256"
-	"encoding/asn1"
 
 	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
@@ -444,25 +442,4 @@ func newWitness(sk *PrivateKey, acc *Accumulator, e *big.Int) (*Witness, error) 
 	}
 	u := new(big.Int).Exp(acc.Nu, eInverse, sk.N)
 	return &Witness{U: u, E: e, Nu: acc.Nu, Index: acc.Index}, nil
-}
-
-func embedPrime(key, bts []byte) (*big.Int, error) {
-	bts, err := asn1.Marshal([][]byte{key, bts})
-	if err != nil {
-		return nil, err
-	}
-	h := sha256.Sum256(bts)
-	csprng, err := common.NewCPRNG(&h)
-	if err != nil {
-		return nil, err
-	}
-	return common.RandomPrimeInRange(csprng, parameters.attributeMinSize, parameters.attributeMinSize)
-}
-
-func embedWitness(sk *PrivateKey, acc *Accumulator, key, bts []byte) (*Witness, error) {
-	e, err := embedPrime(key, bts)
-	if err != nil {
-		return nil, err
-	}
-	return newWitness(sk, acc, e)
 }
