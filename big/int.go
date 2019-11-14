@@ -13,6 +13,7 @@ import (
 	"math/rand"
 
 	"github.com/go-errors/errors"
+	"github.com/jinzhu/gorm"
 )
 
 // Int is an API-compatible "math/big".Int that JSON-marshals to and from Base64.
@@ -30,6 +31,13 @@ func (i *Int) Scan(src interface{}) error {
 	}
 	i.SetBytes(b)
 	return nil
+}
+
+func (Int) GormDataType(dialect gorm.Dialect) string {
+	if dialect.GetName() == "postgres" {
+		return "bytea"
+	}
+	return ""
 }
 
 func (i *Int) MarshalXML(e *xml.Encoder, start xml.StartElement) error {

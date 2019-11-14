@@ -120,19 +120,21 @@ type (
 	// and verify nonrevocation proofs and witnesses.
 	Record struct {
 		StartIndex     uint64
-		EndIndex       uint64
+		EndIndex       uint64 `gorm:"primary_key"`
 		PublicKeyIndex uint
 		Message        signed.Message // signed AccumulatorUpdate
 	}
 )
 
+const AccumulatorStartIndex uint64 = 1
+
 func NewAccumulator(sk *PrivateKey) (signed.Message, *Accumulator, error) {
 	update := AccumulatorUpdate{
 		Accumulator: Accumulator{
 			Nu:    common.RandomQR(sk.N),
-			Index: 0,
+			Index: AccumulatorStartIndex,
 		},
-		StartIndex: 0,
+		StartIndex: AccumulatorStartIndex,
 		Time:       time.Now().UnixNano(),
 		Revoked:    nil,
 	}
