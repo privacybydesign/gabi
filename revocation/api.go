@@ -32,9 +32,10 @@ which the verifier concludes that the credential is not currently revoked.
 To keep track of previous and current accumulators, each Accumulator has an index which is
 incremented each time a credential is revoked and the accumulator changes value.
 
-This package includes databases in which the issuer stores (1) all its accumulator values, and (2)
-each of the nonrevocation attributes e that it uses (which it needs when it later wants to revoke a
-credential).
+Issuers supporting revocation use ECDSA private/public keys to sign the accumulator update messages
+into messages called revocation records. All IRMA participants (client, verifier, issuer) require
+the latest revocation record to be able to function. The client additionally needs to know the
+complete chain of all records to be able to update its witness to the latest accumulator.
 
 Notes
 
