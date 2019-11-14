@@ -224,28 +224,13 @@ func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
 	commitments[4] = l[0]
 }
 
-func (w *Witness) Update(keys Keystore, records []*Record) error {
-	var err error
-	var pk *PublicKey
-	for _, record := range records {
-		if pk, err = keys(record.PublicKeyIndex); err != nil {
-			return err
-		}
-		if err = w.update(pk, record.Message); err != nil {
-			return err
-		}
-		w.Record = record
-	}
-	return nil
-}
-
-// update updates the witness using the specified update message from the issuer,
+// update updates the witness using the specified record from the issuer,
 // after which the witness can be used to prove nonrevocation against the latest Accumulator
 // (contained in the update message).
-func (w *Witness) update(pk *PublicKey, message signed.Message) error {
+func (w *Witness) Update(pk *PublicKey, record *Record) error {
 	var err error
 	var update AccumulatorUpdate
-	if err = signed.UnmarshalVerify(pk.ECDSA, message, &update); err != nil {
+	if err = signed.UnmarshalVerify(pk.ECDSA, record.Message, &update); err != nil {
 		return err
 	}
 
@@ -285,6 +270,7 @@ func (w *Witness) update(pk *PublicKey, message signed.Message) error {
 	w.U = newU
 	w.Nu = update.Accumulator.Nu
 	w.Index = update.Accumulator.Index
+	w.Record = record
 
 	return nil
 }

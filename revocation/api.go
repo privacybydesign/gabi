@@ -124,9 +124,6 @@ type (
 		PublicKeyIndex uint
 		Message        signed.Message // signed AccumulatorUpdate
 	}
-
-	// Keystore provides support for revocation public key rollover.
-	Keystore func(counter uint) (*PublicKey, error)
 )
 
 func NewAccumulator(sk *PrivateKey) (signed.Message, *Accumulator, error) {
@@ -168,7 +165,8 @@ func (r *Record) UnmarshalVerify(pk *PublicKey) (*AccumulatorUpdate, error) {
 		return nil, err
 	}
 	if (r.StartIndex != msg.StartIndex) ||
-		(r.EndIndex > 0 && r.EndIndex != msg.StartIndex+uint64(len(msg.Revoked))-1) {
+		(r.EndIndex != msg.Accumulator.Index) ||
+		(r.EndIndex > AccumulatorStartIndex && r.EndIndex != msg.StartIndex+uint64(len(msg.Revoked))-1) {
 		return nil, errors.New("record has invalid start or end index")
 	}
 	return msg, nil
