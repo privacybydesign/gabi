@@ -51,7 +51,7 @@ func (b *NonRevocationProofBuilder) UpdateCommit(witness *revocation.Witness) er
 	if b == nil || b.commit == nil || len(b.commitments) < 5 {
 		return errors.New("cannot update noninitialized NonRevocationProofBuilder")
 	}
-	if b.index >= witness.Index {
+	if b.index >= witness.Accumulator.Index {
 		return nil
 	}
 	b.witness = witness
@@ -241,7 +241,7 @@ func (ic *Credential) NonrevBuildProofBuilder() (*NonRevocationProofBuilder, err
 	b := &NonRevocationProofBuilder{
 		pk:         ic.Pk,
 		witness:    ic.NonRevocationWitness,
-		index:      ic.NonRevocationWitness.Index,
+		index:      ic.NonRevocationWitness.Accumulator.Index,
 		randomizer: revocation.NewProofRandomizer(),
 	}
 	_, err := b.Commit()
