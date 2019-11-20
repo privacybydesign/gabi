@@ -3,7 +3,6 @@ package big
 
 import (
 	cryptorand "crypto/rand"
-	"database/sql/driver"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/xml"
@@ -11,6 +10,10 @@ import (
 	"io"
 	"math/big"
 	"math/rand"
+
+	// we use this package exactly once, to implement the driver.Valuer for SQL marshaling:
+	// Int.Value() below returns a driver.Value, which is interface{}.
+	"database/sql/driver"
 
 	"github.com/go-errors/errors"
 	"github.com/jinzhu/gorm"
@@ -20,10 +23,12 @@ import (
 // Only supports positive integers.
 type Int big.Int
 
+// Value implements driver.Valuer, for SQL marshaling (to []byte).
 func (i *Int) Value() (driver.Value, error) {
 	return i.Bytes(), nil
 }
 
+// Scan implements sql.Scanner, for SQL unmarshaling (from a []byte).
 func (i *Int) Scan(src interface{}) error {
 	b, ok := src.([]byte)
 	if !ok {
@@ -34,10 +39,14 @@ func (i *Int) Scan(src interface{}) error {
 }
 
 func (Int) GormDataType(dialect gorm.Dialect) string {
-	if dialect.GetName() == "postgres" {
+	switch dialect.GetName() {
+	case "postgres":
 		return "bytea"
+	case "mysql":
+		return "blob"
+	default:
+		return ""
 	}
-	return ""
 }
 
 func (i *Int) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
