@@ -85,10 +85,13 @@ type (
 	// Witness is a witness for the RSA-B accumulator, used for proving nonrevocation against the
 	// Accumulator with the same Index.
 	Witness struct {
-		U, E       *big.Int
-		Nu         *big.Int `json:",omitempty"`
-		Index      uint64   `json:",omitempty"`
-		Record     *Record
+		// U^E = Accumulator.Nu mod N
+		U, E *big.Int
+		// Record signed by the issuer containing the Accumulator against which the witness verifies.
+		Record *Record
+		// Accumulator against which the witness verifies. Constructed from Record.
+		Accumulator Accumulator `json:"-"`
+
 		randomizer *big.Int
 	}
 
@@ -180,8 +183,7 @@ func (w *Witness) Verify(pk *PublicKey) error {
 	if err != nil {
 		return err
 	}
-	w.Index = acc.Accumulator.Index
-	w.Nu = acc.Accumulator.Nu
+	w.Accumulator = acc.Accumulator
 	if !verify(w.U, w.E, &acc.Accumulator, pk.Group) {
 		return errors.New("invalid witness")
 	}

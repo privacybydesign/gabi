@@ -155,11 +155,11 @@ func NewProofCommit(grp *QrGroup, witn *Witness, randomizer *big.Int) ([]*big.In
 	if randomizer == nil {
 		witn.randomizer = NewProofRandomizer()
 	}
-	if !proofstructure.isTrue((*witness)(witn), witn.Nu, grp.N) {
+	if !proofstructure.isTrue((*witness)(witn), witn.Accumulator.Nu, grp.N) {
 		return nil, nil, errors.New("non-revocation relation does not hold")
 	}
 
-	bases := keyproof.NewBaseMerge((*qrGroup)(grp), &accumulator{Nu: witn.Nu})
+	bases := keyproof.NewBaseMerge((*qrGroup)(grp), &accumulator{Nu: witn.Accumulator.Nu})
 	list, commit := proofstructure.generateCommitmentsFromSecrets((*qrGroup)(grp), []*big.Int{}, &bases, (*witness)(witn))
 	commit.record = witn.Record
 	return list, (*ProofCommit)(&commit), nil
@@ -210,7 +210,7 @@ func (c *ProofCommit) BuildProof(challenge *big.Int) *Proof {
 func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
 	c.cu = new(big.Int).Exp(c.g.H, c.secrets["epsilon"], c.g.N)
 	c.cu.Mul(c.cu, witness.U)
-	c.nu = witness.Nu
+	c.nu = witness.Accumulator.Nu
 	c.record = witness.Record
 
 	commit := (*proofCommit)(c)
@@ -218,7 +218,7 @@ func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
 	l := proofstructure.nu.generateCommitmentsFromSecrets(c.g, []*big.Int{}, &b, commit)
 
 	commitments[1] = c.cu
-	commitments[2] = witness.Nu
+	commitments[2] = witness.Accumulator.Nu
 	commitments[4] = l[0]
 }
 
@@ -232,7 +232,7 @@ func (w *Witness) Update(pk *PublicKey, record *Record) error {
 		return err
 	}
 
-	if update.Accumulator.Index <= w.Index || update.StartIndex > w.Index+1 {
+	if update.Accumulator.Index <= w.Accumulator.Index || update.StartIndex > w.Accumulator.Index+1 {
 		return nil // update was already applied or is too new
 	}
 
@@ -240,7 +240,7 @@ func (w *Witness) Update(pk *PublicKey, record *Record) error {
 	var a, b, prod big.Int
 	prod.SetInt64(1)
 	for i, e := range update.Revoked {
-		if uint64(i)+update.StartIndex <= w.Index {
+		if uint64(i)+update.StartIndex <= w.Accumulator.Index {
 			continue
 		}
 		if e == w.E {
@@ -266,8 +266,7 @@ func (w *Witness) Update(pk *PublicKey, record *Record) error {
 
 	// Update witness state only now after all possible errors have not occured
 	w.U = newU
-	w.Nu = update.Accumulator.Nu
-	w.Index = update.Accumulator.Index
+	w.Accumulator = update.Accumulator
 	w.Record = record
 
 	return nil
@@ -441,5 +440,5 @@ func newWitness(sk *PrivateKey, acc *Accumulator, e *big.Int) (*Witness, error) 
 		return nil, errors.New("failed to compute modular inverse")
 	}
 	u := new(big.Int).Exp(acc.Nu, eInverse, sk.N)
-	return &Witness{U: u, E: e, Nu: acc.Nu, Index: acc.Index}, nil
+	return &Witness{U: u, E: e}, nil
 }
