@@ -1,18 +1,23 @@
 package keyproof
 
-import "github.com/privacybydesign/gabi/internal/common"
-import "github.com/privacybydesign/gabi/big"
-import "strings"
-import "fmt"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/internal/common"
+)
 
 type isSquareProofStructure struct {
-	n       *big.Int
-	squares []*big.Int
+	n               *big.Int
+	nPederson       pedersonStructure
+	squares         []*big.Int
+	squaresPederson []pedersonStructure
 
 	nRep representationProofStructure
 
 	squaresRep []representationProofStructure
-	rootsRep   []representationProofStructure
+	rootsRep   []pedersonStructure
 	rootsRange []rangeProofStructure
 	rootsValid []multiplicationProofStructure
 }
@@ -26,9 +31,9 @@ type IsSquareProof struct {
 }
 
 type isSquareProofCommit struct {
-	squares []pedersonSecret
-	roots   []pedersonSecret
-	n       pedersonSecret
+	squares []pedersonCommit
+	roots   []pedersonCommit
+	n       pedersonCommit
 
 	rootRangeCommit []rangeCommit
 	rootValidCommit []multiplicationProofCommit
@@ -39,9 +44,12 @@ func newIsSquareProofStructure(N *big.Int, Squares []*big.Int) isSquareProofStru
 
 	// Copy over primary values
 	result.n = new(big.Int).Set(N)
+	result.nPederson = newPedersonStructure("N")
 	result.squares = make([]*big.Int, len(Squares))
+	result.squaresPederson = make([]pedersonStructure, len(Squares))
 	for i, val := range Squares {
 		result.squares[i] = new(big.Int).Set(val)
+		result.squaresPederson[i] = newPedersonStructure(strings.Join([]string{"s", fmt.Sprintf("%v", i)}, "_"))
 	}
 
 	// Setup representation proof of N
@@ -70,9 +78,9 @@ func newIsSquareProofStructure(N *big.Int, Squares []*big.Int) isSquareProofStru
 	}
 
 	// Setup representation proofs of roots
-	result.rootsRep = make([]representationProofStructure, len(Squares))
+	result.rootsRep = make([]pedersonStructure, len(Squares))
 	for i := range Squares {
-		result.rootsRep[i] = newPedersonRepresentationProofStructure(
+		result.rootsRep[i] = newPedersonStructure(
 			strings.Join([]string{"r", fmt.Sprintf("%v", i)}, "_"))
 	}
 
@@ -112,13 +120,18 @@ func (s *isSquareProofStructure) numCommitments() int {
 	// Constants
 	res := 1 + len(s.squares)
 	// Pedersons
-	res += 1
-	res += len(s.squares)
-	res += len(s.squares)
+	res += s.nPederson.numCommitments()
+	for i, _ := range s.squaresPederson {
+		res += s.squaresPederson[i].numCommitments()
+	}
+	for i, _ := range s.rootsRep {
+		res += s.rootsRep[i].numCommitments()
+	}
 	// Representationproofs
-	res += 1
-	res += len(s.squaresRep)
-	res += len(s.rootsRep)
+	res += s.nRep.numCommitments()
+	for i, _ := range s.squaresRep {
+		res += s.squaresRep[i].numCommitments()
+	}
 	// ValidityProofs
 	for i := range s.rootsRange {
 		res += s.rootsRange[i].numCommitments()
@@ -133,19 +146,19 @@ func (s *isSquareProofStructure) generateCommitmentsFromSecrets(g group, list []
 	var commit isSquareProofCommit
 
 	// Build up the secrets
-	commit.squares = make([]pedersonSecret, len(s.squares))
+	commit.squares = make([]pedersonCommit, len(s.squares))
 	for i, val := range s.squares {
-		commit.squares[i] = newPedersonSecret(g, strings.Join([]string{"s", fmt.Sprintf("%v", i)}, "_"), val)
+		list, commit.squares[i] = s.squaresPederson[i].generateCommitmentsFromSecrets(g, list, val)
 	}
-	commit.roots = make([]pedersonSecret, len(s.squares))
+	commit.roots = make([]pedersonCommit, len(s.squares))
 	for i, val := range s.squares {
 		root, ok := common.ModSqrt(val, []*big.Int{P, Q})
 		if !ok {
 			panic("Incorrect key")
 		}
-		commit.roots[i] = newPedersonSecret(g, strings.Join([]string{"r", fmt.Sprintf("%v", i)}, "_"), root)
+		list, commit.roots[i] = s.rootsRep[i].generateCommitmentsFromSecrets(g, list, root)
 	}
-	commit.n = newPedersonSecret(g, "N", s.n)
+	list, commit.n = s.nPederson.generateCommitmentsFromSecrets(g, list, s.n)
 
 	// Build up bases and secrets (this is ugly code, hopefully go2 will make this better someday)
 	baseList := []baseLookup{}
@@ -171,19 +184,9 @@ func (s *isSquareProofStructure) generateCommitmentsFromSecrets(g group, list []
 	for _, val := range s.squares {
 		list = append(list, val)
 	}
-	list = commit.n.generateCommitments(list)
-	for i := range commit.squares {
-		list = commit.squares[i].generateCommitments(list)
-	}
-	for i := range commit.roots {
-		list = commit.roots[i].generateCommitments(list)
-	}
 	list = s.nRep.generateCommitmentsFromSecrets(g, list, &bases, &secrets)
 	for i := range s.squaresRep {
 		list = s.squaresRep[i].generateCommitmentsFromSecrets(g, list, &bases, &secrets)
-	}
-	for i := range s.rootsRep {
-		list = s.rootsRep[i].generateCommitmentsFromSecrets(g, list, &bases, &secrets)
 	}
 	for i := range s.rootsRange {
 		list, commit.rootRangeCommit[i] = s.rootsRange[i].generateCommitmentsFromSecrets(g, list, &bases, &secrets)
@@ -209,14 +212,14 @@ func (s *isSquareProofStructure) buildProof(g group, challenge *big.Int, commit 
 
 	// Calculate proofs
 	var proof IsSquareProof
-	proof.NProof = commit.n.buildProof(g, challenge)
+	proof.NProof = s.nPederson.buildProof(g, challenge, commit.n)
 	proof.SquaresProof = make([]PedersonProof, len(s.squares))
 	for i := range commit.squares {
-		proof.SquaresProof[i] = commit.squares[i].buildProof(g, challenge)
+		proof.SquaresProof[i] = s.squaresPederson[i].buildProof(g, challenge, commit.squares[i])
 	}
 	proof.RootsProof = make([]PedersonProof, len(s.squares))
 	for i := range commit.roots {
-		proof.RootsProof[i] = commit.roots[i].buildProof(g, challenge)
+		proof.RootsProof[i] = s.rootsRep[i].buildProof(g, challenge, commit.roots[i])
 	}
 	proof.RootsRangeProof = make([]RangeProof, len(s.squares))
 	for i := range s.rootsRange {
@@ -231,7 +234,7 @@ func (s *isSquareProofStructure) buildProof(g group, challenge *big.Int, commit 
 }
 
 func (s *isSquareProofStructure) verifyProofStructure(proof IsSquareProof) bool {
-	if !proof.NProof.verifyStructure() {
+	if !s.nPederson.verifyProofStructure(proof.NProof) {
 		return false
 	}
 	if len(proof.SquaresProof) != len(s.squares) || len(proof.RootsProof) != len(s.squares) {
@@ -241,7 +244,10 @@ func (s *isSquareProofStructure) verifyProofStructure(proof IsSquareProof) bool 
 		return false
 	}
 	for i := range s.squares {
-		if !proof.SquaresProof[i].verifyStructure() || !proof.RootsProof[i].verifyStructure() {
+		if !s.squaresPederson[i].verifyProofStructure(proof.SquaresProof[i]) {
+			return false
+		}
+		if !s.rootsRep[i].verifyProofStructure(proof.RootsProof[i]) {
 			return false
 		}
 		if !s.rootsRange[i].verifyProofStructure(proof.RootsRangeProof[i]) {
@@ -281,23 +287,20 @@ func (s *isSquareProofStructure) generateCommitmentsFromProof(g group, list []*b
 	var proofs = newProofMerge(proofList...)
 
 	// Build up commitment list
+	for i := range s.squares {
+		list = s.squaresPederson[i].generateCommitmentsFromProof(g, list, challenge, proof.SquaresProof[i])
+	}
+	for i := range s.squares {
+		list = s.rootsRep[i].generateCommitmentsFromProof(g, list, challenge, proof.RootsProof[i])
+	}
+	list = s.nPederson.generateCommitmentsFromProof(g, list, challenge, proof.NProof)
 	list = append(list, s.n)
 	for _, val := range s.squares {
 		list = append(list, val)
 	}
-	list = proof.NProof.generateCommitments(list)
-	for i := range s.squares {
-		list = proof.SquaresProof[i].generateCommitments(list)
-	}
-	for i := range s.squares {
-		list = proof.RootsProof[i].generateCommitments(list)
-	}
 	list = s.nRep.generateCommitmentsFromProof(g, list, challenge, &bases, &proofs)
 	for i := range s.squares {
 		list = s.squaresRep[i].generateCommitmentsFromProof(g, list, challenge, &bases, &proofs)
-	}
-	for i := range s.squares {
-		list = s.rootsRep[i].generateCommitmentsFromProof(g, list, challenge, &bases, &proofs)
 	}
 	for i := range s.squares {
 		list = s.rootsRange[i].generateCommitmentsFromProof(g, list, challenge, &bases, proof.RootsRangeProof[i])

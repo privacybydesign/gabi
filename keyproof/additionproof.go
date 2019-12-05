@@ -1,8 +1,10 @@
 package keyproof
 
-import "github.com/privacybydesign/gabi/internal/common"
-import "github.com/privacybydesign/gabi/big"
-import "strings"
+import (
+	"strings"
+
+	"github.com/privacybydesign/gabi/big"
+)
 
 type additionProofStructure struct {
 	a1                string
@@ -15,51 +17,39 @@ type additionProofStructure struct {
 }
 
 type AdditionProof struct {
-	nameMod      string
-	nameHider    string
-	ModAddResult *big.Int
-	HiderResult  *big.Int
-	RangeProof   RangeProof
+	ModAddProof BasicProof
+	HiderProof  BasicProof
+	RangeProof  RangeProof
 }
 
 type additionProofCommit struct {
-	nameMod          string
-	nameHider        string
-	modAdd           *big.Int
-	modAddRandomizer *big.Int
-	hider            *big.Int
-	hiderRandomizer  *big.Int
-	rangeCommit      rangeCommit
+	modAdd      basicSecret
+	hider       basicSecret
+	rangeCommit rangeCommit
 }
 
 func (p *AdditionProof) getResult(name string) *big.Int {
-	if name == p.nameMod {
-		return p.ModAddResult
+	result := p.ModAddProof.getResult(name)
+	if result == nil {
+		result = p.HiderProof.getResult(name)
 	}
-	if name == p.nameHider {
-		return p.HiderResult
-	}
-	return nil
+	return result
 }
 
 func (c *additionProofCommit) getSecret(name string) *big.Int {
-	if name == c.nameMod {
-		return c.modAdd
+	result := c.modAdd.getSecret(name)
+	if result == nil {
+		result = c.hider.getSecret(name)
 	}
-	if name == c.nameHider {
-		return c.hider
-	}
-	return nil
+	return result
 }
 
 func (c *additionProofCommit) getRandomizer(name string) *big.Int {
-	if name == c.nameMod {
-		return c.modAddRandomizer
+	result := c.modAdd.getRandomizer(name)
+	if result == nil {
+		result = c.hider.getRandomizer(name)
 	}
-	if name == c.nameHider {
-		return c.hiderRandomizer
-	}
-	return nil
+	return result
 }
 
 func newAdditionProofStructure(a1, a2, mod, result string, l uint) additionProofStructure {
@@ -101,33 +91,31 @@ func (s *additionProofStructure) generateCommitmentsFromSecrets(g group, list []
 	var commit additionProofCommit
 
 	// Generate needed commit data
-	commit.nameMod = strings.Join([]string{s.myname, "mod"}, "_")
-	commit.nameHider = strings.Join([]string{s.myname, "hider"}, "_")
-	commit.modAdd = new(big.Int).Div(
-		new(big.Int).Sub(
-			secretdata.getSecret(s.result),
-			new(big.Int).Add(
-				secretdata.getSecret(s.a1),
-				secretdata.getSecret(s.a2))),
-		secretdata.getSecret(s.mod))
-	commit.modAddRandomizer = common.FastRandomBigInt(g.order)
-	commit.hider = new(big.Int).Mod(
-		new(big.Int).Sub(
-			secretdata.getSecret(strings.Join([]string{s.result, "hider"}, "_")),
-			new(big.Int).Add(
+	commit.modAdd = newBasicSecret(g, strings.Join([]string{s.myname, "mod"}, "_"),
+		new(big.Int).Div(
+			new(big.Int).Sub(
+				secretdata.getSecret(s.result),
 				new(big.Int).Add(
-					secretdata.getSecret(strings.Join([]string{s.a1, "hider"}, "_")),
-					secretdata.getSecret(strings.Join([]string{s.a2, "hider"}, "_"))),
-				new(big.Int).Mul(
-					secretdata.getSecret(strings.Join([]string{s.mod, "hider"}, "_")),
-					commit.modAdd))),
-		g.order)
-	commit.hiderRandomizer = common.FastRandomBigInt(g.order)
+					secretdata.getSecret(s.a1),
+					secretdata.getSecret(s.a2))),
+			secretdata.getSecret(s.mod)))
+	commit.hider = newBasicSecret(g, strings.Join([]string{s.myname, "hider"}, "_"),
+		new(big.Int).Mod(
+			new(big.Int).Sub(
+				secretdata.getSecret(strings.Join([]string{s.result, "hider"}, "_")),
+				new(big.Int).Add(
+					new(big.Int).Add(
+						secretdata.getSecret(strings.Join([]string{s.a1, "hider"}, "_")),
+						secretdata.getSecret(strings.Join([]string{s.a2, "hider"}, "_"))),
+					new(big.Int).Mul(
+						secretdata.getSecret(strings.Join([]string{s.mod, "hider"}, "_")),
+						commit.modAdd.secret))),
+			g.order))
 
 	// build inner secrets
 	secrets := newSecretMerge(&commit, secretdata)
 
-	// And build commits
+	// and build commits
 	list = s.addRepresentation.generateCommitmentsFromSecrets(g, list, bases, &secrets)
 	list, commit.rangeCommit = s.addRange.generateCommitmentsFromSecrets(g, list, bases, &secrets)
 
@@ -139,20 +127,8 @@ func (s *additionProofStructure) buildProof(g group, challenge *big.Int, commit 
 
 	rangeSecrets := newSecretMerge(&commit, secretdata)
 	proof.RangeProof = s.addRange.buildProof(g, challenge, commit.rangeCommit, &rangeSecrets)
-	proof.ModAddResult = new(big.Int).Mod(
-		new(big.Int).Sub(
-			commit.modAddRandomizer,
-			new(big.Int).Mul(
-				challenge,
-				commit.modAdd)),
-		g.order)
-	proof.HiderResult = new(big.Int).Mod(
-		new(big.Int).Sub(
-			commit.hiderRandomizer,
-			new(big.Int).Mul(
-				challenge,
-				commit.hider)),
-		g.order)
+	proof.ModAddProof = commit.modAdd.buildProof(g, challenge)
+	proof.HiderProof = commit.hider.buildProof(g, challenge)
 
 	return proof
 }
@@ -161,8 +137,8 @@ func (s *additionProofStructure) fakeProof(g group) AdditionProof {
 	var proof AdditionProof
 
 	proof.RangeProof = s.addRange.fakeProof(g)
-	proof.ModAddResult = common.FastRandomBigInt(g.order)
-	proof.HiderResult = common.FastRandomBigInt(g.order)
+	proof.ModAddProof = fakeBasicProof(g)
+	proof.HiderProof = fakeBasicProof(g)
 
 	return proof
 }
@@ -171,7 +147,7 @@ func (s *additionProofStructure) verifyProofStructure(proof AdditionProof) bool 
 	if !s.addRange.verifyProofStructure(proof.RangeProof) {
 		return false
 	}
-	if proof.ModAddResult == nil || proof.HiderResult == nil {
+	if !proof.HiderProof.verifyStructure() || !proof.ModAddProof.verifyStructure() {
 		return false
 	}
 	return true
@@ -179,8 +155,8 @@ func (s *additionProofStructure) verifyProofStructure(proof AdditionProof) bool 
 
 func (s *additionProofStructure) generateCommitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases baseLookup, proofdata proofLookup, proof AdditionProof) []*big.Int {
 	// build inner proof lookup
-	proof.nameMod = strings.Join([]string{s.myname, "mod"}, "_")
-	proof.nameHider = strings.Join([]string{s.myname, "hider"}, "_")
+	proof.ModAddProof.setName(strings.Join([]string{s.myname, "mod"}, "_"))
+	proof.HiderProof.setName(strings.Join([]string{s.myname, "hider"}, "_"))
 	proofs := newProofMerge(&proof, proofdata)
 
 	// build commitments

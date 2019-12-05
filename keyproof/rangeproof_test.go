@@ -1,8 +1,11 @@
 package keyproof
 
-import "testing"
-import "encoding/json"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"encoding/json"
+	"testing"
+
+	"github.com/privacybydesign/gabi/big"
+)
 
 type RangeTestSecret struct {
 	secrets     map[string]*big.Int

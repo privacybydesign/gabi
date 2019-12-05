@@ -1,14 +1,16 @@
 package keyproof
 
-import "github.com/privacybydesign/gabi/internal/common"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/internal/common"
+)
 
 type ValidKeyProofStructure struct {
 	n          *big.Int
-	pRep       representationProofStructure
-	qRep       representationProofStructure
-	pprimeRep  representationProofStructure
-	qprimeRep  representationProofStructure
+	p          pedersonStructure
+	q          pedersonStructure
+	pprime     pedersonStructure
+	qprime     pedersonStructure
 	pPprimeRel representationProofStructure
 	qQprimeRel representationProofStructure
 	pQNRel     representationProofStructure
@@ -24,7 +26,7 @@ type ValidKeyProof struct {
 	QProof      PedersonProof
 	PprimeProof PedersonProof
 	QprimeProof PedersonProof
-	PQNRel      *big.Int
+	PQNRel      BasicProof
 	Challenge   *big.Int
 	GroupPrime  *big.Int
 
@@ -36,40 +38,14 @@ type ValidKeyProof struct {
 	BasesValidProof IsSquareProof
 }
 
-type safePrimeSecret struct {
-	pQNRel           *big.Int
-	pQNRelRandomizer *big.Int
-}
-
-func (s *safePrimeSecret) getSecret(name string) *big.Int {
-	if name == "pqnrel" {
-		return s.pQNRel
-	}
-	return nil
-}
-
-func (s *safePrimeSecret) getRandomizer(name string) *big.Int {
-	if name == "pqnrel" {
-		return s.pQNRelRandomizer
-	}
-	return nil
-}
-
-func (p *ValidKeyProof) getResult(name string) *big.Int {
-	if name == "pqnrel" {
-		return p.PQNRel
-	}
-	return nil
-}
-
 func NewValidKeyProofStructure(N *big.Int, Z *big.Int, S *big.Int, Bases []*big.Int) ValidKeyProofStructure {
 	var structure ValidKeyProofStructure
 
 	structure.n = new(big.Int).Set(N)
-	structure.pRep = newPedersonRepresentationProofStructure("p")
-	structure.qRep = newPedersonRepresentationProofStructure("q")
-	structure.pprimeRep = newPedersonRepresentationProofStructure("pprime")
-	structure.qprimeRep = newPedersonRepresentationProofStructure("qprime")
+	structure.p = newPedersonStructure("p")
+	structure.q = newPedersonStructure("q")
+	structure.pprime = newPedersonStructure("pprime")
+	structure.qprime = newPedersonStructure("qprime")
 
 	structure.pPprimeRel = representationProofStructure{
 		[]lhsContribution{
@@ -137,36 +113,24 @@ func (s *ValidKeyProofStructure) BuildProof(Pprime *big.Int, Qprime *big.Int) Va
 	Q := new(big.Int).Add(new(big.Int).Lsh(Qprime, 1), big.NewInt(1))
 
 	// Build up the secrets
-	PprimeSecret := newPedersonSecret(g, "pprime", Pprime)
-	QprimeSecret := newPedersonSecret(g, "qprime", Qprime)
-	PSecret := newPedersonSecret(g, "p", P)
-	QSecret := newPedersonSecret(g, "q", Q)
+	list, PprimeSecret := s.pprime.generateCommitmentsFromSecrets(g, nil, Pprime)
+	list, QprimeSecret := s.qprime.generateCommitmentsFromSecrets(g, list, Qprime)
+	list, PSecret := s.p.generateCommitmentsFromSecrets(g, list, P)
+	list, QSecret := s.q.generateCommitmentsFromSecrets(g, list, Q)
 
-	PQNRelSecret := safePrimeSecret{
-		new(big.Int).Mod(new(big.Int).Mul(PSecret.hider, QSecret.secret), g.order),
-		common.FastRandomBigInt(g.order),
-	}
+	PQNRel := newBasicSecret(g, "pqnrel", new(big.Int).Mod(new(big.Int).Mul(PSecret.hider.secret, QSecret.secret.secret), g.order))
 
 	// Build up bases and secrets structures
 	bases := newBaseMerge(&g, &PSecret, &QSecret, &PprimeSecret, &QprimeSecret)
-	secrets := newSecretMerge(&PSecret, &QSecret, &PprimeSecret, &QprimeSecret, &PQNRelSecret)
+	secrets := newSecretMerge(&PSecret, &QSecret, &PprimeSecret, &QprimeSecret, &PQNRel)
 
 	// Build up commitment list
-	var list []*big.Int
 	var PprimeIsPrimeCommit primeProofCommit
 	var QprimeIsPrimeCommit primeProofCommit
 	var QSPPcommit quasiSafePrimeProductCommit
 	var BasesValidCommit isSquareProofCommit
 	list = append(list, GroupPrime)
 	list = append(list, s.n)
-	list = PprimeSecret.generateCommitments(list)
-	list = QprimeSecret.generateCommitments(list)
-	list = PSecret.generateCommitments(list)
-	list = QSecret.generateCommitments(list)
-	list = s.pRep.generateCommitmentsFromSecrets(g, list, &bases, &secrets)
-	list = s.qRep.generateCommitmentsFromSecrets(g, list, &bases, &secrets)
-	list = s.pprimeRep.generateCommitmentsFromSecrets(g, list, &bases, &secrets)
-	list = s.qprimeRep.generateCommitmentsFromSecrets(g, list, &bases, &secrets)
 	list = s.pPprimeRel.generateCommitmentsFromSecrets(g, list, &bases, &secrets)
 	list = s.qQprimeRel.generateCommitmentsFromSecrets(g, list, &bases, &secrets)
 	list = s.pQNRel.generateCommitmentsFromSecrets(g, list, &bases, &secrets)
@@ -183,17 +147,11 @@ func (s *ValidKeyProofStructure) BuildProof(Pprime *big.Int, Qprime *big.Int) Va
 	// Calculate proofs
 	var proof ValidKeyProof
 	proof.GroupPrime = GroupPrime
-	proof.PQNRel = new(big.Int).Mod(
-		new(big.Int).Sub(
-			PQNRelSecret.pQNRelRandomizer,
-			new(big.Int).Mul(
-				challenge,
-				PQNRelSecret.pQNRel)),
-		g.order)
-	proof.PProof = PSecret.buildProof(g, challenge)
-	proof.QProof = QSecret.buildProof(g, challenge)
-	proof.PprimeProof = PprimeSecret.buildProof(g, challenge)
-	proof.QprimeProof = QprimeSecret.buildProof(g, challenge)
+	proof.PQNRel = PQNRel.buildProof(g, challenge)
+	proof.PProof = s.p.buildProof(g, challenge, PSecret)
+	proof.QProof = s.q.buildProof(g, challenge, QSecret)
+	proof.PprimeProof = s.pprime.buildProof(g, challenge, PprimeSecret)
+	proof.QprimeProof = s.qprime.buildProof(g, challenge, QprimeSecret)
 	proof.Challenge = challenge
 	proof.PprimeIsPrimeProof = s.pprimeIsPrime.buildProof(g, challenge, PprimeIsPrimeCommit, &secrets)
 	proof.QprimeIsPrimeProof = s.qprimeIsPrime.buildProof(g, challenge, QprimeIsPrimeCommit, &secrets)
@@ -214,13 +172,13 @@ func (s *ValidKeyProofStructure) VerifyProof(proof ValidKeyProof) bool {
 	if !proof.GroupPrime.ProbablyPrime(80) || !new(big.Int).Rsh(proof.GroupPrime, 1).ProbablyPrime(80) {
 		return false
 	}
-	if proof.PQNRel == nil || proof.Challenge == nil {
+	if !proof.PQNRel.verifyStructure() || proof.Challenge == nil {
 		return false
 	}
-	if !proof.PProof.verifyStructure() || !proof.QProof.verifyStructure() {
+	if !s.p.verifyProofStructure(proof.PProof) || !s.q.verifyProofStructure(proof.QProof) {
 		return false
 	}
-	if !proof.PprimeProof.verifyStructure() || !proof.QprimeProof.verifyStructure() {
+	if !s.pprime.verifyProofStructure(proof.PprimeProof) || !s.qprime.verifyProofStructure(proof.QprimeProof) {
 		return false
 	}
 	if !s.pprimeIsPrime.verifyProofStructure(proof.Challenge, proof.PprimeIsPrimeProof) ||
@@ -248,23 +206,20 @@ func (s *ValidKeyProofStructure) VerifyProof(proof ValidKeyProof) bool {
 	proof.QProof.setName("q")
 	proof.PprimeProof.setName("pprime")
 	proof.QprimeProof.setName("qprime")
+	proof.PQNRel.setName("pqnrel")
 
 	// Build up bases and secrets
 	bases := newBaseMerge(&g, &proof.PProof, &proof.QProof, &proof.PprimeProof, &proof.QprimeProof)
-	proofs := newProofMerge(&proof.PProof, &proof.QProof, &proof.PprimeProof, &proof.QprimeProof, &proof)
+	proofs := newProofMerge(&proof.PProof, &proof.QProof, &proof.PprimeProof, &proof.QprimeProof, &proof.PQNRel)
 
 	// Build up commitment list
 	var list []*big.Int
+	list = s.pprime.generateCommitmentsFromProof(g, list, proof.Challenge, proof.PprimeProof)
+	list = s.qprime.generateCommitmentsFromProof(g, list, proof.Challenge, proof.QprimeProof)
+	list = s.p.generateCommitmentsFromProof(g, list, proof.Challenge, proof.PProof)
+	list = s.q.generateCommitmentsFromProof(g, list, proof.Challenge, proof.QProof)
 	list = append(list, proof.GroupPrime)
 	list = append(list, s.n)
-	list = proof.PprimeProof.generateCommitments(list)
-	list = proof.QprimeProof.generateCommitments(list)
-	list = proof.PProof.generateCommitments(list)
-	list = proof.QProof.generateCommitments(list)
-	list = s.pRep.generateCommitmentsFromProof(g, list, proof.Challenge, &bases, &proofs)
-	list = s.qRep.generateCommitmentsFromProof(g, list, proof.Challenge, &bases, &proofs)
-	list = s.pprimeRep.generateCommitmentsFromProof(g, list, proof.Challenge, &bases, &proofs)
-	list = s.qprimeRep.generateCommitmentsFromProof(g, list, proof.Challenge, &bases, &proofs)
 	list = s.pPprimeRel.generateCommitmentsFromProof(g, list, proof.Challenge, &bases, &proofs)
 	list = s.qQprimeRel.generateCommitmentsFromProof(g, list, proof.Challenge, &bases, &proofs)
 	list = s.pQNRel.generateCommitmentsFromProof(g, list, proof.Challenge, &bases, &proofs)

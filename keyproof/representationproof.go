@@ -1,6 +1,8 @@
 package keyproof
 
-import "github.com/privacybydesign/gabi/big"
+import (
+	"github.com/privacybydesign/gabi/big"
+)
 
 type lhsContribution struct {
 	base  string

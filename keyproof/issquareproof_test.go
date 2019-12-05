@@ -1,7 +1,10 @@
 package keyproof
 
-import "testing"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"testing"
+
+	"github.com/privacybydesign/gabi/big"
+)
 
 func TestIsSquareProof(t *testing.T) {
 	const p = 7
