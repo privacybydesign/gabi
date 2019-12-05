@@ -1,8 +1,10 @@
 package keyproof
 
-import "github.com/privacybydesign/gabi/internal/common"
-import "github.com/privacybydesign/gabi/big"
-import "strings"
+import (
+	"strings"
+
+	"github.com/privacybydesign/gabi/big"
+)
 
 type expStepAStructure struct {
 	bitname     string
@@ -14,45 +16,13 @@ type expStepAStructure struct {
 }
 
 type ExpStepAProof struct {
-	nameBit             string
-	nameEquality        string
-	BitHiderResult      *big.Int
-	EqualityHiderResult *big.Int
+	Bit           BasicProof // Needed to make sure we can fake these proofs, which is needed for the OR in expstep
+	EqualityHider BasicProof
 }
 
 type expStepACommit struct {
-	nameBit                 string
-	nameEquality            string
-	bitHiderRandomizer      *big.Int
-	equalityHider           *big.Int
-	equalityHiderRandomizer *big.Int
-}
-
-func (p *ExpStepAProof) getResult(name string) *big.Int {
-	if name == p.nameBit {
-		return p.BitHiderResult
-	}
-	if name == p.nameEquality {
-		return p.EqualityHiderResult
-	}
-	return nil
-}
-
-func (c *expStepACommit) getSecret(name string) *big.Int {
-	if name == c.nameEquality {
-		return c.equalityHider
-	}
-	return nil
-}
-
-func (c *expStepACommit) getRandomizer(name string) *big.Int {
-	if name == c.nameBit {
-		return c.bitHiderRandomizer
-	}
-	if name == c.nameEquality {
-		return c.equalityHiderRandomizer
-	}
-	return nil
+	bit           basicSecret // Needed to make sure we can fake these proofs, which is needed for the OR in expstep
+	equalityHider basicSecret
 }
 
 func newExpStepAStructure(bitname, prename, postname string) expStepAStructure {
@@ -93,18 +63,15 @@ func (s *expStepAStructure) generateCommitmentsFromSecrets(g group, list []*big.
 	var commit expStepACommit
 
 	// Build commit structure
-	commit.nameBit = strings.Join([]string{s.bitname, "hider"}, "_")
-	commit.nameEquality = strings.Join([]string{s.myname, "eqhider"}, "_")
-	commit.bitHiderRandomizer = common.FastRandomBigInt(g.order)
-	commit.equalityHider = new(big.Int).Mod(
+	commit.bit = newBasicSecret(g, strings.Join([]string{s.bitname, "hider"}, "_"), secretdata.getSecret(strings.Join([]string{s.bitname, "hider"}, "_")))
+	commit.equalityHider = newBasicSecret(g, strings.Join([]string{s.myname, "eqhider"}, "_"), new(big.Int).Mod(
 		new(big.Int).Sub(
 			secretdata.getSecret(strings.Join([]string{s.prename, "hider"}, "_")),
 			secretdata.getSecret(strings.Join([]string{s.postname, "hider"}, "_"))),
-		g.order)
-	commit.equalityHiderRandomizer = common.FastRandomBigInt(g.order)
+		g.order))
 
 	// inner secrets
-	secrets := newSecretMerge(&commit, secretdata)
+	secrets := newSecretMerge(&commit.bit, &commit.equalityHider, secretdata)
 
 	// Generate commitments
 	list = s.bitRep.generateCommitmentsFromSecrets(g, list, bases, &secrets)
@@ -117,20 +84,8 @@ func (s *expStepAStructure) buildProof(g group, challenge *big.Int, commit expSt
 	var proof ExpStepAProof
 
 	// Build our results
-	proof.BitHiderResult = new(big.Int).Mod(
-		new(big.Int).Sub(
-			commit.bitHiderRandomizer,
-			new(big.Int).Mul(
-				challenge,
-				secretdata.getSecret(strings.Join([]string{s.bitname, "hider"}, "_")))),
-		g.order)
-	proof.EqualityHiderResult = new(big.Int).Mod(
-		new(big.Int).Sub(
-			commit.equalityHiderRandomizer,
-			new(big.Int).Mul(
-				challenge,
-				commit.equalityHider)),
-		g.order)
+	proof.Bit = commit.bit.buildProof(g, challenge)
+	proof.EqualityHider = commit.equalityHider.buildProof(g, challenge)
 
 	return proof
 }
@@ -138,24 +93,25 @@ func (s *expStepAStructure) buildProof(g group, challenge *big.Int, commit expSt
 func (s *expStepAStructure) fakeProof(g group) ExpStepAProof {
 	var proof ExpStepAProof
 
-	proof.BitHiderResult = common.FastRandomBigInt(g.order)
-	proof.EqualityHiderResult = common.FastRandomBigInt(g.order)
+	proof.Bit = fakeBasicProof(g)
+	proof.EqualityHider = fakeBasicProof(g)
 
 	return proof
 }
 
 func (s *expStepAStructure) verifyProofStructure(proof ExpStepAProof) bool {
-	return proof.BitHiderResult != nil && proof.EqualityHiderResult != nil
+	return proof.Bit.verifyStructure() && proof.EqualityHider.verifyStructure()
 }
 
 func (s *expStepAStructure) generateCommitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases baseLookup, proof ExpStepAProof) []*big.Int {
 	// inner proof data
-	proof.nameBit = strings.Join([]string{s.bitname, "hider"}, "_")
-	proof.nameEquality = strings.Join([]string{s.myname, "eqhider"}, "_")
+	proof.Bit.setName(strings.Join([]string{s.bitname, "hider"}, "_"))
+	proof.EqualityHider.setName(strings.Join([]string{s.myname, "eqhider"}, "_"))
+	proofMerge := newProofMerge(&proof.Bit, &proof.EqualityHider)
 
 	// Generate commitments
-	list = s.bitRep.generateCommitmentsFromProof(g, list, challenge, bases, &proof)
-	list = s.equalityRep.generateCommitmentsFromProof(g, list, challenge, bases, &proof)
+	list = s.bitRep.generateCommitmentsFromProof(g, list, challenge, bases, &proofMerge)
+	list = s.equalityRep.generateCommitmentsFromProof(g, list, challenge, bases, &proofMerge)
 
 	return list
 }

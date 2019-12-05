@@ -1,8 +1,11 @@
 package keyproof
 
-import "testing"
-import "encoding/json"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"encoding/json"
+	"testing"
+
+	"github.com/privacybydesign/gabi/big"
+)
 
 func TestAdditionProofFlow(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
@@ -18,10 +21,15 @@ func TestAdditionProofFlow(t *testing.T) {
 	const d = 2
 	const n = 5
 
-	a1 := newPedersonSecret(g, "a1", big.NewInt(a))
-	a2 := newPedersonSecret(g, "a2", big.NewInt(b))
-	mod := newPedersonSecret(g, "mod", big.NewInt(n))
-	result := newPedersonSecret(g, "result", big.NewInt(d))
+	a1s := newPedersonStructure("a1")
+	a2s := newPedersonStructure("a2")
+	mods := newPedersonStructure("mod")
+	results := newPedersonStructure("result")
+
+	_, a1 := a1s.generateCommitmentsFromSecrets(g, []*big.Int{}, big.NewInt(a))
+	_, a2 := a2s.generateCommitmentsFromSecrets(g, []*big.Int{}, big.NewInt(b))
+	_, mod := mods.generateCommitmentsFromSecrets(g, []*big.Int{}, big.NewInt(n))
+	_, result := results.generateCommitmentsFromSecrets(g, []*big.Int{}, big.NewInt(d))
 
 	bases := newBaseMerge(&g, &a1, &a2, &mod, &result)
 	secrets := newSecretMerge(&a1, &a2, &mod, &result)
@@ -43,13 +51,13 @@ func TestAdditionProofFlow(t *testing.T) {
 	Follower.(*TestFollower).count = 0
 
 	proof := s.buildProof(g, big.NewInt(12345), commit, &secrets)
-	a1proof := a1.buildProof(g, big.NewInt(12345))
+	a1proof := a1s.buildProof(g, big.NewInt(12345), a1)
 	a1proof.setName("a1")
-	a2proof := a2.buildProof(g, big.NewInt(12345))
+	a2proof := a2s.buildProof(g, big.NewInt(12345), a2)
 	a2proof.setName("a2")
-	modproof := mod.buildProof(g, big.NewInt(12345))
+	modproof := mods.buildProof(g, big.NewInt(12345), mod)
 	modproof.setName("mod")
-	resultproof := result.buildProof(g, big.NewInt(12345))
+	resultproof := results.buildProof(g, big.NewInt(12345), result)
 	resultproof.setName("result")
 
 	basesProof := newBaseMerge(&g, &a1proof, &a2proof, &modproof, &resultproof)
@@ -79,22 +87,22 @@ func TestAdditionProofVerifyStructure(t *testing.T) {
 	}
 
 	var proof AdditionProof
-	proof.ModAddResult = big.NewInt(1)
-	proof.HiderResult = big.NewInt(1)
-
 	s := newAdditionProofStructure("a1", "a2", "mod", "result", 3)
+
+	proof = s.fakeProof(g)
+	proof.RangeProof.Results = nil
 	if s.verifyProofStructure(proof) {
 		t.Error("Accepting missing rangeproof.\n")
 	}
 
-	proof.RangeProof = s.addRange.fakeProof(g)
-	proof.ModAddResult = nil
+	proof = s.fakeProof(g)
+	proof.ModAddProof.Result = nil
 	if s.verifyProofStructure(proof) {
 		t.Error("Accepting missing modaddresult.\n")
 	}
 
-	proof.ModAddResult = proof.HiderResult
-	proof.HiderResult = nil
+	proof = s.fakeProof(g)
+	proof.HiderProof.Result = nil
 	if s.verifyProofStructure(proof) {
 		t.Error("Accepting missing hiderresult.\n")
 	}

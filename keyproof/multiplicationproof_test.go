@@ -1,8 +1,11 @@
 package keyproof
 
-import "testing"
-import "encoding/json"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"encoding/json"
+	"testing"
+
+	"github.com/privacybydesign/gabi/big"
+)
 
 func TestMultiplicationProofFlow(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
@@ -18,10 +21,15 @@ func TestMultiplicationProofFlow(t *testing.T) {
 	const d = 1
 	const n = 5
 
-	m1 := newPedersonSecret(g, "m1", big.NewInt(a))
-	m2 := newPedersonSecret(g, "m2", big.NewInt(b))
-	mod := newPedersonSecret(g, "mod", big.NewInt(n))
-	result := newPedersonSecret(g, "result", big.NewInt(d))
+	m1s := newPedersonStructure("m1")
+	m2s := newPedersonStructure("m2")
+	mods := newPedersonStructure("mod")
+	results := newPedersonStructure("result")
+
+	_, m1 := m1s.generateCommitmentsFromSecrets(g, nil, big.NewInt(a))
+	_, m2 := m2s.generateCommitmentsFromSecrets(g, nil, big.NewInt(b))
+	_, mod := mods.generateCommitmentsFromSecrets(g, nil, big.NewInt(n))
+	_, result := results.generateCommitmentsFromSecrets(g, nil, big.NewInt(d))
 
 	bases := newBaseMerge(&g, &m1, &m2, &mod, &result)
 	secrets := newSecretMerge(&m1, &m2, &mod, &result)
@@ -31,7 +39,7 @@ func TestMultiplicationProofFlow(t *testing.T) {
 		t.Error("Incorrectly assessed proof setup as incorrect.")
 	}
 
-	listSecrets, commit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &bases, &secrets)
+	listSecrets, commit := s.generateCommitmentsFromSecrets(g, nil, &bases, &secrets)
 
 	if len(listSecrets) != s.numCommitments() {
 		t.Error("NumCommitments is off")
@@ -43,13 +51,13 @@ func TestMultiplicationProofFlow(t *testing.T) {
 	Follower.(*TestFollower).count = 0
 
 	proof := s.buildProof(g, big.NewInt(12345), commit, &secrets)
-	m1proof := m1.buildProof(g, big.NewInt(12345))
+	m1proof := m1s.buildProof(g, big.NewInt(12345), m1)
 	m1proof.setName("m1")
-	m2proof := m2.buildProof(g, big.NewInt(12345))
+	m2proof := m2s.buildProof(g, big.NewInt(12345), m2)
 	m2proof.setName("m2")
-	modproof := mod.buildProof(g, big.NewInt(12345))
+	modproof := mods.buildProof(g, big.NewInt(12345), mod)
 	modproof.setName("mod")
-	resultproof := result.buildProof(g, big.NewInt(12345))
+	resultproof := results.buildProof(g, big.NewInt(12345), result)
 	resultproof.setName("result")
 
 	basesProof := newBaseMerge(&g, &m1proof, &m2proof, &modproof, &resultproof)
@@ -60,11 +68,12 @@ func TestMultiplicationProofFlow(t *testing.T) {
 		return
 	}
 
-	listProof := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &basesProof, &proofdata, proof)
+	listProof := s.generateCommitmentsFromProof(g, nil, big.NewInt(12345), &basesProof, &proofdata, proof)
 
 	if Follower.(*TestFollower).count != s.numRangeProofs() {
 		t.Error("Logging is off on GenerateCommitmentsFromProof")
 	}
+	Follower.(*TestFollower).count = 0
 
 	if !listCmp(listSecrets, listProof) {
 		t.Error("Commitment lists differ.\n")
@@ -104,7 +113,7 @@ func TestMultiplicationProofVerifyStructure(t *testing.T) {
 	}
 
 	proof = s.fakeProof(g)
-	proof.HiderResult = nil
+	proof.Hider.Result = nil
 	if s.verifyProofStructure(proof) {
 		t.Error("Accepting missing HiderResult")
 	}

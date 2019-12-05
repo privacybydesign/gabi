@@ -1,8 +1,11 @@
 package keyproof
 
-import "testing"
-import "encoding/json"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"encoding/json"
+	"testing"
+
+	"github.com/privacybydesign/gabi/big"
+)
 
 func TestExpStepAFlow(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
@@ -13,9 +16,13 @@ func TestExpStepAFlow(t *testing.T) {
 
 	Follower.(*TestFollower).count = 0
 
-	bitPederson := newPedersonSecret(g, "bit", big.NewInt(0))
-	prePederson := newPedersonSecret(g, "pre", big.NewInt(5))
-	postPederson := newPedersonSecret(g, "post", big.NewInt(5))
+	bitPedersons := newPedersonStructure("bit")
+	prePedersons := newPedersonStructure("pre")
+	postPedersons := newPedersonStructure("post")
+
+	_, bitPederson := bitPedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(0))
+	_, prePederson := prePedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(5))
+	_, postPederson := postPedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(5))
 
 	bases := newBaseMerge(&g, &bitPederson, &prePederson, &postPederson)
 	secrets := newSecretMerge(&bitPederson, &prePederson, &postPederson)
@@ -44,11 +51,11 @@ func TestExpStepAFlow(t *testing.T) {
 		return
 	}
 
-	bitProof := bitPederson.buildProof(g, big.NewInt(12345))
+	bitProof := bitPedersons.buildProof(g, big.NewInt(12345), bitPederson)
 	bitProof.setName("bit")
-	preProof := prePederson.buildProof(g, big.NewInt(12345))
+	preProof := prePedersons.buildProof(g, big.NewInt(12345), prePederson)
 	preProof.setName("pre")
-	postProof := postPederson.buildProof(g, big.NewInt(12345))
+	postProof := postPedersons.buildProof(g, big.NewInt(12345), postPederson)
 	postProof.setName("post")
 
 	proofBases := newBaseMerge(&g, &bitProof, &preProof, &postProof)
@@ -118,13 +125,13 @@ func TestExpStepAVerifyStructure(t *testing.T) {
 
 	proof := s.fakeProof(g)
 
-	proof.BitHiderResult = nil
+	proof.Bit.Result = nil
 	if s.verifyProofStructure(proof) {
 		t.Error("Accepting missing bithiderresult")
 	}
 
-	proof.BitHiderResult = proof.EqualityHiderResult
-	proof.EqualityHiderResult = nil
+	proof.Bit.Result = proof.EqualityHider.Result
+	proof.EqualityHider.Result = nil
 	if s.verifyProofStructure(proof) {
 		t.Error("Accepting missing equalityhiderresult")
 	}

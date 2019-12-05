@@ -1,8 +1,11 @@
 package keyproof
 
-import "testing"
-import "encoding/json"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"encoding/json"
+	"testing"
+
+	"github.com/privacybydesign/gabi/big"
+)
 
 func TestExpStepFlowA(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
@@ -13,11 +16,17 @@ func TestExpStepFlowA(t *testing.T) {
 
 	Follower.(*TestFollower).count = 0
 
-	bitPederson := newPedersonSecret(g, "bit", big.NewInt(0))
-	prePederson := newPedersonSecret(g, "pre", big.NewInt(2))
-	postPederson := newPedersonSecret(g, "post", big.NewInt(2))
-	mulPederson := newPedersonSecret(g, "mul", big.NewInt(3))
-	modPederson := newPedersonSecret(g, "mod", big.NewInt(11))
+	bitPedersons := newPedersonStructure("bit")
+	prePedersons := newPedersonStructure("pre")
+	postPedersons := newPedersonStructure("post")
+	mulPedersons := newPedersonStructure("mul")
+	modPedersons := newPedersonStructure("mod")
+
+	_, bitPederson := bitPedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(0))
+	_, prePederson := prePedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(2))
+	_, postPederson := postPedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(2))
+	_, mulPederson := mulPedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(3))
+	_, modPederson := modPedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(11))
 
 	bases := newBaseMerge(&g, &bitPederson, &prePederson, &postPederson, &mulPederson, &modPederson)
 	secrets := newSecretMerge(&bitPederson, &prePederson, &postPederson, &mulPederson, &modPederson)
@@ -46,15 +55,15 @@ func TestExpStepFlowA(t *testing.T) {
 		return
 	}
 
-	bitProof := bitPederson.buildProof(g, big.NewInt(12345))
+	bitProof := bitPedersons.buildProof(g, big.NewInt(12345), bitPederson)
 	bitProof.setName("bit")
-	preProof := prePederson.buildProof(g, big.NewInt(12345))
+	preProof := prePedersons.buildProof(g, big.NewInt(12345), prePederson)
 	preProof.setName("pre")
-	postProof := postPederson.buildProof(g, big.NewInt(12345))
+	postProof := postPedersons.buildProof(g, big.NewInt(12345), postPederson)
 	postProof.setName("post")
-	mulProof := mulPederson.buildProof(g, big.NewInt(12345))
+	mulProof := mulPedersons.buildProof(g, big.NewInt(12345), mulPederson)
 	mulProof.setName("mul")
-	modProof := modPederson.buildProof(g, big.NewInt(12345))
+	modProof := modPedersons.buildProof(g, big.NewInt(12345), modPederson)
 	modProof.setName("mod")
 
 	proofBases := newBaseMerge(&g, &bitProof, &preProof, &postProof, &mulProof, &modProof)
@@ -76,11 +85,17 @@ func TestExpStepFlowB(t *testing.T) {
 		t.Error("Failed to setup group for expStep proof testing")
 	}
 
-	bitPederson := newPedersonSecret(g, "bit", big.NewInt(1))
-	prePederson := newPedersonSecret(g, "pre", big.NewInt(2))
-	postPederson := newPedersonSecret(g, "post", big.NewInt(6))
-	mulPederson := newPedersonSecret(g, "mul", big.NewInt(3))
-	modPederson := newPedersonSecret(g, "mod", big.NewInt(11))
+	bitPedersons := newPedersonStructure("bit")
+	prePedersons := newPedersonStructure("pre")
+	postPedersons := newPedersonStructure("post")
+	mulPedersons := newPedersonStructure("mul")
+	modPedersons := newPedersonStructure("mod")
+
+	_, bitPederson := bitPedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(1))
+	_, prePederson := prePedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(2))
+	_, postPederson := postPedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(6))
+	_, mulPederson := mulPedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(3))
+	_, modPederson := modPedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(11))
 
 	bases := newBaseMerge(&g, &bitPederson, &prePederson, &postPederson, &mulPederson, &modPederson)
 	secrets := newSecretMerge(&bitPederson, &prePederson, &postPederson, &mulPederson, &modPederson)
@@ -99,15 +114,15 @@ func TestExpStepFlowB(t *testing.T) {
 		return
 	}
 
-	bitProof := bitPederson.buildProof(g, big.NewInt(12345))
+	bitProof := bitPedersons.buildProof(g, big.NewInt(12345), bitPederson)
 	bitProof.setName("bit")
-	preProof := prePederson.buildProof(g, big.NewInt(12345))
+	preProof := prePedersons.buildProof(g, big.NewInt(12345), prePederson)
 	preProof.setName("pre")
-	postProof := postPederson.buildProof(g, big.NewInt(12345))
+	postProof := postPedersons.buildProof(g, big.NewInt(12345), postPederson)
 	postProof.setName("post")
-	mulProof := mulPederson.buildProof(g, big.NewInt(12345))
+	mulProof := mulPedersons.buildProof(g, big.NewInt(12345), mulPederson)
 	mulProof.setName("mul")
-	modProof := modPederson.buildProof(g, big.NewInt(12345))
+	modProof := modPedersons.buildProof(g, big.NewInt(12345), modPederson)
 	modProof.setName("mod")
 
 	proofBases := newBaseMerge(&g, &bitProof, &preProof, &postProof, &mulProof, &modProof)
@@ -191,13 +206,13 @@ func TestExpStepVerifyProofStructure(t *testing.T) {
 	}
 
 	proof = s.fakeProof(g, big.NewInt(12345))
-	proof.Aproof.BitHiderResult = nil
+	proof.Aproof.Bit.Result = nil
 	if s.verifyProofStructure(big.NewInt(12345), proof) {
 		t.Error("Accepting corrupted aproof")
 	}
 
 	proof = s.fakeProof(g, big.NewInt(12345))
-	proof.Bproof.BitHiderResult = nil
+	proof.Bproof.Bit.Result = nil
 	if s.verifyProofStructure(big.NewInt(12345), proof) {
 		t.Error("Accepting corrupted bproof")
 	}

@@ -1,8 +1,11 @@
 package keyproof
 
-import "testing"
-import "encoding/json"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"encoding/json"
+	"testing"
+
+	"github.com/privacybydesign/gabi/big"
+)
 
 func TestValidKeyProof(t *testing.T) {
 	const p = 26903
@@ -87,12 +90,12 @@ func TestValidKeyProofStructure(t *testing.T) {
 	}
 	proof.QprimeProof.Commit = backup
 
-	backup = proof.PQNRel
-	proof.PQNRel = nil
+	backup = proof.PQNRel.Result
+	proof.PQNRel.Result = nil
 	if s.VerifyProof(proof) {
 		t.Error("Accepting corrupted pqnrel")
 	}
-	proof.PQNRel = backup
+	proof.PQNRel.Result = backup
 
 	backup = proof.Challenge
 	proof.Challenge = nil
@@ -106,19 +109,19 @@ func TestValidKeyProofStructure(t *testing.T) {
 	}
 	proof.Challenge = backup
 
-	backup = proof.PprimeIsPrimeProof.PreaModResult
-	proof.PprimeIsPrimeProof.PreaModResult = nil
+	backup = proof.PprimeIsPrimeProof.PreaMod.Result
+	proof.PprimeIsPrimeProof.PreaMod.Result = nil
 	if s.VerifyProof(proof) {
 		t.Error("Accepting corrupted pprimeisprimeproof")
 	}
-	proof.PprimeIsPrimeProof.PreaModResult = backup
+	proof.PprimeIsPrimeProof.PreaMod.Result = backup
 
-	backup = proof.QprimeIsPrimeProof.PreaModResult
-	proof.QprimeIsPrimeProof.PreaModResult = nil
+	backup = proof.QprimeIsPrimeProof.PreaMod.Result
+	proof.QprimeIsPrimeProof.PreaMod.Result = nil
 	if s.VerifyProof(proof) {
 		t.Error("Accepting corrupted qprimeisprimeproof")
 	}
-	proof.QprimeIsPrimeProof.PreaModResult = backup
+	proof.QprimeIsPrimeProof.PreaMod.Result = backup
 
 	backup = proof.QSPPproof.PPPproof.Responses[2]
 	proof.QSPPproof.PPPproof.Responses[2] = nil

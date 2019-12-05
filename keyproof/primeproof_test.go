@@ -1,8 +1,11 @@
 package keyproof
 
-import "testing"
-import "encoding/json"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"encoding/json"
+	"testing"
+
+	"github.com/privacybydesign/gabi/big"
+)
 
 func TestPrimeProofFlow(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
@@ -16,7 +19,8 @@ func TestPrimeProofFlow(t *testing.T) {
 	s := newPrimeProofStructure("p", 4)
 
 	const p = 11
-	pCommit := newPedersonSecret(g, "p", big.NewInt(p))
+	pCommits := newPedersonStructure("p")
+	_, pCommit := pCommits.generateCommitmentsFromSecrets(g, nil, big.NewInt(p))
 	bases := newBaseMerge(&g, &pCommit)
 
 	listSecrets, commit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &bases, &pCommit)
@@ -31,7 +35,7 @@ func TestPrimeProofFlow(t *testing.T) {
 	Follower.(*TestFollower).count = 0
 
 	proof := s.buildProof(g, big.NewInt(12345), commit, &pCommit)
-	pProof := pCommit.buildProof(g, big.NewInt(12345))
+	pProof := pCommits.buildProof(g, big.NewInt(12345), pCommit)
 	pProof.setName("p")
 
 	basesProof := newBaseMerge(&g, &pProof)
@@ -48,7 +52,7 @@ func TestPrimeProofFlow(t *testing.T) {
 	}
 
 	if !listCmp(listSecrets, listProof) {
-		t.Error("Commitment lists differ.")
+		t.Errorf("Commitment lists differ.\n%v\n%v\n", listSecrets, listProof)
 	}
 }
 
@@ -142,25 +146,25 @@ func TestPrimeProofVerify(t *testing.T) {
 	}
 
 	proof = s.fakeProof(g, big.NewInt(12345))
-	proof.PreaModResult = nil
+	proof.PreaMod.Result = nil
 	if s.verifyProofStructure(big.NewInt(12345), proof) {
 		t.Error("Accepting missing preamodresult")
 	}
 
 	proof = s.fakeProof(g, big.NewInt(12345))
-	proof.PreaHiderResult = nil
+	proof.PreaHider.Result = nil
 	if s.verifyProofStructure(big.NewInt(12345), proof) {
 		t.Error("Accepting missing preahiderresult")
 	}
 
 	proof = s.fakeProof(g, big.NewInt(12345))
-	proof.APlus1Result = nil
+	proof.APlus1.Result = nil
 	if s.verifyProofStructure(big.NewInt(12345), proof) {
 		t.Error("Accepting missing aPlus1Result")
 	}
 
 	proof = s.fakeProof(g, big.NewInt(12345))
-	proof.AMin1Result = nil
+	proof.AMin1.Result = nil
 	if s.verifyProofStructure(big.NewInt(12345), proof) {
 		t.Error("Accepting missing aMin1Result")
 	}
@@ -208,13 +212,13 @@ func TestPrimeProofVerify(t *testing.T) {
 	}
 
 	proof = s.fakeProof(g, big.NewInt(12345))
-	proof.AExpProof.ExpBitEqResult = nil
+	proof.AExpProof.ExpBitEqHider.Result = nil
 	if s.verifyProofStructure(big.NewInt(12345), proof) {
 		t.Error("Accepting wrong aexpproof")
 	}
 
 	proof = s.fakeProof(g, big.NewInt(12345))
-	proof.AnegExpProof.ExpBitEqResult = nil
+	proof.AnegExpProof.ExpBitEqHider.Result = nil
 	if s.verifyProofStructure(big.NewInt(12345), proof) {
 		t.Error("Accepting wrong anegexpproof")
 	}

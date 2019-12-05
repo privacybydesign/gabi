@@ -1,26 +1,31 @@
 package keyproof
 
-import "github.com/privacybydesign/gabi/internal/common"
-import "github.com/privacybydesign/gabi/big"
-import "strings"
+import (
+	"strings"
+
+	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/internal/common"
+)
 
 type primeProofStructure struct {
 	primeName string
 	myname    string
 	bitlen    uint
 
+	halfP    pedersonStructure
 	halfPRep representationProofStructure
 
-	preaRep   representationProofStructure
+	prea      pedersonStructure
 	preaRange rangeProofStructure
 
-	aRep   representationProofStructure
+	a      pedersonStructure
 	aRange rangeProofStructure
 
-	anegRep   representationProofStructure
+	aneg      pedersonStructure
 	anegRange rangeProofStructure
 
-	aResRep      representationProofStructure
+	aRes         pedersonStructure
+	anegRes      pedersonStructure
 	aPlus1ResRep representationProofStructure
 	aMin1ResRep  representationProofStructure
 
@@ -31,11 +36,6 @@ type primeProofStructure struct {
 }
 
 type PrimeProof struct {
-	namePreaMod   string
-	namePreaHider string
-	nameAplus1    string
-	nameAmin1     string
-
 	HalfPCommit   PedersonProof
 	PreaCommit    PedersonProof
 	ACommit       PedersonProof
@@ -43,11 +43,11 @@ type PrimeProof struct {
 	AResCommit    PedersonProof
 	AnegResCommit PedersonProof
 
-	PreaModResult   *big.Int
-	PreaHiderResult *big.Int
+	PreaMod   BasicProof
+	PreaHider BasicProof
 
-	APlus1Result    *big.Int
-	AMin1Result     *big.Int
+	APlus1          BasicProof
+	AMin1           BasicProof
 	APlus1Challenge *big.Int
 	AMin1Challenge  *big.Int
 
@@ -61,26 +61,18 @@ type PrimeProof struct {
 }
 
 type primeProofCommit struct {
-	namePreaMod   string
-	namePreaHider string
-	nameAValid    string
-	nameAInvalid  string
+	halfP   pedersonCommit
+	prea    pedersonCommit
+	a       pedersonCommit
+	aneg    pedersonCommit
+	aRes    pedersonCommit
+	anegRes pedersonCommit
 
-	halfPPederson   pedersonSecret
-	preaPederson    pedersonSecret
-	aPederson       pedersonSecret
-	anegPederson    pedersonSecret
-	aResPederson    pedersonSecret
-	anegResPederson pedersonSecret
+	preaMod   basicSecret
+	preaHider basicSecret
 
-	preaMod             *big.Int
-	preaModRandomizer   *big.Int
-	preaHider           *big.Int
-	preaHiderRandomizer *big.Int
-
-	aValid            *big.Int
-	aValidRandomizer  *big.Int
-	aInvalidResult    *big.Int
+	aValid            basicSecret
+	aInvalid          BasicProof
 	aInvalidChallenge *big.Int
 	aPositive         bool
 
@@ -93,61 +85,13 @@ type primeProofCommit struct {
 	anegExpCommit expProofCommit
 }
 
-func (p *PrimeProof) getResult(name string) *big.Int {
-	if name == p.namePreaMod {
-		return p.PreaModResult
-	}
-	if name == p.namePreaHider {
-		return p.PreaHiderResult
-	}
-	if name == p.nameAplus1 {
-		return p.APlus1Result
-	}
-	if name == p.nameAmin1 {
-		return p.AMin1Result
-	}
-	return nil
-}
-
-func (c *primeProofCommit) getSecret(name string) *big.Int {
-	if name == c.namePreaMod {
-		return c.preaMod
-	}
-	if name == c.namePreaHider {
-		return c.preaHider
-	}
-	if name == c.nameAValid {
-		return c.aValid
-	}
-	return nil
-}
-
-func (c *primeProofCommit) getRandomizer(name string) *big.Int {
-	if name == c.namePreaMod {
-		return c.preaModRandomizer
-	}
-	if name == c.namePreaHider {
-		return c.preaHiderRandomizer
-	}
-	if name == c.nameAValid {
-		return c.aValidRandomizer
-	}
-	return nil
-}
-
-func (c *primeProofCommit) getResult(name string) *big.Int {
-	if name == c.nameAInvalid {
-		return c.aInvalidResult
-	}
-	return nil
-}
-
 func newPrimeProofStructure(name string, bitlen uint) primeProofStructure {
 	var structure primeProofStructure
 	structure.primeName = name
 	structure.myname = strings.Join([]string{name, "primeproof"}, "_")
 	structure.bitlen = bitlen
 
+	structure.halfP = newPedersonStructure(strings.Join([]string{structure.myname, "halfp"}, "_"))
 	structure.halfPRep = representationProofStructure{
 		[]lhsContribution{
 			{name, big.NewInt(1)},
@@ -160,16 +104,17 @@ func newPrimeProofStructure(name string, bitlen uint) primeProofStructure {
 		},
 	}
 
-	structure.preaRep = newPedersonRepresentationProofStructure(strings.Join([]string{structure.myname, "prea"}, "_"))
+	structure.prea = newPedersonStructure(strings.Join([]string{structure.myname, "prea"}, "_"))
 	structure.preaRange = newPedersonRangeProofStructure(strings.Join([]string{structure.myname, "prea"}, "_"), 0, bitlen)
 
-	structure.aRep = newPedersonRepresentationProofStructure(strings.Join([]string{structure.myname, "a"}, "_"))
+	structure.a = newPedersonStructure(strings.Join([]string{structure.myname, "a"}, "_"))
 	structure.aRange = newPedersonRangeProofStructure(strings.Join([]string{structure.myname, "a"}, "_"), 0, bitlen)
 
-	structure.anegRep = newPedersonRepresentationProofStructure(strings.Join([]string{structure.myname, "aneg"}, "_"))
+	structure.aneg = newPedersonStructure(strings.Join([]string{structure.myname, "aneg"}, "_"))
 	structure.anegRange = newPedersonRangeProofStructure(strings.Join([]string{structure.myname, "aneg"}, "_"), 0, bitlen)
 
-	structure.aResRep = newPedersonRepresentationProofStructure(strings.Join([]string{structure.myname, "ares"}, "_"))
+	structure.aRes = newPedersonStructure(strings.Join([]string{structure.myname, "ares"}, "_"))
+	structure.anegRes = newPedersonStructure(strings.Join([]string{structure.myname, "anegres"}, "_"))
 	structure.aPlus1ResRep = representationProofStructure{
 		[]lhsContribution{
 			{strings.Join([]string{structure.myname, "ares"}, "_"), big.NewInt(1)},
@@ -222,17 +167,19 @@ func (s *primeProofStructure) numRangeProofs() int {
 }
 
 func (s *primeProofStructure) numCommitments() int {
-	res := 6
+	res := 0
+	res += s.halfP.numCommitments()
 	res += s.halfPRep.numCommitments()
-	res += s.preaRep.numCommitments()
+	res += s.prea.numCommitments()
 	res += s.preaRange.numCommitments()
-	res += s.aRep.numCommitments()
+	res += s.a.numCommitments()
 	res += s.aRange.numCommitments()
-	res += s.anegRep.numCommitments()
+	res += s.aneg.numCommitments()
 	res += s.anegRange.numCommitments()
 	res += 1
 	res += rangeProofIters
-	res += s.aResRep.numCommitments()
+	res += s.aRes.numCommitments()
+	res += s.anegRes.numCommitments()
 	res += s.anegResRep.numCommitments()
 	res += s.aPlus1ResRep.numCommitments()
 	res += s.aMin1ResRep.numCommitments()
@@ -244,18 +191,14 @@ func (s *primeProofStructure) numCommitments() int {
 func (s *primeProofStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, primeProofCommit) {
 	var commit primeProofCommit
 
-	// basic setup
-	commit.namePreaMod = strings.Join([]string{s.myname, "preamod"}, "_")
-	commit.namePreaHider = strings.Join([]string{s.myname, "preahider"}, "_")
-
 	// Build prea
-	commit.preaPederson = newPedersonSecret(g, strings.Join([]string{s.myname, "prea"}, "_"), common.FastRandomBigInt(secretdata.getSecret(s.primeName)))
+	list, commit.prea = s.prea.generateCommitmentsFromSecrets(g, list, common.FastRandomBigInt(secretdata.getSecret(s.primeName)))
 
 	// Calculate aAdd, a, and d
-	aAdd := common.GetHashNumber(commit.preaPederson.commit, nil, 0, s.bitlen)
+	aAdd := common.GetHashNumber(commit.prea.commit, nil, 0, s.bitlen)
 	d, a := new(big.Int).DivMod(
 		new(big.Int).Add(
-			commit.preaPederson.secret,
+			commit.prea.secret.secret,
 			aAdd),
 		secretdata.getSecret(s.primeName),
 		new(big.Int))
@@ -266,19 +209,18 @@ func (s *primeProofStructure) generateCommitmentsFromSecrets(g group, list []*bi
 	}
 
 	// Generate a related commitments
-	commit.aPederson = newPedersonSecret(g, strings.Join([]string{s.myname, "a"}, "_"), a)
-	commit.preaMod = d
-	commit.preaModRandomizer = common.FastRandomBigInt(g.order)
-	commit.preaHider = new(big.Int).Mod(
-		new(big.Int).Sub(
-			commit.preaPederson.hider,
-			new(big.Int).Add(
-				commit.aPederson.hider,
-				new(big.Int).Mul(
-					d,
-					secretdata.getSecret(strings.Join([]string{s.primeName, "hider"}, "_"))))),
-		g.order)
-	commit.preaHiderRandomizer = common.FastRandomBigInt(g.order)
+	list, commit.a = s.a.generateCommitmentsFromSecrets(g, list, a)
+	commit.preaMod = newBasicSecret(g, strings.Join([]string{s.myname, "preamod"}, "_"), d)
+	commit.preaHider = newBasicSecret(g, strings.Join([]string{s.myname, "preahider"}, "_"),
+		new(big.Int).Mod(
+			new(big.Int).Sub(
+				commit.prea.hider.secret,
+				new(big.Int).Add(
+					commit.a.hider.secret,
+					new(big.Int).Mul(
+						d,
+						secretdata.getSecret(strings.Join([]string{s.primeName, "hider"}, "_"))))),
+			g.order))
 
 	// Find aneg
 	aneg := common.FastRandomBigInt(secretdata.getSecret(s.primeName))
@@ -289,7 +231,7 @@ func (s *primeProofStructure) generateCommitmentsFromSecrets(g group, list []*bi
 	}
 
 	// And build its pederson commitment
-	commit.anegPederson = newPedersonSecret(g, strings.Join([]string{s.myname, "aneg"}, "_"), aneg)
+	list, commit.aneg = s.aneg.generateCommitmentsFromSecrets(g, list, aneg)
 
 	// Generate result pederson commits and proof data
 	aRes := new(big.Int).Exp(a, new(big.Int).Rsh(secretdata.getSecret(s.primeName), 1), secretdata.getSecret(s.primeName))
@@ -298,71 +240,79 @@ func (s *primeProofStructure) generateCommitmentsFromSecrets(g group, list []*bi
 	}
 	anegRes := new(big.Int).Exp(aneg, new(big.Int).Rsh(secretdata.getSecret(s.primeName), 1), secretdata.getSecret(s.primeName))
 	anegRes.Sub(anegRes, secretdata.getSecret(s.primeName))
-	commit.aResPederson = newPedersonSecret(g, strings.Join([]string{s.myname, "ares"}, "_"), aRes)
-	commit.anegResPederson = newPedersonSecret(g, strings.Join([]string{s.myname, "anegres"}, "_"), anegRes)
-	commit.aInvalidResult = common.FastRandomBigInt(g.order)
-	commit.aInvalidChallenge = common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), 256))
-	commit.aValid = commit.aResPederson.hider
-	commit.aValidRandomizer = common.FastRandomBigInt(g.order)
+	list, commit.aRes = s.aRes.generateCommitmentsFromSecrets(g, list, aRes)
+	list, commit.anegRes = s.anegRes.generateCommitmentsFromSecrets(g, list, anegRes)
+	commit.aInvalid = fakeBasicProof(g)
+	commit.aInvalidChallenge = common.FastRandomBigInt(g.order)
 	if aRes.Cmp(big.NewInt(1)) == 0 {
-		commit.nameAValid = strings.Join([]string{s.myname, "aresplus1hider"}, "_")
-		commit.nameAInvalid = strings.Join([]string{s.myname, "aresmin1hider"}, "_")
+		commit.aValid = newBasicSecret(g, strings.Join([]string{s.myname, "aresplus1hider"}, "_"), commit.aRes.hider.secret)
+		commit.aInvalid.setName(strings.Join([]string{s.myname, "aresmin1hider"}, "_"))
 		commit.aPositive = true
 	} else {
-		commit.nameAValid = strings.Join([]string{s.myname, "aresmin1hider"}, "_")
-		commit.nameAInvalid = strings.Join([]string{s.myname, "aresplus1hider"}, "_")
+		commit.aValid = newBasicSecret(g, strings.Join([]string{s.myname, "aresmin1hider"}, "_"), commit.aRes.hider.secret)
+		commit.aInvalid.setName(strings.Join([]string{s.myname, "aresplus1hider"}, "_"))
 		commit.aPositive = false
 	}
 
 	// the half p pederson commit
-	commit.halfPPederson = newPedersonSecret(g, strings.Join([]string{s.myname, "halfp"}, "_"), new(big.Int).Rsh(secretdata.getSecret(s.primeName), 1))
+	list, commit.halfP = s.halfP.generateCommitmentsFromSecrets(g, list,
+		new(big.Int).Rsh(
+			secretdata.getSecret(s.primeName),
+			1))
 
 	// Build structure for the a generation proofs
 	agenproof := representationProofStructure{
 		[]lhsContribution{
-			{commit.preaPederson.name, big.NewInt(1)},
+			{commit.prea.name, big.NewInt(1)},
 			{"g", new(big.Int).Mod(aAdd, g.order)},
-			{commit.aPederson.name, big.NewInt(-1)},
+			{commit.a.name, big.NewInt(-1)},
 		},
 		[]rhsContribution{
-			{s.primeName, commit.namePreaMod, 1},
-			{"h", commit.namePreaHider, 1},
+			{s.primeName, commit.preaMod.name, 1},
+			{"h", commit.preaHider.name, 1},
 		},
 	}
 	agenrange := rangeProofStructure{
 		agenproof,
-		commit.namePreaMod,
+		commit.preaMod.name,
 		0,
 		s.bitlen,
 	}
 
 	// Inner secrets and bases structures
-	innerBases := newBaseMerge(&commit.preaPederson, &commit.aPederson, &commit.anegPederson, &commit.aResPederson, &commit.anegResPederson, &commit.halfPPederson, bases)
-	secrets := newSecretMerge(&commit, &commit.preaPederson, &commit.aPederson, &commit.anegPederson, &commit.aResPederson, &commit.anegResPederson, &commit.halfPPederson, secretdata)
+	innerBases := newBaseMerge(
+		&commit.prea,
+		&commit.a,
+		&commit.aneg,
+		&commit.aRes,
+		&commit.anegRes,
+		&commit.halfP,
+		bases)
+	secrets := newSecretMerge(
+		&commit.preaMod,
+		&commit.preaHider,
+		&commit.aValid,
+		&commit.prea,
+		&commit.a,
+		&commit.aneg,
+		&commit.aRes,
+		&commit.anegRes,
+		&commit.halfP,
+		secretdata)
 
 	// Build all commitments
-	list = commit.halfPPederson.generateCommitments(list)
-	list = commit.preaPederson.generateCommitments(list)
-	list = commit.aPederson.generateCommitments(list)
-	list = commit.anegPederson.generateCommitments(list)
-	list = commit.aResPederson.generateCommitments(list)
-	list = commit.anegResPederson.generateCommitments(list)
 	list = s.halfPRep.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
-	list = s.preaRep.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
 	list, commit.preaRangeCommit = s.preaRange.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
-	list = s.aRep.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
 	list, commit.aRangeCommit = s.aRange.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
-	list = s.anegRep.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
 	list, commit.anegRangeCommit = s.anegRange.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
 	list = agenproof.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
 	list, commit.preaModRangeCommit = agenrange.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
-	list = s.aResRep.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
 	list = s.anegResRep.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
 	if commit.aPositive {
 		list = s.aPlus1ResRep.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
-		list = s.aMin1ResRep.generateCommitmentsFromProof(g, list, commit.aInvalidChallenge, &innerBases, &commit)
+		list = s.aMin1ResRep.generateCommitmentsFromProof(g, list, commit.aInvalidChallenge, &innerBases, &commit.aInvalid)
 	} else {
-		list = s.aPlus1ResRep.generateCommitmentsFromProof(g, list, commit.aInvalidChallenge, &innerBases, &commit)
+		list = s.aPlus1ResRep.generateCommitmentsFromProof(g, list, commit.aInvalidChallenge, &innerBases, &commit.aInvalid)
 		list = s.aMin1ResRep.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
 	}
 	list, commit.aExpCommit = s.aExp.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
@@ -375,35 +325,41 @@ func (s *primeProofStructure) buildProof(g group, challenge *big.Int, commit pri
 	var proof PrimeProof
 
 	// Rebuild structure for the a generation proofs
-	aAdd := common.GetHashNumber(commit.preaPederson.commit, nil, 0, s.bitlen)
+	aAdd := common.GetHashNumber(commit.prea.commit, nil, 0, s.bitlen)
 	agenproof := representationProofStructure{
 		[]lhsContribution{
-			{commit.preaPederson.name, big.NewInt(1)},
+			{commit.prea.name, big.NewInt(1)},
 			{"g", new(big.Int).Mod(aAdd, g.order)},
-			{commit.aPederson.name, big.NewInt(-1)},
+			{commit.a.name, big.NewInt(-1)},
 		},
 		[]rhsContribution{
-			{s.primeName, commit.namePreaMod, 1},
-			{"h", commit.namePreaHider, 1},
+			{s.primeName, commit.preaMod.name, 1},
+			{"h", commit.preaHider.name, 1},
 		},
 	}
 	agenrange := rangeProofStructure{
 		agenproof,
-		commit.namePreaMod,
+		commit.preaMod.name,
 		0,
 		s.bitlen,
 	}
 
 	// Recreate full secrets lookup
-	secrets := newSecretMerge(&commit, &commit.preaPederson, &commit.aPederson, &commit.anegPederson, secretdata)
+	secrets := newSecretMerge(
+		&commit.preaMod,
+		&commit.preaHider,
+		&commit.prea,
+		&commit.a,
+		&commit.aneg,
+		secretdata)
 
 	// Generate proofs for the pederson commitments
-	proof.HalfPCommit = commit.halfPPederson.buildProof(g, challenge)
-	proof.PreaCommit = commit.preaPederson.buildProof(g, challenge)
-	proof.ACommit = commit.aPederson.buildProof(g, challenge)
-	proof.AnegCommit = commit.anegPederson.buildProof(g, challenge)
-	proof.AResCommit = commit.aResPederson.buildProof(g, challenge)
-	proof.AnegResCommit = commit.anegResPederson.buildProof(g, challenge)
+	proof.HalfPCommit = s.halfP.buildProof(g, challenge, commit.halfP)
+	proof.PreaCommit = s.prea.buildProof(g, challenge, commit.prea)
+	proof.ACommit = s.a.buildProof(g, challenge, commit.a)
+	proof.AnegCommit = s.aneg.buildProof(g, challenge, commit.aneg)
+	proof.AResCommit = s.aRes.buildProof(g, challenge, commit.aRes)
+	proof.AnegResCommit = s.anegRes.buildProof(g, challenge, commit.anegRes)
 
 	// Generate range proofs
 	proof.PreaRangeProof = s.preaRange.buildProof(g, challenge, commit.preaRangeCommit, &secrets)
@@ -412,45 +368,19 @@ func (s *primeProofStructure) buildProof(g group, challenge *big.Int, commit pri
 	proof.PreaModRangeProof = agenrange.buildProof(g, challenge, commit.preaModRangeCommit, &secrets)
 
 	// And calculate our results
-	proof.PreaModResult = new(big.Int).Mod(
-		new(big.Int).Sub(
-			commit.preaModRandomizer,
-			new(big.Int).Mul(
-				challenge,
-				commit.preaMod)),
-		g.order)
-	proof.PreaHiderResult = new(big.Int).Mod(
-		new(big.Int).Sub(
-			commit.preaHiderRandomizer,
-			new(big.Int).Mul(
-				challenge,
-				commit.preaHider)),
-		g.order)
+	proof.PreaMod = commit.preaMod.buildProof(g, challenge)
+	proof.PreaHider = commit.preaHider.buildProof(g, challenge)
 
 	if commit.aPositive {
 		proof.APlus1Challenge = new(big.Int).Xor(challenge, commit.aInvalidChallenge)
-		proof.APlus1Result = new(big.Int).Mod(
-			new(big.Int).Sub(
-				commit.aValidRandomizer,
-				new(big.Int).Mul(
-					proof.APlus1Challenge,
-					commit.aValid)),
-			g.order)
-
+		proof.APlus1 = commit.aValid.buildProof(g, proof.APlus1Challenge)
 		proof.AMin1Challenge = commit.aInvalidChallenge
-		proof.AMin1Result = commit.aInvalidResult
+		proof.AMin1 = commit.aInvalid
 	} else {
 		proof.APlus1Challenge = commit.aInvalidChallenge
-		proof.APlus1Result = commit.aInvalidResult
-
+		proof.APlus1 = commit.aInvalid
 		proof.AMin1Challenge = new(big.Int).Xor(challenge, commit.aInvalidChallenge)
-		proof.AMin1Result = new(big.Int).Mod(
-			new(big.Int).Sub(
-				commit.aValidRandomizer,
-				new(big.Int).Mul(
-					proof.AMin1Challenge,
-					commit.aValid)),
-			g.order)
+		proof.AMin1 = commit.aValid.buildProof(g, proof.AMin1Challenge)
 	}
 
 	proof.AExpProof = s.aExp.buildProof(g, challenge, commit.aExpCommit, &secrets)
@@ -463,12 +393,12 @@ func (s *primeProofStructure) fakeProof(g group, challenge *big.Int) PrimeProof 
 	var proof PrimeProof
 
 	// Fake the pederson proofs
-	proof.HalfPCommit = newPedersonFakeProof(g)
-	proof.PreaCommit = newPedersonFakeProof(g)
-	proof.ACommit = newPedersonFakeProof(g)
-	proof.AnegCommit = newPedersonFakeProof(g)
-	proof.AResCommit = newPedersonFakeProof(g)
-	proof.AnegResCommit = newPedersonFakeProof(g)
+	proof.HalfPCommit = s.halfP.fakeProof(g)
+	proof.PreaCommit = s.prea.fakeProof(g)
+	proof.ACommit = s.a.fakeProof(g)
+	proof.AnegCommit = s.aneg.fakeProof(g)
+	proof.AResCommit = s.aRes.fakeProof(g)
+	proof.AnegResCommit = s.anegRes.fakeProof(g)
 
 	// Build the fake proof structure for the preaMod rangeproof
 	aAdd := common.GetHashNumber(proof.PreaCommit.Commit, nil, 0, s.bitlen)
@@ -497,10 +427,10 @@ func (s *primeProofStructure) fakeProof(g group, challenge *big.Int) PrimeProof 
 	proof.PreaModRangeProof = agenrange.fakeProof(g)
 
 	// And fake our bits
-	proof.PreaModResult = common.FastRandomBigInt(g.order)
-	proof.PreaHiderResult = common.FastRandomBigInt(g.order)
-	proof.APlus1Result = common.FastRandomBigInt(g.order)
-	proof.AMin1Result = common.FastRandomBigInt(g.order)
+	proof.PreaMod = fakeBasicProof(g)
+	proof.PreaHider = fakeBasicProof(g)
+	proof.APlus1 = fakeBasicProof(g)
+	proof.AMin1 = fakeBasicProof(g)
 	proof.APlus1Challenge = common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), 256))
 	proof.AMin1Challenge = new(big.Int).Xor(challenge, proof.APlus1Challenge)
 
@@ -512,12 +442,12 @@ func (s *primeProofStructure) fakeProof(g group, challenge *big.Int) PrimeProof 
 
 func (s *primeProofStructure) verifyProofStructure(challenge *big.Int, proof PrimeProof) bool {
 	// Check pederson commitments
-	if !proof.HalfPCommit.verifyStructure() ||
-		!proof.PreaCommit.verifyStructure() ||
-		!proof.ACommit.verifyStructure() ||
-		!proof.AnegCommit.verifyStructure() ||
-		!proof.AResCommit.verifyStructure() ||
-		!proof.AnegResCommit.verifyStructure() {
+	if !s.halfP.verifyProofStructure(proof.HalfPCommit) ||
+		!s.prea.verifyProofStructure(proof.PreaCommit) ||
+		!s.a.verifyProofStructure(proof.ACommit) ||
+		!s.aneg.verifyProofStructure(proof.AnegCommit) ||
+		!s.aRes.verifyProofStructure(proof.AResCommit) ||
+		!s.anegRes.verifyProofStructure(proof.AnegResCommit) {
 		return false
 	}
 
@@ -551,10 +481,10 @@ func (s *primeProofStructure) verifyProofStructure(challenge *big.Int, proof Pri
 	}
 
 	// Check our parts are here
-	if proof.PreaModResult == nil || proof.PreaHiderResult == nil {
+	if !proof.PreaMod.verifyStructure() || !proof.PreaHider.verifyStructure() {
 		return false
 	}
-	if proof.APlus1Result == nil || proof.AMin1Result == nil {
+	if !proof.APlus1.verifyStructure() || !proof.AMin1.verifyStructure() {
 		return false
 	}
 	if proof.APlus1Challenge == nil || proof.AMin1Challenge == nil {
@@ -574,10 +504,10 @@ func (s *primeProofStructure) verifyProofStructure(challenge *big.Int, proof Pri
 
 func (s *primeProofStructure) generateCommitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases baseLookup, proofdata proofLookup, proof PrimeProof) []*big.Int {
 	// Setup
-	proof.namePreaMod = strings.Join([]string{s.myname, "preamod"}, "_")
-	proof.namePreaHider = strings.Join([]string{s.myname, "preahider"}, "_")
-	proof.nameAplus1 = strings.Join([]string{s.myname, "aresplus1hider"}, "_")
-	proof.nameAmin1 = strings.Join([]string{s.myname, "aresmin1hider"}, "_")
+	proof.PreaMod.setName(strings.Join([]string{s.myname, "preamod"}, "_"))
+	proof.PreaHider.setName(strings.Join([]string{s.myname, "preahider"}, "_"))
+	proof.APlus1.setName(strings.Join([]string{s.myname, "aresplus1hider"}, "_"))
+	proof.AMin1.setName(strings.Join([]string{s.myname, "aresmin1hider"}, "_"))
 	proof.HalfPCommit.setName(strings.Join([]string{s.myname, "halfp"}, "_"))
 	proof.PreaCommit.setName(strings.Join([]string{s.myname, "prea"}, "_"))
 	proof.ACommit.setName(strings.Join([]string{s.myname, "a"}, "_"))
@@ -606,26 +536,39 @@ func (s *primeProofStructure) generateCommitmentsFromProof(g group, list []*big.
 	}
 
 	// inner bases
-	innerBases := newBaseMerge(&proof.PreaCommit, &proof.ACommit, &proof.AnegCommit, &proof.AResCommit, &proof.AnegResCommit, &proof.HalfPCommit, bases)
-	proofs := newProofMerge(&proof, &proof.PreaCommit, &proof.ACommit, &proof.AnegCommit, &proof.AResCommit, &proof.AnegResCommit, &proof.HalfPCommit, proofdata)
+	innerBases := newBaseMerge(
+		&proof.PreaCommit,
+		&proof.ACommit,
+		&proof.AnegCommit,
+		&proof.AResCommit,
+		&proof.AnegResCommit,
+		&proof.HalfPCommit,
+		bases)
+	proofs := newProofMerge(
+		&proof.PreaMod,
+		&proof.PreaHider,
+		&proof.AMin1,
+		&proof.APlus1,
+		&proof.ACommit,
+		&proof.AnegCommit,
+		&proof.AResCommit,
+		&proof.AnegResCommit,
+		&proof.HalfPCommit,
+		proofdata)
 
 	// Build all commitments
-	list = proof.HalfPCommit.generateCommitments(list)
-	list = proof.PreaCommit.generateCommitments(list)
-	list = proof.ACommit.generateCommitments(list)
-	list = proof.AnegCommit.generateCommitments(list)
-	list = proof.AResCommit.generateCommitments(list)
-	list = proof.AnegResCommit.generateCommitments(list)
+	list = s.prea.generateCommitmentsFromProof(g, list, challenge, proof.PreaCommit)
+	list = s.a.generateCommitmentsFromProof(g, list, challenge, proof.ACommit)
+	list = s.aneg.generateCommitmentsFromProof(g, list, challenge, proof.AnegCommit)
+	list = s.aRes.generateCommitmentsFromProof(g, list, challenge, proof.AResCommit)
+	list = s.anegRes.generateCommitmentsFromProof(g, list, challenge, proof.AnegResCommit)
+	list = s.halfP.generateCommitmentsFromProof(g, list, challenge, proof.HalfPCommit)
 	list = s.halfPRep.generateCommitmentsFromProof(g, list, challenge, &innerBases, &proofs)
-	list = s.preaRep.generateCommitmentsFromProof(g, list, challenge, &innerBases, &proofs)
 	list = s.preaRange.generateCommitmentsFromProof(g, list, challenge, &innerBases, proof.PreaRangeProof)
-	list = s.aRep.generateCommitmentsFromProof(g, list, challenge, &innerBases, &proofs)
 	list = s.aRange.generateCommitmentsFromProof(g, list, challenge, &innerBases, proof.ARangeProof)
-	list = s.anegRep.generateCommitmentsFromProof(g, list, challenge, &innerBases, &proofs)
 	list = s.anegRange.generateCommitmentsFromProof(g, list, challenge, &innerBases, proof.AnegRangeProof)
 	list = agenproof.generateCommitmentsFromProof(g, list, challenge, &innerBases, &proofs)
 	list = agenrange.generateCommitmentsFromProof(g, list, challenge, &innerBases, proof.PreaModRangeProof)
-	list = s.aResRep.generateCommitmentsFromProof(g, list, challenge, &innerBases, &proofs)
 	list = s.anegResRep.generateCommitmentsFromProof(g, list, challenge, &innerBases, &proofs)
 	list = s.aPlus1ResRep.generateCommitmentsFromProof(g, list, proof.APlus1Challenge, &innerBases, &proofs)
 	list = s.aMin1ResRep.generateCommitmentsFromProof(g, list, proof.AMin1Challenge, &innerBases, &proofs)

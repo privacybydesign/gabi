@@ -1,144 +1,78 @@
 package keyproof
 
-import "testing"
-import "encoding/json"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"encoding/json"
+	"testing"
 
-func TestPedersonSecret(t *testing.T) {
+	"github.com/privacybydesign/gabi/big"
+)
+
+func TestPedersonProofFlow(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
 	if !gok {
-		t.Error("Failed to setup group for Representation proof testing")
+		t.Error("Failed to setup group")
 		return
 	}
 
-	testSecret := newPedersonSecret(g, "x", big.NewInt(15))
+	s := newPedersonStructure("x")
 
-	x := testSecret.getSecret("x")
-	if x == nil || x.Cmp(big.NewInt(15)) != 0 {
-		t.Error("Improper inclusion of secret.")
-	}
-	if testSecret.getRandomizer("x") == nil {
-		t.Error("Missing randomizer for secret")
-	}
-	if testSecret.getSecret("x_hider") == nil {
-		t.Error("Missing hider")
-	}
-	if testSecret.getRandomizer("x") == nil {
-		t.Error("Missing ramdomizer for hider")
-	}
-	if testSecret.getBase("x") == nil {
-		t.Error("Missing commitment")
-	}
-}
+	Follower.(*TestFollower).count = 0
 
-func TestPedersonProof(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for Representation proof testing")
-		return
+	listSecrets, commit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, big.NewInt(15))
+	proof := s.buildProof(g, big.NewInt(1), commit)
+
+	if len(listSecrets) != s.numCommitments() {
+		t.Errorf("NumCommitments is off, %v %v", len(listSecrets), s.numCommitments())
 	}
 
-	testSecret := newPedersonSecret(g, "x", big.NewInt(15))
-	listSecrets := testSecret.generateCommitments([]*big.Int{})
-	testProof := testSecret.buildProof(g, big.NewInt(1))
-	listProof := testProof.generateCommitments([]*big.Int{})
+	if Follower.(*TestFollower).count != s.numRangeProofs() {
+		t.Error("Logging is off GenerateCommitmentsFromSecrets")
+	}
+	Follower.(*TestFollower).count = 0
 
-	testProof.setName("x")
+	proof.setName("x")
 
-	if testProof.getBase("x") == nil {
-		t.Error("Missing commitment")
+	if !s.verifyProofStructure(proof) {
+		t.Errorf("Rejecting proof structure %v", proof)
 	}
-	if testProof.getResult("x") == nil {
-		t.Error("Missing result for secret")
+
+	listProof := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(1), proof)
+
+	if Follower.(*TestFollower).count != s.numRangeProofs() {
+		t.Error("Logging is off on GenerateCommitmentsFromProof")
 	}
-	if testProof.getResult("x_hider") == nil {
-		t.Error("Missing result for hider")
-	}
+	Follower.(*TestFollower).count = 0
+
 	if !listCmp(listSecrets, listProof) {
-		t.Error("Commitment lists differ")
-	}
-}
-
-func TestPedersonRepresentationFlow(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for Representation proof testing")
-		return
-	}
-
-	testSecret := newPedersonSecret(g, "x", big.NewInt(15))
-	testProof := testSecret.buildProof(g, big.NewInt(2))
-	testProof.setName("x")
-
-	secretBases := newBaseMerge(&g, &testSecret)
-	proofBases := newBaseMerge(&g, &testProof)
-
-	s := newPedersonRepresentationProofStructure("x")
-
-	if !s.isTrue(g, &secretBases, &testSecret) {
-		t.Error("Attempted proof is false")
-	}
-
-	secretCommit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &secretBases, &testSecret)
-	proofCommit := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(2), &proofBases, &testProof)
-
-	if secretCommit[0].Cmp(proofCommit[0]) != 0 {
-		t.Error("Commitments disagree")
-	}
-}
-
-func TestPedersonRangeFlow(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for Representation proof testing")
-		return
-	}
-
-	testSecret := newPedersonSecret(g, "x", big.NewInt(15))
-	testProof := testSecret.buildProof(g, big.NewInt(2))
-	testProof.setName("x")
-
-	secretBases := newBaseMerge(&g, &testSecret)
-	proofBases := newBaseMerge(&g, &testProof)
-
-	s := newPedersonRangeProofStructure("x", 4, 2)
-
-	if !s.isTrue(g, &secretBases, &testSecret) {
-		t.Error("Attempted proof is false")
-	}
-
-	secretCommit, commit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &secretBases, &testSecret)
-	proof := s.buildProof(g, big.NewInt(12345), commit, &testSecret)
-	proofCommit := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &proofBases, proof)
-
-	if !listCmp(secretCommit, proofCommit) {
-		t.Error("Commitments disagree")
+		t.Errorf("Commitment lists differ %s %s.\n", listSecrets, listProof)
 	}
 }
 
 func TestPedersonProofVerifyStructure(t *testing.T) {
-	var proof PedersonProof
-	testInt := big.NewInt(1)
+	g, gok := buildGroup(big.NewInt(47))
+	if !gok {
+		t.Error("Failed to setup group for Representation proof testing")
+		return
+	}
 
-	proof.Commit = testInt
-	proof.Sresult = testInt
-	proof.Hresult = testInt
+	s := newPedersonStructure("x")
 
+	proof := s.fakeProof(g)
 	proof.Commit = nil
-	if proof.verifyStructure() {
-		t.Error("Accepted emtpy commit")
+	if s.verifyProofStructure(proof) {
+		t.Error("Accepting incorrectly structured proof")
 	}
-	proof.Commit = testInt
 
-	proof.Sresult = nil
-	if proof.verifyStructure() {
-		t.Error("Accepted empty Sresult")
+	proof = s.fakeProof(g)
+	proof.Sresult.Result = nil
+	if s.verifyProofStructure(proof) {
+		t.Error("Accepting incorrectly structured proof")
 	}
-	proof.Sresult = testInt
 
-	proof.Hresult = nil
-	if proof.verifyStructure() {
-		t.Error("Accepted empty Hresult")
+	proof = s.fakeProof(g)
+	proof.Hresult.Result = nil
+	if s.verifyProofStructure(proof) {
+		t.Error("Accepting incorrectly structured proof")
 	}
 }
 
@@ -149,10 +83,10 @@ func TestPedersonProofFake(t *testing.T) {
 		return
 	}
 
-	proof := newPedersonFakeProof(g)
-	ok := proof.verifyStructure()
-	if !ok {
-		t.Error("Fake proof structure rejected")
+	s := newPedersonStructure("x")
+	proof := s.fakeProof(g)
+	if !s.verifyProofStructure(proof) {
+		t.Error("Fakeproof has incorrect structure")
 	}
 }
 
@@ -163,21 +97,28 @@ func TestPedersonProofJSON(t *testing.T) {
 		return
 	}
 
-	proofBefore := newPedersonFakeProof(g)
-	proofJSON, err := json.Marshal(proofBefore)
+	s := newPedersonStructure("x")
+
+	listSecrets, commit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, big.NewInt(15))
+
+	proofBefore := s.buildProof(g, big.NewInt(12345), commit)
+	proofJSON, err := json.Marshal(&proofBefore)
 	if err != nil {
-		t.Errorf("error during json marshal: %s", proofBefore)
-		return
+		t.Error("Error converting to JSON")
 	}
 
 	var proofAfter PedersonProof
 	err = json.Unmarshal(proofJSON, &proofAfter)
 	if err != nil {
-		t.Errorf("error during json unmarshal: %s", proofAfter)
-		return
+		t.Error("Error parsing json")
 	}
 
-	if !proofAfter.verifyStructure() {
-		t.Error("json'ed proof structure rejected")
+	if !s.verifyProofStructure(proofAfter) {
+		t.Error("Invalid proof structure after JSON")
+	}
+
+	listProof := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), proofAfter)
+	if !listCmp(listSecrets, listProof) {
+		t.Error("Commitment lists differ.\n")
 	}
 }

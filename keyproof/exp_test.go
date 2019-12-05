@@ -1,8 +1,11 @@
 package keyproof
 
-import "github.com/privacybydesign/gabi/big"
-import "testing"
-import "encoding/json"
+import (
+	"encoding/json"
+	"testing"
+
+	"github.com/privacybydesign/gabi/big"
+)
 
 func TestExpProofFlow(t *testing.T) {
 	const a = 2
@@ -18,10 +21,15 @@ func TestExpProofFlow(t *testing.T) {
 
 	Follower.(*TestFollower).count = 0
 
-	aPederson := newPedersonSecret(g, "a", big.NewInt(a))
-	bPederson := newPedersonSecret(g, "b", big.NewInt(b))
-	nPederson := newPedersonSecret(g, "n", big.NewInt(n))
-	rPederson := newPedersonSecret(g, "r", big.NewInt(r))
+	aPedersons := newPedersonStructure("a")
+	bPedersons := newPedersonStructure("b")
+	nPedersons := newPedersonStructure("n")
+	rPedersons := newPedersonStructure("r")
+
+	_, aPederson := aPedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(a))
+	_, bPederson := bPedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(b))
+	_, nPederson := nPedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(n))
+	_, rPederson := rPedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(r))
 
 	bases := newBaseMerge(&g, &aPederson, &bPederson, &nPederson, &rPederson)
 	secrets := newSecretMerge(&aPederson, &bPederson, &nPederson, &rPederson)
@@ -50,13 +58,13 @@ func TestExpProofFlow(t *testing.T) {
 		return
 	}
 
-	aProof := aPederson.buildProof(g, big.NewInt(12345))
+	aProof := aPedersons.buildProof(g, big.NewInt(12345), aPederson)
 	aProof.setName("a")
-	bProof := bPederson.buildProof(g, big.NewInt(12345))
+	bProof := bPedersons.buildProof(g, big.NewInt(12345), bPederson)
 	bProof.setName("b")
-	nProof := nPederson.buildProof(g, big.NewInt(12345))
+	nProof := nPedersons.buildProof(g, big.NewInt(12345), nPederson)
 	nProof.setName("n")
-	rProof := rPederson.buildProof(g, big.NewInt(12345))
+	rProof := rPedersons.buildProof(g, big.NewInt(12345), rPederson)
 	rProof.setName("r")
 
 	proofBases := newBaseMerge(&g, &aProof, &bProof, &nProof, &rProof)
@@ -126,7 +134,7 @@ func TestExpProofVerifyStructure(t *testing.T) {
 	s := newExpProofStructure("a", "b", "n", "r", 4)
 
 	proof := s.fakeProof(g, big.NewInt(12345))
-	proof.ExpBitEqResult = nil
+	proof.ExpBitEqHider.Result = nil
 	if s.verifyProofStructure(big.NewInt(12345), proof) {
 		t.Error("accepting missing expbiteqresult")
 	}
@@ -174,7 +182,7 @@ func TestExpProofVerifyStructure(t *testing.T) {
 	}
 
 	proof = s.fakeProof(g, big.NewInt(12345))
-	proof.BasePowRelProofs[2].HiderResult = nil
+	proof.BasePowRelProofs[2].Hider.Result = nil
 	if s.verifyProofStructure(big.NewInt(12345), proof) {
 		t.Error("Accepting corrupted basepowrelproof")
 	}
