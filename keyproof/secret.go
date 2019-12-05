@@ -5,18 +5,18 @@ import (
 	"github.com/privacybydesign/gabi/internal/common"
 )
 
-type basicSecret struct {
+type secret struct {
 	name       string
 	secret     *big.Int
 	randomizer *big.Int
 }
 
-type BasicProof struct {
+type Proof struct {
 	name   string
 	Result *big.Int
 }
 
-func (s *basicSecret) getSecret(name string) *big.Int {
+func (s *secret) getSecret(name string) *big.Int {
 	if name == s.name {
 		return s.secret
 	} else {
@@ -24,7 +24,7 @@ func (s *basicSecret) getSecret(name string) *big.Int {
 	}
 }
 
-func (s *basicSecret) getRandomizer(name string) *big.Int {
+func (s *secret) getRandomizer(name string) *big.Int {
 	if name == s.name {
 		return s.randomizer
 	} else {
@@ -32,7 +32,7 @@ func (s *basicSecret) getRandomizer(name string) *big.Int {
 	}
 }
 
-func (p *BasicProof) getResult(name string) *big.Int {
+func (p *Proof) getResult(name string) *big.Int {
 	if name == p.name {
 		return p.Result
 	} else {
@@ -40,31 +40,31 @@ func (p *BasicProof) getResult(name string) *big.Int {
 	}
 }
 
-func (p *BasicProof) setName(name string) {
+func (p *Proof) setName(name string) {
 	p.name = name
 }
 
-func newBasicSecret(g group, name string, value *big.Int) basicSecret {
-	return basicSecret{
+func newSecret(g group, name string, value *big.Int) secret {
+	return secret{
 		name,
 		new(big.Int).Set(value),
 		common.FastRandomBigInt(g.order),
 	}
 }
 
-func (s *basicSecret) buildProof(g group, challenge *big.Int) BasicProof {
-	return BasicProof{
+func (s *secret) buildProof(g group, challenge *big.Int) Proof {
+	return Proof{
 		s.name,
 		new(big.Int).Mod(new(big.Int).Sub(s.randomizer, new(big.Int).Mul(s.secret, challenge)), g.order),
 	}
 }
 
-func (p *BasicProof) verifyStructure() bool {
+func (p *Proof) verifyStructure() bool {
 	return p.Result != nil
 }
 
-func fakeBasicProof(g group) BasicProof {
-	return BasicProof{
+func fakeProof(g group) Proof {
+	return Proof{
 		"",
 		common.FastRandomBigInt(g.order),
 	}

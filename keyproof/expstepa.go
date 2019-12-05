@@ -16,13 +16,13 @@ type expStepAStructure struct {
 }
 
 type ExpStepAProof struct {
-	Bit           BasicProof // Needed to make sure we can fake these proofs, which is needed for the OR in expstep
-	EqualityHider BasicProof
+	Bit           Proof // Needed to make sure we can fake these proofs, which is needed for the OR in expstep
+	EqualityHider Proof
 }
 
 type expStepACommit struct {
-	bit           basicSecret // Needed to make sure we can fake these proofs, which is needed for the OR in expstep
-	equalityHider basicSecret
+	bit           secret // Needed to make sure we can fake these proofs, which is needed for the OR in expstep
+	equalityHider secret
 }
 
 func newExpStepAStructure(bitname, prename, postname string) expStepAStructure {
@@ -63,8 +63,8 @@ func (s *expStepAStructure) generateCommitmentsFromSecrets(g group, list []*big.
 	var commit expStepACommit
 
 	// Build commit structure
-	commit.bit = newBasicSecret(g, strings.Join([]string{s.bitname, "hider"}, "_"), secretdata.getSecret(strings.Join([]string{s.bitname, "hider"}, "_")))
-	commit.equalityHider = newBasicSecret(g, strings.Join([]string{s.myname, "eqhider"}, "_"), new(big.Int).Mod(
+	commit.bit = newSecret(g, strings.Join([]string{s.bitname, "hider"}, "_"), secretdata.getSecret(strings.Join([]string{s.bitname, "hider"}, "_")))
+	commit.equalityHider = newSecret(g, strings.Join([]string{s.myname, "eqhider"}, "_"), new(big.Int).Mod(
 		new(big.Int).Sub(
 			secretdata.getSecret(strings.Join([]string{s.prename, "hider"}, "_")),
 			secretdata.getSecret(strings.Join([]string{s.postname, "hider"}, "_"))),
@@ -93,8 +93,8 @@ func (s *expStepAStructure) buildProof(g group, challenge *big.Int, commit expSt
 func (s *expStepAStructure) fakeProof(g group) ExpStepAProof {
 	var proof ExpStepAProof
 
-	proof.Bit = fakeBasicProof(g)
-	proof.EqualityHider = fakeBasicProof(g)
+	proof.Bit = fakeProof(g)
+	proof.EqualityHider = fakeProof(g)
 
 	return proof
 }

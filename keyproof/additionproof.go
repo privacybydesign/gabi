@@ -17,14 +17,14 @@ type additionProofStructure struct {
 }
 
 type AdditionProof struct {
-	ModAddProof BasicProof
-	HiderProof  BasicProof
+	ModAddProof Proof
+	HiderProof  Proof
 	RangeProof  RangeProof
 }
 
 type additionProofCommit struct {
-	modAdd      basicSecret
-	hider       basicSecret
+	modAdd      secret
+	hider       secret
 	rangeCommit rangeCommit
 }
 
@@ -91,7 +91,7 @@ func (s *additionProofStructure) generateCommitmentsFromSecrets(g group, list []
 	var commit additionProofCommit
 
 	// Generate needed commit data
-	commit.modAdd = newBasicSecret(g, strings.Join([]string{s.myname, "mod"}, "_"),
+	commit.modAdd = newSecret(g, strings.Join([]string{s.myname, "mod"}, "_"),
 		new(big.Int).Div(
 			new(big.Int).Sub(
 				secretdata.getSecret(s.result),
@@ -99,7 +99,7 @@ func (s *additionProofStructure) generateCommitmentsFromSecrets(g group, list []
 					secretdata.getSecret(s.a1),
 					secretdata.getSecret(s.a2))),
 			secretdata.getSecret(s.mod)))
-	commit.hider = newBasicSecret(g, strings.Join([]string{s.myname, "hider"}, "_"),
+	commit.hider = newSecret(g, strings.Join([]string{s.myname, "hider"}, "_"),
 		new(big.Int).Mod(
 			new(big.Int).Sub(
 				secretdata.getSecret(strings.Join([]string{s.result, "hider"}, "_")),
@@ -137,8 +137,8 @@ func (s *additionProofStructure) fakeProof(g group) AdditionProof {
 	var proof AdditionProof
 
 	proof.RangeProof = s.addRange.fakeProof(g)
-	proof.ModAddProof = fakeBasicProof(g)
-	proof.HiderProof = fakeBasicProof(g)
+	proof.ModAddProof = fakeProof(g)
+	proof.HiderProof = fakeProof(g)
 
 	return proof
 }

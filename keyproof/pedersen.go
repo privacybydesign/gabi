@@ -14,8 +14,8 @@ type pedersenStructure struct {
 
 type pedersenCommit struct {
 	name   string
-	secret basicSecret
-	hider  basicSecret
+	secret secret
+	hider  secret
 	commit *big.Int
 
 	g *group
@@ -24,8 +24,8 @@ type pedersenCommit struct {
 type PedersenProof struct {
 	name    string
 	Commit  *big.Int
-	Sresult BasicProof
-	Hresult BasicProof
+	Sresult Proof
+	Hresult Proof
 }
 
 func (c *pedersenCommit) getBase(name string) *big.Int {
@@ -149,8 +149,8 @@ func (s *pedersenStructure) numCommitments() int {
 func (s *pedersenStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, value *big.Int) ([]*big.Int, pedersenCommit) {
 	var result pedersenCommit
 	result.name = s.name
-	result.secret = newBasicSecret(g, s.name, value)
-	result.hider = newBasicSecret(g, strings.Join([]string{s.name, "hider"}, "_"), common.FastRandomBigInt(g.order))
+	result.secret = newSecret(g, s.name, value)
+	result.hider = newSecret(g, strings.Join([]string{s.name, "hider"}, "_"), common.FastRandomBigInt(g.order))
 	result.g = &g
 	result.commit = new(big.Int)
 	result.exp(result.commit, s.name, big.NewInt(1), g.p)
@@ -163,8 +163,8 @@ func (s *pedersenStructure) generateCommitmentsFromSecrets(g group, list []*big.
 func (s *pedersenStructure) generateCommitmentsDuplicate(g group, list []*big.Int, value *big.Int, hider *big.Int) ([]*big.Int, pedersenCommit) {
 	var result = pedersenCommit{
 		name:   s.name,
-		secret: newBasicSecret(g, s.name, value),
-		hider:  newBasicSecret(g, strings.Join([]string{s.name, "hider"}, "_"), hider),
+		secret: newSecret(g, s.name, value),
+		hider:  newSecret(g, strings.Join([]string{s.name, "hider"}, "_"), hider),
 		g:      &g,
 		commit: new(big.Int),
 	}
@@ -191,8 +191,8 @@ func (s *pedersenStructure) fakeProof(g group) PedersenProof {
 	proof.Commit = new(big.Int)
 	proof.Commit.Mul(&gCommit, &hCommit)
 	proof.Commit.Mod(proof.Commit, g.p)
-	proof.Sresult = fakeBasicProof(g)
-	proof.Hresult = fakeBasicProof(g)
+	proof.Sresult = fakeProof(g)
+	proof.Hresult = fakeProof(g)
 	return proof
 }
 
