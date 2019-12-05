@@ -7,14 +7,14 @@ import (
 	"github.com/privacybydesign/gabi/big"
 )
 
-func TestPedersonProofFlow(t *testing.T) {
+func TestPedersenProofFlow(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
 	if !gok {
 		t.Error("Failed to setup group")
 		return
 	}
 
-	s := newPedersonStructure("x")
+	s := newPedersenStructure("x")
 
 	Follower.(*TestFollower).count = 0
 
@@ -48,14 +48,14 @@ func TestPedersonProofFlow(t *testing.T) {
 	}
 }
 
-func TestPedersonProofVerifyStructure(t *testing.T) {
+func TestPedersenProofVerifyStructure(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
 	if !gok {
 		t.Error("Failed to setup group for Representation proof testing")
 		return
 	}
 
-	s := newPedersonStructure("x")
+	s := newPedersenStructure("x")
 
 	proof := s.fakeProof(g)
 	proof.Commit = nil
@@ -76,28 +76,28 @@ func TestPedersonProofVerifyStructure(t *testing.T) {
 	}
 }
 
-func TestPedersonProofFake(t *testing.T) {
+func TestPedersenProofFake(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
 	if !gok {
 		t.Error("Failed to setup group for Representation proof testing")
 		return
 	}
 
-	s := newPedersonStructure("x")
+	s := newPedersenStructure("x")
 	proof := s.fakeProof(g)
 	if !s.verifyProofStructure(proof) {
 		t.Error("Fakeproof has incorrect structure")
 	}
 }
 
-func TestPedersonProofJSON(t *testing.T) {
+func TestPedersenProofJSON(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
 	if !gok {
 		t.Error("Failed to setup group for Representation proof testing")
 		return
 	}
 
-	s := newPedersonStructure("x")
+	s := newPedersenStructure("x")
 
 	listSecrets, commit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, big.NewInt(15))
 
@@ -107,7 +107,7 @@ func TestPedersonProofJSON(t *testing.T) {
 		t.Error("Error converting to JSON")
 	}
 
-	var proofAfter PedersonProof
+	var proofAfter PedersenProof
 	err = json.Unmarshal(proofJSON, &proofAfter)
 	if err != nil {
 		t.Error("Error parsing json")

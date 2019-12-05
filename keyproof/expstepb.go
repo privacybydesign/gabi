@@ -11,18 +11,18 @@ type expStepBStructure struct {
 	mulname    string
 	myname     string
 	bitRep     representationProofStructure
-	mul        pedersonStructure
+	mul        pedersenStructure
 	prePostMul multiplicationProofStructure
 }
 
 type ExpStepBProof struct {
-	Mul                 PedersonProof
+	Mul                 PedersenProof
 	Bit                 BasicProof
 	MultiplicationProof MultiplicationProof
 }
 
 type expStepBCommit struct {
-	mul                  pedersonCommit
+	mul                  pedersenCommit
 	bit                  basicSecret
 	multiplicationCommit multiplicationProofCommit
 }
@@ -41,7 +41,7 @@ func newExpStepBStructure(bitname, prename, postname, mulname, modname string, b
 			{"h", strings.Join([]string{bitname, "hider"}, "_"), 1},
 		},
 	}
-	structure.mul = newPedersonStructure(mulname)
+	structure.mul = newPedersenStructure(mulname)
 	structure.prePostMul = newMultiplicationProofStructure(mulname, prename, modname, postname, bitlen)
 	return structure
 }
