@@ -17,13 +17,13 @@ type expStepBStructure struct {
 
 type ExpStepBProof struct {
 	Mul                 PedersenProof
-	Bit                 BasicProof
+	Bit                 Proof
 	MultiplicationProof MultiplicationProof
 }
 
 type expStepBCommit struct {
 	mul                  pedersenCommit
-	bit                  basicSecret
+	bit                  secret
 	multiplicationCommit multiplicationProofCommit
 }
 
@@ -58,7 +58,7 @@ func (s *expStepBStructure) generateCommitmentsFromSecrets(g group, list []*big.
 	var commit expStepBCommit
 
 	// build up commit structure
-	commit.bit = newBasicSecret(g, strings.Join([]string{s.bitname, "hider"}, "_"), secretdata.getSecret(strings.Join([]string{s.bitname, "hider"}, "_")))
+	commit.bit = newSecret(g, strings.Join([]string{s.bitname, "hider"}, "_"), secretdata.getSecret(strings.Join([]string{s.bitname, "hider"}, "_")))
 	list, commit.mul = s.mul.generateCommitmentsDuplicate(g, list, secretdata.getSecret(s.mulname),
 		secretdata.getSecret(strings.Join([]string{s.mulname, "hider"}, "_")))
 
@@ -86,7 +86,7 @@ func (s *expStepBStructure) buildProof(g group, challenge *big.Int, commit expSt
 
 func (s *expStepBStructure) fakeProof(g group) ExpStepBProof {
 	var proof ExpStepBProof
-	proof.Bit = fakeBasicProof(g)
+	proof.Bit = fakeProof(g)
 	proof.Mul = s.mul.fakeProof(g)
 	proof.MultiplicationProof = s.prePostMul.fakeProof(g)
 	return proof

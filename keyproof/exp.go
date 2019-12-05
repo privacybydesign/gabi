@@ -36,7 +36,7 @@ type expProofStructure struct {
 
 type expProofCommit struct {
 	expBits       []pedersenCommit
-	expBitEqHider basicSecret
+	expBitEqHider secret
 
 	basePows           []pedersenCommit
 	basePowRangeCommit []rangeCommit
@@ -52,7 +52,7 @@ type expProofCommit struct {
 
 type ExpProof struct {
 	ExpBitProofs  []PedersenProof
-	ExpBitEqHider BasicProof
+	ExpBitEqHider Proof
 
 	BasePowProofs      []PedersenProof
 	BasePowRangeProofs []RangeProof
@@ -265,7 +265,7 @@ func (s *expProofStructure) generateCommitmentsFromSecrets(g group, list []*big.
 		BitEqHider.Add(BitEqHider, new(big.Int).Lsh(commit.expBits[i].hider.secret, i))
 	}
 	BitEqHider.Mod(BitEqHider, g.order)
-	commit.expBitEqHider = newBasicSecret(g, strings.Join([]string{s.myname, "biteqhider"}, "_"), BitEqHider)
+	commit.expBitEqHider = newSecret(g, strings.Join([]string{s.myname, "biteqhider"}, "_"), BitEqHider)
 
 	// base powers
 	commit.basePows = make([]pedersenCommit, s.bitlen)
@@ -495,7 +495,7 @@ func (s *expProofStructure) buildProof(g group, challenge *big.Int, commit expPr
 func (s *expProofStructure) fakeProof(g group, challenge *big.Int) ExpProof {
 	var proof ExpProof
 
-	proof.ExpBitEqHider = fakeBasicProof(g)
+	proof.ExpBitEqHider = fakeProof(g)
 	proof.ExpBitProofs = make([]PedersenProof, s.bitlen)
 	for i := uint(0); i < s.bitlen; i++ {
 		proof.ExpBitProofs[i] = s.expBits[i].fakeProof(g)

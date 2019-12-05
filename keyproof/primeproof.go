@@ -43,11 +43,11 @@ type PrimeProof struct {
 	AResCommit    PedersenProof
 	AnegResCommit PedersenProof
 
-	PreaMod   BasicProof
-	PreaHider BasicProof
+	PreaMod   Proof
+	PreaHider Proof
 
-	APlus1          BasicProof
-	AMin1           BasicProof
+	APlus1          Proof
+	AMin1           Proof
 	APlus1Challenge *big.Int
 	AMin1Challenge  *big.Int
 
@@ -68,11 +68,11 @@ type primeProofCommit struct {
 	aRes    pedersenCommit
 	anegRes pedersenCommit
 
-	preaMod   basicSecret
-	preaHider basicSecret
+	preaMod   secret
+	preaHider secret
 
-	aValid            basicSecret
-	aInvalid          BasicProof
+	aValid            secret
+	aInvalid          Proof
 	aInvalidChallenge *big.Int
 	aPositive         bool
 
@@ -210,8 +210,8 @@ func (s *primeProofStructure) generateCommitmentsFromSecrets(g group, list []*bi
 
 	// Generate a related commitments
 	list, commit.a = s.a.generateCommitmentsFromSecrets(g, list, a)
-	commit.preaMod = newBasicSecret(g, strings.Join([]string{s.myname, "preamod"}, "_"), d)
-	commit.preaHider = newBasicSecret(g, strings.Join([]string{s.myname, "preahider"}, "_"),
+	commit.preaMod = newSecret(g, strings.Join([]string{s.myname, "preamod"}, "_"), d)
+	commit.preaHider = newSecret(g, strings.Join([]string{s.myname, "preahider"}, "_"),
 		new(big.Int).Mod(
 			new(big.Int).Sub(
 				commit.prea.hider.secret,
@@ -242,14 +242,14 @@ func (s *primeProofStructure) generateCommitmentsFromSecrets(g group, list []*bi
 	anegRes.Sub(anegRes, secretdata.getSecret(s.primeName))
 	list, commit.aRes = s.aRes.generateCommitmentsFromSecrets(g, list, aRes)
 	list, commit.anegRes = s.anegRes.generateCommitmentsFromSecrets(g, list, anegRes)
-	commit.aInvalid = fakeBasicProof(g)
+	commit.aInvalid = fakeProof(g)
 	commit.aInvalidChallenge = common.FastRandomBigInt(g.order)
 	if aRes.Cmp(big.NewInt(1)) == 0 {
-		commit.aValid = newBasicSecret(g, strings.Join([]string{s.myname, "aresplus1hider"}, "_"), commit.aRes.hider.secret)
+		commit.aValid = newSecret(g, strings.Join([]string{s.myname, "aresplus1hider"}, "_"), commit.aRes.hider.secret)
 		commit.aInvalid.setName(strings.Join([]string{s.myname, "aresmin1hider"}, "_"))
 		commit.aPositive = true
 	} else {
-		commit.aValid = newBasicSecret(g, strings.Join([]string{s.myname, "aresmin1hider"}, "_"), commit.aRes.hider.secret)
+		commit.aValid = newSecret(g, strings.Join([]string{s.myname, "aresmin1hider"}, "_"), commit.aRes.hider.secret)
 		commit.aInvalid.setName(strings.Join([]string{s.myname, "aresplus1hider"}, "_"))
 		commit.aPositive = false
 	}
@@ -427,10 +427,10 @@ func (s *primeProofStructure) fakeProof(g group, challenge *big.Int) PrimeProof 
 	proof.PreaModRangeProof = agenrange.fakeProof(g)
 
 	// And fake our bits
-	proof.PreaMod = fakeBasicProof(g)
-	proof.PreaHider = fakeBasicProof(g)
-	proof.APlus1 = fakeBasicProof(g)
-	proof.AMin1 = fakeBasicProof(g)
+	proof.PreaMod = fakeProof(g)
+	proof.PreaHider = fakeProof(g)
+	proof.APlus1 = fakeProof(g)
+	proof.AMin1 = fakeProof(g)
 	proof.APlus1Challenge = common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), 256))
 	proof.AMin1Challenge = new(big.Int).Xor(challenge, proof.APlus1Challenge)
 

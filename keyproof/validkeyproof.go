@@ -26,7 +26,7 @@ type ValidKeyProof struct {
 	QProof      PedersenProof
 	PprimeProof PedersenProof
 	QprimeProof PedersenProof
-	PQNRel      BasicProof
+	PQNRel      Proof
 	Challenge   *big.Int
 	GroupPrime  *big.Int
 
@@ -118,7 +118,7 @@ func (s *ValidKeyProofStructure) BuildProof(Pprime *big.Int, Qprime *big.Int) Va
 	list, PSecret := s.p.generateCommitmentsFromSecrets(g, list, P)
 	list, QSecret := s.q.generateCommitmentsFromSecrets(g, list, Q)
 
-	PQNRel := newBasicSecret(g, "pqnrel", new(big.Int).Mod(new(big.Int).Mul(PSecret.hider.secret, QSecret.secret.secret), g.order))
+	PQNRel := newSecret(g, "pqnrel", new(big.Int).Mod(new(big.Int).Mul(PSecret.hider.secret, QSecret.secret.secret), g.order))
 
 	// Build up bases and secrets structures
 	bases := newBaseMerge(&g, &PSecret, &QSecret, &PprimeSecret, &QprimeSecret)

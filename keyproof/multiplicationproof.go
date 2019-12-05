@@ -19,13 +19,13 @@ type multiplicationProofStructure struct {
 
 type MultiplicationProof struct {
 	ModMultProof PedersenProof
-	Hider        BasicProof
+	Hider        Proof
 	RangeProof   RangeProof
 }
 
 type multiplicationProofCommit struct {
 	modMultPedersen pedersenCommit
-	hider           basicSecret
+	hider           secret
 	rangeCommit     rangeCommit
 }
 
@@ -73,7 +73,7 @@ func (s *multiplicationProofStructure) generateCommitmentsFromSecrets(g group, l
 				secretdata.getSecret(s.m2)),
 			secretdata.getSecret(s.result)),
 		secretdata.getSecret(s.mod)))
-	commit.hider = newBasicSecret(g, strings.Join([]string{s.myname, "hider"}, "_"), new(big.Int).Mod(
+	commit.hider = newSecret(g, strings.Join([]string{s.myname, "hider"}, "_"), new(big.Int).Mod(
 		new(big.Int).Add(
 			new(big.Int).Sub(
 				secretdata.getSecret(strings.Join([]string{s.result, "hider"}, "_")),
@@ -111,7 +111,7 @@ func (s *multiplicationProofStructure) fakeProof(g group) MultiplicationProof {
 	var proof MultiplicationProof
 	proof.RangeProof = s.modMultRange.fakeProof(g)
 	proof.ModMultProof = s.modMultPedersen.fakeProof(g)
-	proof.Hider = fakeBasicProof(g)
+	proof.Hider = fakeProof(g)
 	return proof
 }
 
