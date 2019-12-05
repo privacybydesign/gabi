@@ -12,20 +12,20 @@ type primeProofStructure struct {
 	myname    string
 	bitlen    uint
 
-	halfP    pedersonStructure
+	halfP    pedersenStructure
 	halfPRep representationProofStructure
 
-	prea      pedersonStructure
+	prea      pedersenStructure
 	preaRange rangeProofStructure
 
-	a      pedersonStructure
+	a      pedersenStructure
 	aRange rangeProofStructure
 
-	aneg      pedersonStructure
+	aneg      pedersenStructure
 	anegRange rangeProofStructure
 
-	aRes         pedersonStructure
-	anegRes      pedersonStructure
+	aRes         pedersenStructure
+	anegRes      pedersenStructure
 	aPlus1ResRep representationProofStructure
 	aMin1ResRep  representationProofStructure
 
@@ -36,12 +36,12 @@ type primeProofStructure struct {
 }
 
 type PrimeProof struct {
-	HalfPCommit   PedersonProof
-	PreaCommit    PedersonProof
-	ACommit       PedersonProof
-	AnegCommit    PedersonProof
-	AResCommit    PedersonProof
-	AnegResCommit PedersonProof
+	HalfPCommit   PedersenProof
+	PreaCommit    PedersenProof
+	ACommit       PedersenProof
+	AnegCommit    PedersenProof
+	AResCommit    PedersenProof
+	AnegResCommit PedersenProof
 
 	PreaMod   BasicProof
 	PreaHider BasicProof
@@ -61,12 +61,12 @@ type PrimeProof struct {
 }
 
 type primeProofCommit struct {
-	halfP   pedersonCommit
-	prea    pedersonCommit
-	a       pedersonCommit
-	aneg    pedersonCommit
-	aRes    pedersonCommit
-	anegRes pedersonCommit
+	halfP   pedersenCommit
+	prea    pedersenCommit
+	a       pedersenCommit
+	aneg    pedersenCommit
+	aRes    pedersenCommit
+	anegRes pedersenCommit
 
 	preaMod   basicSecret
 	preaHider basicSecret
@@ -91,7 +91,7 @@ func newPrimeProofStructure(name string, bitlen uint) primeProofStructure {
 	structure.myname = strings.Join([]string{name, "primeproof"}, "_")
 	structure.bitlen = bitlen
 
-	structure.halfP = newPedersonStructure(strings.Join([]string{structure.myname, "halfp"}, "_"))
+	structure.halfP = newPedersenStructure(strings.Join([]string{structure.myname, "halfp"}, "_"))
 	structure.halfPRep = representationProofStructure{
 		[]lhsContribution{
 			{name, big.NewInt(1)},
@@ -104,17 +104,17 @@ func newPrimeProofStructure(name string, bitlen uint) primeProofStructure {
 		},
 	}
 
-	structure.prea = newPedersonStructure(strings.Join([]string{structure.myname, "prea"}, "_"))
-	structure.preaRange = newPedersonRangeProofStructure(strings.Join([]string{structure.myname, "prea"}, "_"), 0, bitlen)
+	structure.prea = newPedersenStructure(strings.Join([]string{structure.myname, "prea"}, "_"))
+	structure.preaRange = newPedersenRangeProofStructure(strings.Join([]string{structure.myname, "prea"}, "_"), 0, bitlen)
 
-	structure.a = newPedersonStructure(strings.Join([]string{structure.myname, "a"}, "_"))
-	structure.aRange = newPedersonRangeProofStructure(strings.Join([]string{structure.myname, "a"}, "_"), 0, bitlen)
+	structure.a = newPedersenStructure(strings.Join([]string{structure.myname, "a"}, "_"))
+	structure.aRange = newPedersenRangeProofStructure(strings.Join([]string{structure.myname, "a"}, "_"), 0, bitlen)
 
-	structure.aneg = newPedersonStructure(strings.Join([]string{structure.myname, "aneg"}, "_"))
-	structure.anegRange = newPedersonRangeProofStructure(strings.Join([]string{structure.myname, "aneg"}, "_"), 0, bitlen)
+	structure.aneg = newPedersenStructure(strings.Join([]string{structure.myname, "aneg"}, "_"))
+	structure.anegRange = newPedersenRangeProofStructure(strings.Join([]string{structure.myname, "aneg"}, "_"), 0, bitlen)
 
-	structure.aRes = newPedersonStructure(strings.Join([]string{structure.myname, "ares"}, "_"))
-	structure.anegRes = newPedersonStructure(strings.Join([]string{structure.myname, "anegres"}, "_"))
+	structure.aRes = newPedersenStructure(strings.Join([]string{structure.myname, "ares"}, "_"))
+	structure.anegRes = newPedersenStructure(strings.Join([]string{structure.myname, "anegres"}, "_"))
 	structure.aPlus1ResRep = representationProofStructure{
 		[]lhsContribution{
 			{strings.Join([]string{structure.myname, "ares"}, "_"), big.NewInt(1)},
@@ -230,10 +230,10 @@ func (s *primeProofStructure) generateCommitmentsFromSecrets(g group, list []*bi
 		anegPow.Exp(aneg, new(big.Int).Rsh(secretdata.getSecret(s.primeName), 1), secretdata.getSecret(s.primeName))
 	}
 
-	// And build its pederson commitment
+	// And build its pedersen commitment
 	list, commit.aneg = s.aneg.generateCommitmentsFromSecrets(g, list, aneg)
 
-	// Generate result pederson commits and proof data
+	// Generate result pedersen commits and proof data
 	aRes := new(big.Int).Exp(a, new(big.Int).Rsh(secretdata.getSecret(s.primeName), 1), secretdata.getSecret(s.primeName))
 	if aRes.Cmp(big.NewInt(1)) != 0 {
 		aRes.Sub(aRes, secretdata.getSecret(s.primeName))
@@ -254,7 +254,7 @@ func (s *primeProofStructure) generateCommitmentsFromSecrets(g group, list []*bi
 		commit.aPositive = false
 	}
 
-	// the half p pederson commit
+	// the half p pedersen commit
 	list, commit.halfP = s.halfP.generateCommitmentsFromSecrets(g, list,
 		new(big.Int).Rsh(
 			secretdata.getSecret(s.primeName),
@@ -353,7 +353,7 @@ func (s *primeProofStructure) buildProof(g group, challenge *big.Int, commit pri
 		&commit.aneg,
 		secretdata)
 
-	// Generate proofs for the pederson commitments
+	// Generate proofs for the pedersen commitments
 	proof.HalfPCommit = s.halfP.buildProof(g, challenge, commit.halfP)
 	proof.PreaCommit = s.prea.buildProof(g, challenge, commit.prea)
 	proof.ACommit = s.a.buildProof(g, challenge, commit.a)
@@ -392,7 +392,7 @@ func (s *primeProofStructure) buildProof(g group, challenge *big.Int, commit pri
 func (s *primeProofStructure) fakeProof(g group, challenge *big.Int) PrimeProof {
 	var proof PrimeProof
 
-	// Fake the pederson proofs
+	// Fake the pedersen proofs
 	proof.HalfPCommit = s.halfP.fakeProof(g)
 	proof.PreaCommit = s.prea.fakeProof(g)
 	proof.ACommit = s.a.fakeProof(g)
@@ -441,7 +441,7 @@ func (s *primeProofStructure) fakeProof(g group, challenge *big.Int) PrimeProof 
 }
 
 func (s *primeProofStructure) verifyProofStructure(challenge *big.Int, proof PrimeProof) bool {
-	// Check pederson commitments
+	// Check pedersen commitments
 	if !s.halfP.verifyProofStructure(proof.HalfPCommit) ||
 		!s.prea.verifyProofStructure(proof.PreaCommit) ||
 		!s.a.verifyProofStructure(proof.ACommit) ||

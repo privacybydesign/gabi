@@ -16,16 +16,16 @@ func TestExpStepAFlow(t *testing.T) {
 
 	Follower.(*TestFollower).count = 0
 
-	bitPedersons := newPedersonStructure("bit")
-	prePedersons := newPedersonStructure("pre")
-	postPedersons := newPedersonStructure("post")
+	bitPedersens := newPedersenStructure("bit")
+	prePedersens := newPedersenStructure("pre")
+	postPedersens := newPedersenStructure("post")
 
-	_, bitPederson := bitPedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(0))
-	_, prePederson := prePedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(5))
-	_, postPederson := postPedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(5))
+	_, bitPedersen := bitPedersens.generateCommitmentsFromSecrets(g, nil, big.NewInt(0))
+	_, prePedersen := prePedersens.generateCommitmentsFromSecrets(g, nil, big.NewInt(5))
+	_, postPedersen := postPedersens.generateCommitmentsFromSecrets(g, nil, big.NewInt(5))
 
-	bases := newBaseMerge(&g, &bitPederson, &prePederson, &postPederson)
-	secrets := newSecretMerge(&bitPederson, &prePederson, &postPederson)
+	bases := newBaseMerge(&g, &bitPedersen, &prePedersen, &postPedersen)
+	secrets := newSecretMerge(&bitPedersen, &prePedersen, &postPedersen)
 
 	s := newExpStepAStructure("bit", "pre", "post")
 
@@ -51,11 +51,11 @@ func TestExpStepAFlow(t *testing.T) {
 		return
 	}
 
-	bitProof := bitPedersons.buildProof(g, big.NewInt(12345), bitPederson)
+	bitProof := bitPedersens.buildProof(g, big.NewInt(12345), bitPedersen)
 	bitProof.setName("bit")
-	preProof := prePedersons.buildProof(g, big.NewInt(12345), prePederson)
+	preProof := prePedersens.buildProof(g, big.NewInt(12345), prePedersen)
 	preProof.setName("pre")
-	postProof := postPedersons.buildProof(g, big.NewInt(12345), postPederson)
+	postProof := postPedersens.buildProof(g, big.NewInt(12345), postPedersen)
 	postProof.setName("post")
 
 	proofBases := newBaseMerge(&g, &bitProof, &preProof, &postProof)

@@ -19,7 +19,7 @@ func TestPrimeProofFlow(t *testing.T) {
 	s := newPrimeProofStructure("p", 4)
 
 	const p = 11
-	pCommits := newPedersonStructure("p")
+	pCommits := newPedersenStructure("p")
 	_, pCommit := pCommits.generateCommitmentsFromSecrets(g, nil, big.NewInt(p))
 	bases := newBaseMerge(&g, &pCommit)
 
@@ -112,37 +112,37 @@ func TestPrimeProofVerify(t *testing.T) {
 	proof := s.fakeProof(g, big.NewInt(12345))
 	proof.PreaCommit.Commit = nil
 	if s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("Accepting wrong prea pederson proof")
+		t.Error("Accepting wrong prea pedersen proof")
 	}
 
 	proof = s.fakeProof(g, big.NewInt(12345))
 	proof.HalfPCommit.Commit = nil
 	if s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("Accepting wrong halfp pederson proof")
+		t.Error("Accepting wrong halfp pedersen proof")
 	}
 
 	proof = s.fakeProof(g, big.NewInt(12345))
 	proof.ACommit.Commit = nil
 	if s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("Accepting wrong a pederson proof")
+		t.Error("Accepting wrong a pedersen proof")
 	}
 
 	proof = s.fakeProof(g, big.NewInt(12345))
 	proof.AnegCommit.Commit = nil
 	if s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("Accepting wrong aneg pederson proof")
+		t.Error("Accepting wrong aneg pedersen proof")
 	}
 
 	proof = s.fakeProof(g, big.NewInt(12345))
 	proof.AResCommit.Commit = nil
 	if s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("Accepting wrong aRes pederson proof")
+		t.Error("Accepting wrong aRes pedersen proof")
 	}
 
 	proof = s.fakeProof(g, big.NewInt(12345))
 	proof.AnegResCommit.Commit = nil
 	if s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("Accepting wrong anegRes pederson proof")
+		t.Error("Accepting wrong anegRes pedersen proof")
 	}
 
 	proof = s.fakeProof(g, big.NewInt(12345))

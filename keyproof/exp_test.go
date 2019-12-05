@@ -21,18 +21,18 @@ func TestExpProofFlow(t *testing.T) {
 
 	Follower.(*TestFollower).count = 0
 
-	aPedersons := newPedersonStructure("a")
-	bPedersons := newPedersonStructure("b")
-	nPedersons := newPedersonStructure("n")
-	rPedersons := newPedersonStructure("r")
+	aPedersens := newPedersenStructure("a")
+	bPedersens := newPedersenStructure("b")
+	nPedersens := newPedersenStructure("n")
+	rPedersens := newPedersenStructure("r")
 
-	_, aPederson := aPedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(a))
-	_, bPederson := bPedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(b))
-	_, nPederson := nPedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(n))
-	_, rPederson := rPedersons.generateCommitmentsFromSecrets(g, nil, big.NewInt(r))
+	_, aPedersen := aPedersens.generateCommitmentsFromSecrets(g, nil, big.NewInt(a))
+	_, bPedersen := bPedersens.generateCommitmentsFromSecrets(g, nil, big.NewInt(b))
+	_, nPedersen := nPedersens.generateCommitmentsFromSecrets(g, nil, big.NewInt(n))
+	_, rPedersen := rPedersens.generateCommitmentsFromSecrets(g, nil, big.NewInt(r))
 
-	bases := newBaseMerge(&g, &aPederson, &bPederson, &nPederson, &rPederson)
-	secrets := newSecretMerge(&aPederson, &bPederson, &nPederson, &rPederson)
+	bases := newBaseMerge(&g, &aPedersen, &bPedersen, &nPedersen, &rPedersen)
+	secrets := newSecretMerge(&aPedersen, &bPedersen, &nPedersen, &rPedersen)
 
 	s := newExpProofStructure("a", "b", "n", "r", 4)
 
@@ -58,13 +58,13 @@ func TestExpProofFlow(t *testing.T) {
 		return
 	}
 
-	aProof := aPedersons.buildProof(g, big.NewInt(12345), aPederson)
+	aProof := aPedersens.buildProof(g, big.NewInt(12345), aPedersen)
 	aProof.setName("a")
-	bProof := bPedersons.buildProof(g, big.NewInt(12345), bPederson)
+	bProof := bPedersens.buildProof(g, big.NewInt(12345), bPedersen)
 	bProof.setName("b")
-	nProof := nPedersons.buildProof(g, big.NewInt(12345), nPederson)
+	nProof := nPedersens.buildProof(g, big.NewInt(12345), nPedersen)
 	nProof.setName("n")
-	rProof := rPedersons.buildProof(g, big.NewInt(12345), rPederson)
+	rProof := rPedersens.buildProof(g, big.NewInt(12345), rPedersen)
 	rProof.setName("r")
 
 	proofBases := newBaseMerge(&g, &aProof, &bProof, &nProof, &rProof)

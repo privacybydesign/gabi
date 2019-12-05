@@ -21,10 +21,10 @@ func TestMultiplicationProofFlow(t *testing.T) {
 	const d = 1
 	const n = 5
 
-	m1s := newPedersonStructure("m1")
-	m2s := newPedersonStructure("m2")
-	mods := newPedersonStructure("mod")
-	results := newPedersonStructure("result")
+	m1s := newPedersenStructure("m1")
+	m2s := newPedersenStructure("m2")
+	mods := newPedersenStructure("mod")
+	results := newPedersenStructure("result")
 
 	_, m1 := m1s.generateCommitmentsFromSecrets(g, nil, big.NewInt(a))
 	_, m2 := m2s.generateCommitmentsFromSecrets(g, nil, big.NewInt(b))

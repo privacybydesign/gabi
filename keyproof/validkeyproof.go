@@ -7,10 +7,10 @@ import (
 
 type ValidKeyProofStructure struct {
 	n          *big.Int
-	p          pedersonStructure
-	q          pedersonStructure
-	pprime     pedersonStructure
-	qprime     pedersonStructure
+	p          pedersenStructure
+	q          pedersenStructure
+	pprime     pedersenStructure
+	qprime     pedersenStructure
 	pPprimeRel representationProofStructure
 	qQprimeRel representationProofStructure
 	pQNRel     representationProofStructure
@@ -22,10 +22,10 @@ type ValidKeyProofStructure struct {
 }
 
 type ValidKeyProof struct {
-	PProof      PedersonProof
-	QProof      PedersonProof
-	PprimeProof PedersonProof
-	QprimeProof PedersonProof
+	PProof      PedersenProof
+	QProof      PedersenProof
+	PprimeProof PedersenProof
+	QprimeProof PedersenProof
 	PQNRel      BasicProof
 	Challenge   *big.Int
 	GroupPrime  *big.Int
@@ -42,10 +42,10 @@ func NewValidKeyProofStructure(N *big.Int, Z *big.Int, S *big.Int, Bases []*big.
 	var structure ValidKeyProofStructure
 
 	structure.n = new(big.Int).Set(N)
-	structure.p = newPedersonStructure("p")
-	structure.q = newPedersonStructure("q")
-	structure.pprime = newPedersonStructure("pprime")
-	structure.qprime = newPedersonStructure("qprime")
+	structure.p = newPedersenStructure("p")
+	structure.q = newPedersenStructure("q")
+	structure.pprime = newPedersenStructure("pprime")
+	structure.qprime = newPedersenStructure("qprime")
 
 	structure.pPprimeRel = representationProofStructure{
 		[]lhsContribution{
@@ -201,7 +201,7 @@ func (s *ValidKeyProofStructure) VerifyProof(proof ValidKeyProof) bool {
 		return false
 	}
 
-	// Setup names in the pederson proofs
+	// Setup names in the pedersen proofs
 	proof.PProof.setName("p")
 	proof.QProof.setName("q")
 	proof.PprimeProof.setName("pprime")

@@ -21,10 +21,10 @@ func TestAdditionProofFlow(t *testing.T) {
 	const d = 2
 	const n = 5
 
-	a1s := newPedersonStructure("a1")
-	a2s := newPedersonStructure("a2")
-	mods := newPedersonStructure("mod")
-	results := newPedersonStructure("result")
+	a1s := newPedersenStructure("a1")
+	a2s := newPedersenStructure("a2")
+	mods := newPedersenStructure("mod")
+	results := newPedersenStructure("result")
 
 	_, a1 := a1s.generateCommitmentsFromSecrets(g, []*big.Int{}, big.NewInt(a))
 	_, a2 := a2s.generateCommitmentsFromSecrets(g, []*big.Int{}, big.NewInt(b))

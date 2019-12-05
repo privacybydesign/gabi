@@ -90,7 +90,7 @@ The remainder of the package consists of more straightforward zero knowledge
 proofs used to implement an explicit primality test as specified in Camenisch
 et. al. section 5.2.
 
-The general idea is as follows: most secret variables are stored in pederson
+The general idea is as follows: most secret variables are stored in pedersen
 commits, which are attached to the proof. We thus have for each variable v
 a value C_v = g^v*h^{v_hider}. Then, range proofs are used to show that
 variables v are within specified ranges, and representation proofs to show
@@ -146,9 +146,9 @@ without having to know in the subproof what the exact name is any caller is
 going to use. This flexibility is needed because some subproofs are repeated
 many times in the overal proof that the key is properly generated.
 
-Finally, pederson contains the container for storing variables. It also exposes
+Finally, pedersen contains the container for storing variables. It also exposes
 lookup interfaces for base, secret and proofdata related to its variable. It is
-pedersons that are typically combined by proofs to construct base, secret and
+pedersens that are typically combined by proofs to construct base, secret and
 prooflookups for their subproofs.
 
 Having outlined these tools, we can now take a closer look at the proofs
