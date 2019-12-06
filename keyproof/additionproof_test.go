@@ -5,14 +5,13 @@ import (
 	"testing"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAdditionProofFlow(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for Addition proof testing")
-		return
-	}
+	require.True(t, gok, "Failed to setup group for Addition proof testing")
 
 	Follower.(*TestFollower).count = 0
 
@@ -35,19 +34,13 @@ func TestAdditionProofFlow(t *testing.T) {
 	secrets := newSecretMerge(&a1, &a2, &mod, &result)
 
 	s := newAdditionProofStructure("a1", "a2", "mod", "result", 3)
-	if !s.isTrue(&secrets) {
-		t.Error("Incorrectly assessed proof setup as incorrect.")
-	}
+	assert.True(t, s.isTrue(&secrets), "Incorrectly assessed proof setup as incorrect.")
 
 	listSecrets, commit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &bases, &secrets)
 
-	if len(listSecrets) != s.numCommitments() {
-		t.Error("NumCommitments is off")
-	}
+	assert.Equal(t, len(listSecrets), s.numCommitments(), "NumCommitments is off")
+	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
 
-	if Follower.(*TestFollower).count != s.numRangeProofs() {
-		t.Error("Logging is off GenerateCommitmentsFromSecrets")
-	}
 	Follower.(*TestFollower).count = 0
 
 	proof := s.buildProof(g, big.NewInt(12345), commit, &secrets)
@@ -63,92 +56,58 @@ func TestAdditionProofFlow(t *testing.T) {
 	basesProof := newBaseMerge(&g, &a1proof, &a2proof, &modproof, &resultproof)
 	proofdata := newProofMerge(&a1proof, &a2proof, &modproof, &resultproof)
 
-	if !s.verifyProofStructure(proof) {
-		t.Error("Proof structure marked as invalid.\n")
-		return
-	}
+	assert.True(t, s.verifyProofStructure(proof), "Proof structure marked as invalid.")
 
 	listProof := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &basesProof, &proofdata, proof)
 
-	if Follower.(*TestFollower).count != s.numRangeProofs() {
-		t.Error("Logging is off on GenerateCommitmentsFromProof")
-	}
-
-	if !listCmp(listSecrets, listProof) {
-		t.Error("Commitment lists differ.\n")
-	}
+	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
+	assert.Equal(t, listSecrets, listProof, "Commitment lists differ.")
 }
 
 func TestAdditionProofVerifyStructure(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for Multiplication proof testing")
-		return
-	}
+	require.True(t, gok, "Failed to setup group for Multiplication proof testing")
 
 	var proof AdditionProof
 	s := newAdditionProofStructure("a1", "a2", "mod", "result", 3)
 
 	proof = s.fakeProof(g)
 	proof.RangeProof.Results = nil
-	if s.verifyProofStructure(proof) {
-		t.Error("Accepting missing rangeproof.\n")
-	}
+	require.False(t, s.verifyProofStructure(proof), "Accepting missing rangeproof.")
 
 	proof = s.fakeProof(g)
 	proof.ModAddProof.Result = nil
-	if s.verifyProofStructure(proof) {
-		t.Error("Accepting missing modaddresult.\n")
-	}
+	require.False(t, s.verifyProofStructure(proof), "Accepting missing modaddresult.")
 
 	proof = s.fakeProof(g)
 	proof.HiderProof.Result = nil
-	if s.verifyProofStructure(proof) {
-		t.Error("Accepting missing hiderresult.\n")
-	}
+	require.False(t, s.verifyProofStructure(proof), "Accepting missing hiderresult.")
 }
 
 func TestAdditionProofFake(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for Multiplication proof testing")
-		return
-	}
+	require.True(t, gok, "Failed to setup group for Multiplication proof testing")
 
 	s := newAdditionProofStructure("a1", "a2", "mod", "result", 3)
 
 	proof := s.fakeProof(g)
-
-	if !s.verifyProofStructure(proof) {
-		t.Error("Rejecting fake proof structure.\n")
-	}
+	require.True(t, s.verifyProofStructure(proof), "Rejecting fake proof structure.")
 }
 
 func TestAdditionProofJSON(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for Multiplication proof testing")
-		return
-	}
+	require.True(t, gok, "Failed to setup group for Multiplication proof testing")
 
 	s := newAdditionProofStructure("a1", "a2", "mod", "result", 3)
 
 	proofBefore := s.fakeProof(g)
 
 	proofJSON, err := json.Marshal(proofBefore)
-	if err != nil {
-		t.Errorf("error during json marshal: %s", err.Error())
-		return
-	}
+	require.NoError(t, err, "error during json marhsal")
 
 	var proofAfter AdditionProof
 	err = json.Unmarshal(proofJSON, &proofAfter)
-	if err != nil {
-		t.Errorf("error during json unmarshal: %s", err.Error())
-		return
-	}
+	require.NoError(t, err, "error during json unmarshal")
 
-	if !s.verifyProofStructure(proofAfter) {
-		t.Error("json'ed proof structure invalid")
-	}
+	assert.True(t, s.verifyProofStructure(proofAfter), "json'ed proof structure invalid")
 }

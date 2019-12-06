@@ -5,14 +5,13 @@ import (
 	"testing"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMultiplicationProofFlow(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for Multiplication proof testing")
-		return
-	}
+	require.True(t, gok, "Failed to setup group for Multiplication proof testing")
 
 	Follower.(*TestFollower).count = 0
 
@@ -35,19 +34,12 @@ func TestMultiplicationProofFlow(t *testing.T) {
 	secrets := newSecretMerge(&m1, &m2, &mod, &result)
 
 	s := newMultiplicationProofStructure("m1", "m2", "mod", "result", 3)
-	if !s.isTrue(&secrets) {
-		t.Error("Incorrectly assessed proof setup as incorrect.")
-	}
+	assert.True(t, s.isTrue(&secrets), "Incorrectly assessed proof setup as incorrect.")
 
 	listSecrets, commit := s.generateCommitmentsFromSecrets(g, nil, &bases, &secrets)
 
-	if len(listSecrets) != s.numCommitments() {
-		t.Error("NumCommitments is off")
-	}
-
-	if Follower.(*TestFollower).count != s.numRangeProofs() {
-		t.Error("Logging is off GenerateCommitmentsFromSecrets")
-	}
+	assert.Equal(t, len(listSecrets), s.numCommitments(), "NumCommitments is off")
+	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
 	Follower.(*TestFollower).count = 0
 
 	proof := s.buildProof(g, big.NewInt(12345), commit, &secrets)
@@ -63,92 +55,60 @@ func TestMultiplicationProofFlow(t *testing.T) {
 	basesProof := newBaseMerge(&g, &m1proof, &m2proof, &modproof, &resultproof)
 	proofdata := newProofMerge(&m1proof, &m2proof, &modproof, &resultproof)
 
-	if !s.verifyProofStructure(proof) {
-		t.Error("Proof structure marked as invalid.\n")
-		return
-	}
+	require.True(t, s.verifyProofStructure(proof), "Proof structure marked as invalid.")
 
 	listProof := s.generateCommitmentsFromProof(g, nil, big.NewInt(12345), &basesProof, &proofdata, proof)
 
-	if Follower.(*TestFollower).count != s.numRangeProofs() {
-		t.Error("Logging is off on GenerateCommitmentsFromProof")
-	}
+	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
 	Follower.(*TestFollower).count = 0
 
-	if !listCmp(listSecrets, listProof) {
-		t.Error("Commitment lists differ.\n")
-	}
+	assert.Equal(t, listSecrets, listProof, "Commitment lists differ.")
 }
 
 func TestMultiplicationProofFake(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for Multiplication proof testing")
-		return
-	}
+	require.True(t, gok, "Failed to setup group for Multiplication proof testing")
 
 	s := newMultiplicationProofStructure("m1", "m2", "mod", "result", 3)
 
 	proof := s.fakeProof(g)
 
-	if !s.verifyProofStructure(proof) {
-		t.Error("Fake proof structure rejected.")
-	}
+	assert.True(t, s.verifyProofStructure(proof), "Fake proof structure rejected.")
 }
 
 func TestMultiplicationProofVerifyStructure(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for Multiplication proof testing")
-		return
-	}
+	require.True(t, gok, "Failed to setup group for Multiplication proof testing")
 
 	var proof MultiplicationProof
 	s := newMultiplicationProofStructure("m1", "m2", "mod", "result", 3)
 
 	proof = s.fakeProof(g)
 	proof.ModMultProof.Commit = nil
-	if s.verifyProofStructure(proof) {
-		t.Error("Accepting malformed ModMultProof")
-	}
+	assert.False(t, s.verifyProofStructure(proof), "Accepting malformed ModMultProof")
 
 	proof = s.fakeProof(g)
 	proof.Hider.Result = nil
-	if s.verifyProofStructure(proof) {
-		t.Error("Accepting missing HiderResult")
-	}
+	assert.False(t, s.verifyProofStructure(proof), "Accepting missing HiderResult")
 
 	proof = s.fakeProof(g)
 	proof.RangeProof.Results = nil
-	if s.verifyProofStructure(proof) {
-		t.Error("Accepting malformed range proof")
-	}
+	assert.False(t, s.verifyProofStructure(proof), "Accepting malformed range proof")
 }
 
 func TestMultiplicationProofJSON(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for Multiplication proof testing")
-		return
-	}
+	require.True(t, gok, "Failed to setup group for Multiplication proof testing")
 
 	s := newMultiplicationProofStructure("m1", "m2", "mod", "result", 3)
 
 	proofBefore := s.fakeProof(g)
 	proofJSON, err := json.Marshal(proofBefore)
-	if err != nil {
-		t.Errorf("error during json marshal: %s", err.Error())
-		return
-	}
+	require.NoError(t, err, "error during json marshal")
 
 	var proofAfter MultiplicationProof
 	err = json.Unmarshal(proofJSON, &proofAfter)
-	if err != nil {
-		t.Errorf("error during json unmarshal: %s", err.Error())
-		return
-	}
+	require.NoError(t, err, "error during json unmarshal")
 
-	if !s.verifyProofStructure(proofAfter) {
-		t.Error("json'ed proof structure rejected")
-	}
+	assert.True(t, s.verifyProofStructure(proofAfter), "json'ed proof structure rejected")
 }

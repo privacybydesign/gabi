@@ -5,14 +5,13 @@ import (
 	"testing"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExpStepBFlow(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for expStepB proof testing")
-		return
-	}
+	require.True(t, gok, "Failed to setup group for expStepB proof testing")
 
 	Follower.(*TestFollower).count = 0
 
@@ -33,27 +32,17 @@ func TestExpStepBFlow(t *testing.T) {
 
 	s := newExpStepBStructure("bit", "pre", "post", "mul", "mod", 4)
 
-	if !s.isTrue(&secrets) {
-		t.Error("Proof premis rejected")
-	}
+	assert.True(t, s.isTrue(&secrets), "Proof premis rejected")
 
 	listSecrets, commit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &bases, &secrets)
 
-	if len(listSecrets) != s.numCommitments() {
-		t.Error("NumCommitments is off")
-	}
-
-	if Follower.(*TestFollower).count != s.numRangeProofs() {
-		t.Error("Logging is off GenerateCommitmentsFromSecrets")
-	}
+	assert.Equal(t, len(listSecrets), s.numCommitments(), "NumCommitments is off")
+	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
 	Follower.(*TestFollower).count = 0
 
 	proof := s.buildProof(g, big.NewInt(12345), commit, &secrets)
 
-	if !s.verifyProofStructure(proof) {
-		t.Error("Proof structure rejected")
-		return
-	}
+	require.True(t, s.verifyProofStructure(proof), "Proof structure rejected")
 
 	bitProof := bitPedersens.buildProof(g, big.NewInt(12345), bitPedersen)
 	bitProof.setName("bit")
@@ -70,83 +59,53 @@ func TestExpStepBFlow(t *testing.T) {
 
 	listProof := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &proofBases, proof)
 
-	if Follower.(*TestFollower).count != s.numRangeProofs() {
-		t.Error("Logging is off on GenerateCommitmentsFromProof")
-	}
-
-	if !listCmp(listSecrets, listProof) {
-		t.Error("Commitment lists differ.")
-	}
+	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
+	assert.Equal(t, listSecrets, listProof, "Commitment lists differ.")
 }
 
 func TestExpStepBFake(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for expStepB proof testing")
-		return
-	}
+	require.True(t, gok, "Failed to setup group for expStepB proof testing")
 
 	s := newExpStepBStructure("bit", "pre", "post", "mul", "mod", 4)
 
 	proof := s.fakeProof(g)
-	if !s.verifyProofStructure(proof) {
-		t.Error("Fake proof structure rejected")
-	}
+	assert.True(t, s.verifyProofStructure(proof), "Fake proof structure rejected")
 }
 
 func TestExpStepBJSON(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for expStepB proof testing")
-		return
-	}
+	require.True(t, gok, "Failed to setup group for expStepB proof testing")
 
 	s := newExpStepBStructure("bit", "pre", "post", "mul", "mod", 4)
 
 	proofBefore := s.fakeProof(g)
 	proofJSON, err := json.Marshal(proofBefore)
 
-	if err != nil {
-		t.Errorf("error during json marshal: %s", err.Error())
-		return
-	}
+	require.NoError(t, err, "error during json marshal")
 
 	var proofAfter ExpStepBProof
 	err = json.Unmarshal(proofJSON, &proofAfter)
 
-	if err != nil {
-		t.Errorf("error during json unmarshal: %s", err.Error())
-		return
-	}
-	if !s.verifyProofStructure(proofAfter) {
-		t.Error("json'ed proof structure rejected")
-	}
+	require.NoError(t, err, "error during json unmarshal")
+	assert.True(t, s.verifyProofStructure(proofAfter), "json'ed proof structure rejected")
 }
 
 func TestExpStepBVerifyStructure(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for expStepB proof testing")
-		return
-	}
+	require.True(t, gok, "Failed to setup group for expStepB proof testing")
 
 	s := newExpStepBStructure("bit", "pre", "post", "mul", "mod", 4)
 
 	proof := s.fakeProof(g)
 	proof.Mul.Hresult.Result = nil
-	if s.verifyProofStructure(proof) {
-		t.Error("Accepting missing mulresult")
-	}
+	assert.False(t, s.verifyProofStructure(proof), "Accepting missing mulresult")
 
 	proof = s.fakeProof(g)
 	proof.Bit.Result = nil
-	if s.verifyProofStructure(proof) {
-		t.Error("Accepting missing bithiderresult")
-	}
+	assert.False(t, s.verifyProofStructure(proof), "Accepting missing bithiderresult")
 
 	proof = s.fakeProof(g)
 	proof.MultiplicationProof.Hider.Result = nil
-	if s.verifyProofStructure(proof) {
-		t.Error("Accepting corrupted multiplicationproof")
-	}
+	assert.False(t, s.verifyProofStructure(proof), "Accepting corrupted multiplicationproof")
 }

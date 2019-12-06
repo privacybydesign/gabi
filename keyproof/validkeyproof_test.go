@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestValidKeyProof(t *testing.T) {
@@ -19,20 +20,13 @@ func TestValidKeyProof(t *testing.T) {
 	s := NewValidKeyProofStructure(big.NewInt(p*q), big.NewInt(a), big.NewInt(b), []*big.Int{big.NewInt(c)})
 	proof := s.BuildProof(big.NewInt((p-1)/2), big.NewInt((q-1)/2))
 
-	if Follower.(*TestFollower).count != s.numRangeProofs() {
-		t.Error("Logging is off GenerateCommitmentsFromSecrets")
-	}
+	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
 	Follower.(*TestFollower).count = 0
 
 	ok := s.VerifyProof(proof)
 
-	if Follower.(*TestFollower).count != s.numRangeProofs() {
-		t.Error("Logging is off on GenerateCommitmentsFromProof")
-	}
-
-	if !ok {
-		t.Error("Proof rejected.\n")
-	}
+	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
+	assert.True(t, ok, "Proof rejected.")
 }
 
 func TestValidKeyProofStructure(t *testing.T) {
@@ -47,99 +41,69 @@ func TestValidKeyProofStructure(t *testing.T) {
 
 	backup := proof.GroupPrime
 	proof.GroupPrime = nil
-	if s.VerifyProof(proof) {
-		t.Error("Accepting missing group prime")
-	}
+	assert.False(t, s.VerifyProof(proof), "Accepting missing group prime")
 
 	proof.GroupPrime = big.NewInt(10009)
-	if s.VerifyProof(proof) {
-		t.Error("Accepting non-safe prime as group prime")
-	}
+	assert.False(t, s.VerifyProof(proof), "Accepting non-safe prime as group prime")
 
 	proof.GroupPrime = big.NewInt(20015)
-	if s.VerifyProof(proof) {
-		t.Error("Accepting non-prime as group prime")
-	}
+	assert.False(t, s.VerifyProof(proof), "Accepting non-prime as group prime")
 	proof.GroupPrime = backup
 
 	backup = proof.PProof.Commit
 	proof.PProof.Commit = nil
-	if s.VerifyProof(proof) {
-		t.Error("Accepting corrupted PProof")
-	}
+	assert.False(t, s.VerifyProof(proof), "Accepting corrupted PProof")
 	proof.PProof.Commit = backup
 
 	backup = proof.QProof.Commit
 	proof.QProof.Commit = nil
-	if s.VerifyProof(proof) {
-		t.Error("Accepting corrupted QProof")
-	}
+	assert.False(t, s.VerifyProof(proof), "Accepting corrupted QProof")
 	proof.QProof.Commit = backup
 
 	backup = proof.PprimeProof.Commit
 	proof.PprimeProof.Commit = nil
-	if s.VerifyProof(proof) {
-		t.Error("Accepting corrupted PprimeProof")
-	}
+	assert.False(t, s.VerifyProof(proof), "Accepting corrupted PprimeProof")
 	proof.PprimeProof.Commit = backup
 
 	backup = proof.QprimeProof.Commit
 	proof.QprimeProof.Commit = nil
-	if s.VerifyProof(proof) {
-		t.Error("Accepting corrupted QprimeProof")
-	}
+	assert.False(t, s.VerifyProof(proof), "Accepting corrupted QprimeProof")
 	proof.QprimeProof.Commit = backup
 
 	backup = proof.PQNRel.Result
 	proof.PQNRel.Result = nil
-	if s.VerifyProof(proof) {
-		t.Error("Accepting corrupted pqnrel")
-	}
+	assert.False(t, s.VerifyProof(proof), "Accepting corrupted pqnrel")
 	proof.PQNRel.Result = backup
 
 	backup = proof.Challenge
 	proof.Challenge = nil
-	if s.VerifyProof(proof) {
-		t.Error("Accepting missing challenge")
-	}
+	assert.False(t, s.VerifyProof(proof), "Accepting missing challenge")
 
 	proof.Challenge = big.NewInt(1)
-	if s.VerifyProof(proof) {
-		t.Error("Accepting incorrect challenge")
-	}
+	assert.False(t, s.VerifyProof(proof), "Accepting incorrect challenge")
 	proof.Challenge = backup
 
 	backup = proof.PprimeIsPrimeProof.PreaMod.Result
 	proof.PprimeIsPrimeProof.PreaMod.Result = nil
-	if s.VerifyProof(proof) {
-		t.Error("Accepting corrupted pprimeisprimeproof")
-	}
+	assert.False(t, s.VerifyProof(proof), "Accepting corrupted pprimeisprimeproof")
 	proof.PprimeIsPrimeProof.PreaMod.Result = backup
 
 	backup = proof.QprimeIsPrimeProof.PreaMod.Result
 	proof.QprimeIsPrimeProof.PreaMod.Result = nil
-	if s.VerifyProof(proof) {
-		t.Error("Accepting corrupted qprimeisprimeproof")
-	}
+	assert.False(t, s.VerifyProof(proof), "Accepting corrupted qprimeisprimeproof")
 	proof.QprimeIsPrimeProof.PreaMod.Result = backup
 
 	backup = proof.QSPPproof.PPPproof.Responses[2]
 	proof.QSPPproof.PPPproof.Responses[2] = nil
-	if s.VerifyProof(proof) {
-		t.Error("Accepting corrupted QSPPproof")
-	}
+	assert.False(t, s.VerifyProof(proof), "Accepting corrupted QSPPproof")
 	proof.QSPPproof.PPPproof.Responses[2] = backup
 
 	backup = proof.BasesValidProof.NProof.Commit
 	proof.BasesValidProof.NProof.Commit = nil
-	if s.VerifyProof(proof) {
-		t.Error("Accepting corrupted BasesValidProof")
-	}
+	assert.False(t, s.VerifyProof(proof), "Accepting corrupted BasesValidProof")
 	proof.BasesValidProof.NProof.Commit = backup
 
-	if !s.VerifyProof(proof) {
-		t.Error("Testing corrupted proof structure!")
-	}
+	assert.True(t, s.VerifyProof(proof), "Testing corrupted proof structure!")
 }
 
 func TestValidKeyProofJSON(t *testing.T) {
@@ -152,20 +116,11 @@ func TestValidKeyProofJSON(t *testing.T) {
 	s := NewValidKeyProofStructure(big.NewInt(p*q), big.NewInt(a), big.NewInt(b), []*big.Int{big.NewInt(c)})
 	proofBefore := s.BuildProof(big.NewInt((p-1)/2), big.NewInt((q-1)/2))
 	proofJSON, err := json.Marshal(proofBefore)
-	if err != nil {
-		t.Errorf("error during json marshal: %s", err.Error())
-		return
-	}
+	assert.NoError(t, err, "error during json marshal")
 
 	var proofAfter ValidKeyProof
 	err = json.Unmarshal(proofJSON, &proofAfter)
-	if err != nil {
-		t.Errorf("error during json unmarshal: %s", err.Error())
-		return
-	}
+	assert.NoError(t, err, "error during json unmarshal")
 
-	ok := s.VerifyProof(proofAfter)
-	if !ok {
-		t.Error("Proof rejected.\n")
-	}
+	assert.True(t, s.VerifyProof(proofAfter), "Proof rejected.")
 }

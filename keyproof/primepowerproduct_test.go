@@ -1,20 +1,20 @@
 package keyproof
 
-import "testing"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"testing"
+
+	"github.com/privacybydesign/gabi/big"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
 
 func TestPrimePowerProductCycle(t *testing.T) {
 	const p = 1031
 	const q = 1061
 	proof := primePowerProductBuildProof(big.NewInt(int64(p)), big.NewInt(int64(q)), big.NewInt(12345), big.NewInt(1))
-	if !primePowerProductVerifyStructure(proof) {
-		t.Error("Proof structure rejected")
-		return
-	}
+	require.True(t, primePowerProductVerifyStructure(proof), "Proof structure rejected")
 	ok := primePowerProductVerifyProof(big.NewInt(int64(p*q)), big.NewInt(12345), big.NewInt(1), proof)
-	if !ok {
-		t.Error("PrimePowerProductProof rejected")
-	}
+	assert.True(t, ok, "PrimePowerProductProof rejected")
 }
 
 func TestPrimePowerProductCycleIncorrect(t *testing.T) {
@@ -23,9 +23,7 @@ func TestPrimePowerProductCycleIncorrect(t *testing.T) {
 	proof := primePowerProductBuildProof(big.NewInt(int64(p)), big.NewInt(int64(q)), big.NewInt(12345), big.NewInt(1))
 	proof.Responses[0].Add(proof.Responses[0], big.NewInt(1))
 	ok := primePowerProductVerifyProof(big.NewInt(int64(p*q)), big.NewInt(12345), big.NewInt(1), proof)
-	if ok {
-		t.Error("Incorrect PrimePowerProductProof accepted")
-	}
+	assert.False(t, ok, "Incorrect PrimePowerProductProof accepted")
 }
 
 func TestPrimePowerProductCycleWrongChallenge(t *testing.T) {
@@ -33,9 +31,7 @@ func TestPrimePowerProductCycleWrongChallenge(t *testing.T) {
 	const q = 1061
 	proof := primePowerProductBuildProof(big.NewInt(int64(p)), big.NewInt(int64(q)), big.NewInt(12345), big.NewInt(1))
 	ok := primePowerProductVerifyProof(big.NewInt(int64(p*q)), big.NewInt(12346), big.NewInt(1), proof)
-	if ok {
-		t.Error("Incorrect PrimePowerProductProof accepted")
-	}
+	assert.False(t, ok, "Incorrect PrimePowerProductProof accepted")
 }
 
 func TestPrimePowerProductCycleWrongIndex(t *testing.T) {
@@ -43,9 +39,7 @@ func TestPrimePowerProductCycleWrongIndex(t *testing.T) {
 	const q = 1061
 	proof := primePowerProductBuildProof(big.NewInt(int64(p)), big.NewInt(int64(q)), big.NewInt(12345), big.NewInt(1))
 	ok := primePowerProductVerifyProof(big.NewInt(int64(p*q)), big.NewInt(12345), big.NewInt(2), proof)
-	if ok {
-		t.Error("Incorrect PrimePowerProductProof accepted")
-	}
+	assert.False(t, ok, "Incorrect PrimePowerProductProof accepted")
 }
 
 func TestPrimePowerProductVerifyStructure(t *testing.T) {
@@ -55,19 +49,13 @@ func TestPrimePowerProductVerifyStructure(t *testing.T) {
 
 	listBackup := proof.Responses
 	proof.Responses = proof.Responses[:len(proof.Responses)-1]
-	if primePowerProductVerifyStructure(proof) {
-		t.Error("Accepting too short responses")
-	}
+	assert.False(t, primePowerProductVerifyStructure(proof), "Accepting too short responses")
 	proof.Responses = listBackup
 
 	valBackup := proof.Responses[2]
 	proof.Responses[2] = nil
-	if primePowerProductVerifyStructure(proof) {
-		t.Error("Accepting missing response")
-	}
+	assert.False(t, primePowerProductVerifyStructure(proof), "Accepting missing response")
 	proof.Responses[2] = valBackup
 
-	if !primePowerProductVerifyStructure(proof) {
-		t.Error("testcase corrupted testdata")
-	}
+	assert.True(t, primePowerProductVerifyStructure(proof), "testcase corrupted testdata")
 }

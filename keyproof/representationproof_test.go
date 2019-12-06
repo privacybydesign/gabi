@@ -1,7 +1,12 @@
 package keyproof
 
-import "testing"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"testing"
+
+	"github.com/privacybydesign/gabi/big"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
 
 type RepTestSecret struct {
 	secrets     map[string]*big.Int
@@ -61,10 +66,7 @@ func (rc *RepTestCommit) names() (ret []string) {
 
 func TestRepresentationProofBasics(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for Representation proof testing")
-		return
-	}
+	require.True(t, gok, "Failed to setup group for Representation proof testing")
 
 	Follower.(*TestFollower).count = 0
 
@@ -90,42 +92,20 @@ func TestRepresentationProofBasics(t *testing.T) {
 
 	listSecrets := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &bases, &secret)
 
-	if len(listSecrets) != s.numCommitments() {
-		t.Error("NumCommitments is off")
-	}
-
-	if Follower.(*TestFollower).count != s.numRangeProofs() {
-		t.Error("Logging is off GenerateCommitmentsFromSecrets")
-	}
+	assert.Equal(t, len(listSecrets), s.numCommitments(), "NumCommitments is off")
+	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
 	Follower.(*TestFollower).count = 0
 
 	listProofs := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(1), &bases, &proof)
 
-	if Follower.(*TestFollower).count != s.numRangeProofs() {
-		t.Error("Logging is off on GenerateCommitmentsFromProof")
-	}
-
-	if !s.isTrue(g, &bases, &secret) {
-		t.Error("Incorrect rejection of truth")
-	}
-
-	if len(listSecrets) != 1 {
-		t.Error("listSecrets of wrong length")
-	}
-	if len(listProofs) != 1 {
-		t.Error("listProofs of wrong length")
-	}
-	if listSecrets[0].Cmp(listProofs[0]) != 0 {
-		t.Error("Commitment lists different")
-	}
+	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
+	assert.True(t, s.isTrue(g, &bases, &secret), "Incorrect rejection of truth")
+	assert.Equal(t, listSecrets, listProofs, "commitment lists different")
 }
 
 func TestRepresentationProofComplex(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for Representation proof testing")
-		return
-	}
+	require.True(t, gok, "Failed to setup group for Representation proof testing")
 
 	var s representationProofStructure
 	s.lhs = []lhsContribution{
@@ -167,32 +147,13 @@ func TestRepresentationProofComplex(t *testing.T) {
 
 	listSecrets := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &bases, &secret)
 
-	if len(listSecrets) != s.numCommitments() {
-		t.Error("NumCommitments is off")
-	}
-
-	if Follower.(*TestFollower).count != s.numRangeProofs() {
-		t.Error("Logging is off GenerateCommitmentsFromSecrets")
-	}
+	assert.Equal(t, len(listSecrets), s.numCommitments(), "NumCommitments is off")
+	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
 	Follower.(*TestFollower).count = 0
 
 	listProofs := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(2), &bases, &proof)
 
-	if Follower.(*TestFollower).count != s.numRangeProofs() {
-		t.Error("Logging is off on GenerateCommitmentsFromProof")
-	}
-
-	if !s.isTrue(g, &bases, &secret) {
-		t.Error("Incorrect rejection of truth")
-	}
-
-	if len(listSecrets) != 1 {
-		t.Error("listSecrets of wrong length")
-	}
-	if len(listProofs) != 1 {
-		t.Error("listProofs of wrong length")
-	}
-	if listSecrets[0].Cmp(listProofs[0]) != 0 {
-		t.Error("Commitment lists different")
-	}
+	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
+	assert.True(t, s.isTrue(g, &bases, &secret), "Incorrect rejection of truth")
+	assert.Equal(t, listSecrets, listProofs, "Commitment lists different")
 }

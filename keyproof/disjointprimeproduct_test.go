@@ -1,20 +1,21 @@
 package keyproof
 
-import "testing"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"testing"
+
+	"github.com/privacybydesign/gabi/big"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
 
 func TestDisjointPrimeProductCycle(t *testing.T) {
 	const p = 2063
 	const q = 1187
 	proof := disjointPrimeProductBuildProof(big.NewInt(p), big.NewInt(q), big.NewInt(12345), big.NewInt(2))
-	if !disjointPrimeProductVerifyStructure(proof) {
-		t.Error("Proof structure rejected")
-		return
-	}
-	ok := disjointPrimeProductVerifyProof(big.NewInt(p*q), big.NewInt(12345), big.NewInt(2), proof)
-	if !ok {
-		t.Error("DisjointPrimeProductProof rejected.")
-	}
+	require.True(t, disjointPrimeProductVerifyStructure(proof), "Proof structure rejected")
+	assert.True(t,
+		disjointPrimeProductVerifyProof(big.NewInt(p*q), big.NewInt(12345), big.NewInt(2), proof),
+		"DisjointPrimeProductProof rejected.")
 }
 
 func TestDisjointPrimeProductCycleIncorrect(t *testing.T) {
@@ -22,30 +23,27 @@ func TestDisjointPrimeProductCycleIncorrect(t *testing.T) {
 	const q = 1187
 	proof := disjointPrimeProductBuildProof(big.NewInt(p), big.NewInt(q), big.NewInt(12345), big.NewInt(2))
 	proof.Responses[0].Add(proof.Responses[0], big.NewInt(1))
-	ok := disjointPrimeProductVerifyProof(big.NewInt(p*q), big.NewInt(12345), big.NewInt(2), proof)
-	if ok {
-		t.Error("Incorrect DisjointPrimeProductProof accepted.")
-	}
+	assert.False(t,
+		disjointPrimeProductVerifyProof(big.NewInt(p*q), big.NewInt(12345), big.NewInt(2), proof),
+		"Incorrect DisjointPrimeProductProof accepted.")
 }
 
 func TestDisjointPrimeProductWrongChallenge(t *testing.T) {
 	const p = 2063
 	const q = 1187
 	proof := disjointPrimeProductBuildProof(big.NewInt(p), big.NewInt(q), big.NewInt(12345), big.NewInt(2))
-	ok := disjointPrimeProductVerifyProof(big.NewInt(p*q), big.NewInt(12346), big.NewInt(2), proof)
-	if ok {
-		t.Error("Incorrect DisjointPrimeProductProof accepted.")
-	}
+	assert.False(t,
+		disjointPrimeProductVerifyProof(big.NewInt(p*q), big.NewInt(12346), big.NewInt(2), proof),
+		"Incorrect DisjointPrimeProductProof accepted.")
 }
 
 func TestDisjointPrimeProductWrongIndex(t *testing.T) {
 	const p = 2063
 	const q = 1187
 	proof := disjointPrimeProductBuildProof(big.NewInt(p), big.NewInt(q), big.NewInt(12345), big.NewInt(2))
-	ok := disjointPrimeProductVerifyProof(big.NewInt(p*q), big.NewInt(12345), big.NewInt(3), proof)
-	if ok {
-		t.Error("Incorrect DisjointPrimeProductProof accepted.")
-	}
+	assert.False(t,
+		disjointPrimeProductVerifyProof(big.NewInt(p*q), big.NewInt(12345), big.NewInt(3), proof),
+		"Incorrect DisjointPrimeProductProof accepted.")
 }
 
 func TestDisjointPrimeProductVerifyStructure(t *testing.T) {
@@ -55,19 +53,13 @@ func TestDisjointPrimeProductVerifyStructure(t *testing.T) {
 
 	listBackup := proof.Responses
 	proof.Responses = proof.Responses[:len(proof.Responses)-1]
-	if disjointPrimeProductVerifyStructure(proof) {
-		t.Error("Accepting too short responses")
-	}
+	assert.False(t, disjointPrimeProductVerifyStructure(proof), "Accepting too short responses")
 	proof.Responses = listBackup
 
 	valBackup := proof.Responses[2]
 	proof.Responses[2] = nil
-	if disjointPrimeProductVerifyStructure(proof) {
-		t.Error("Accepting missing response")
-	}
+	assert.False(t, disjointPrimeProductVerifyStructure(proof), "Accepting missing response")
 	proof.Responses[2] = valBackup
 
-	if !disjointPrimeProductVerifyStructure(proof) {
-		t.Error("Testcase corrupted testdata")
-	}
+	assert.True(t, disjointPrimeProductVerifyStructure(proof), "Testcase corrupted testdata")
 }
