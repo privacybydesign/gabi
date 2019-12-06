@@ -1,6 +1,11 @@
 package keyproof
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
 
 var testcases = []int{
 	250,
@@ -17,12 +22,7 @@ var testcases = []int{
 func TestFindSafePrime(t *testing.T) {
 	for _, tc := range testcases {
 		result := findSafePrime(tc)
-		if result == nil {
-			t.Errorf("Missing result for %d", tc)
-			continue
-		}
-		if result.BitLen() < tc {
-			t.Errorf("Generated prime too short for %d", tc)
-		}
+		require.NotNilf(t, result, "Missing result for %d", tc)
+		assert.GreaterOrEqualf(t, result.BitLen(), tc, "Generated prime too short for %d", tc)
 	}
 }

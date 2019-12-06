@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type RangeTestSecret struct {
@@ -68,10 +70,7 @@ func listCmp(a []*big.Int, b []*big.Int) bool {
 
 func TestRangeProofBasic(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for Range proof testing")
-		return
-	}
+	require.True(t, gok, "Failed to setup group for Range proof testing")
 
 	Follower.(*TestFollower).count = 0
 
@@ -99,45 +98,27 @@ func TestRangeProofBasic(t *testing.T) {
 
 	bases := newBaseMerge(&g, &commit)
 
-	if !s.isTrue(g, &bases, &secret) {
-		t.Error("Statement incorrectly declared false")
-	}
+	assert.True(t, s.isTrue(g, &bases, &secret), "Statement incorrectly declared false")
 
 	listSecret, rpcommit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &bases, &secret)
 
-	if len(listSecret) != s.numCommitments() {
-		t.Error("NumCommitments is off")
-	}
-
-	if Follower.(*TestFollower).count != s.numRangeProofs() {
-		t.Error("Logging is off GenerateCommitmentsFromSecrets")
-	}
+	assert.Equal(t, len(listSecret), s.numCommitments(), "NumCommitments is off")
+	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
 	Follower.(*TestFollower).count = 0
 
 	proof := s.buildProof(g, big.NewInt(12345), rpcommit, &secret)
 
-	if !s.verifyProofStructure(proof) {
-		t.Error("Proof structure rejected")
-		return
-	}
+	assert.True(t, s.verifyProofStructure(proof), "Proof structure rejected")
 
 	listProof := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &bases, proof)
 
-	if Follower.(*TestFollower).count != s.numRangeProofs() {
-		t.Error("Logging is off on GenerateCommitmentsFromProof")
-	}
-
-	if !listCmp(listSecret, listProof) {
-		t.Error("Commitment lists disagree")
-	}
+	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
+	assert.Equal(t, listSecret, listProof, "Commitment lists disagree")
 }
 
 func TestRangeProofComplex(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for Range proof testing")
-		return
-	}
+	require.True(t, gok, "Failed to setup group for Range proof testing")
 
 	Follower.(*TestFollower).count = 0
 
@@ -170,37 +151,22 @@ func TestRangeProofComplex(t *testing.T) {
 
 	bases := newBaseMerge(&g, &commit)
 
-	if !s.isTrue(g, &bases, &secret) {
-		t.Error("Statement incorrectly declared false")
-	}
+	assert.True(t, s.isTrue(g, &bases, &secret), "Statement incorrectly declared false")
 
 	listSecret, rpcommit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &bases, &secret)
 
-	if len(listSecret) != s.numCommitments() {
-		t.Error("NumCommitments is off")
-	}
-
-	if Follower.(*TestFollower).count != s.numRangeProofs() {
-		t.Error("Logging is off GenerateCommitmentsFromSecrets")
-	}
+	assert.Equal(t, len(listSecret), s.numCommitments(), "NumCommitments is off")
+	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
 	Follower.(*TestFollower).count = 0
 
 	proof := s.buildProof(g, big.NewInt(12345), rpcommit, &secret)
 
-	if !s.verifyProofStructure(proof) {
-		t.Error("Proof structure rejected")
-		return
-	}
+	assert.True(t, s.verifyProofStructure(proof), "Proof structure rejected")
 
 	listProof := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &bases, proof)
 
-	if Follower.(*TestFollower).count != s.numRangeProofs() {
-		t.Error("Logging is off on GenerateCommitmentsFromProof")
-	}
-
-	if !listCmp(listSecret, listProof) {
-		t.Error("Commitment lists disagree")
-	}
+	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
+	assert.Equal(t, listSecret, listProof, "Commitment lists disagree")
 }
 
 func TestRangeProofVerifyStructureEmpty(t *testing.T) {
@@ -216,9 +182,7 @@ func TestRangeProofVerifyStructureEmpty(t *testing.T) {
 	s.l1 = 3
 	s.l2 = 2
 
-	if s.verifyProofStructure(proof) {
-		t.Error("Accepting empty proof")
-	}
+	assert.False(t, s.verifyProofStructure(proof), "Accepting empty proof")
 }
 
 func TestRangeProofVerifyStructureMissingVar(t *testing.T) {
@@ -243,9 +207,7 @@ func TestRangeProofVerifyStructureMissingVar(t *testing.T) {
 		"x": tlist,
 	}
 
-	if s.verifyProofStructure(proof) {
-		t.Error("Accepting missing variable in proof")
-	}
+	assert.False(t, s.verifyProofStructure(proof), "Accepting missing variable in proof")
 }
 
 func TestRangeProofVerifyStructureTooShortVar(t *testing.T) {
@@ -271,17 +233,13 @@ func TestRangeProofVerifyStructureTooShortVar(t *testing.T) {
 		"xh": tlist[:len(tlist)-1],
 	}
 
-	if s.verifyProofStructure(proof) {
-		t.Error("Accepting variable with too few results in proof")
-	}
+	assert.False(t, s.verifyProofStructure(proof), "Accepting variable with too few results in proof")
 
 	proof.Results = map[string][]*big.Int{
 		"x":  tlist[:len(tlist)-1],
 		"xh": tlist,
 	}
-	if s.verifyProofStructure(proof) {
-		t.Error("Accepting variable with too few results in proof")
-	}
+	assert.False(t, s.verifyProofStructure(proof), "Accepting variable with too few results in proof")
 }
 
 func TestRangeProofVerifyStructureMissingNo(t *testing.T) {
@@ -314,17 +272,12 @@ func TestRangeProofVerifyStructureMissingNo(t *testing.T) {
 		"xh": tlist,
 	}
 
-	if s.verifyProofStructure(proof) {
-		t.Error("Accepting variable with missing numbers in proof")
-	}
+	assert.False(t, s.verifyProofStructure(proof), "Accepting variable with missing numbers in proof")
 }
 
 func TestRangeProofFake(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for Range proof testing")
-		return
-	}
+	require.True(t, gok, "Failed to setup group for Range proof testing")
 
 	var s rangeProofStructure
 	s.lhs = []lhsContribution{
@@ -338,17 +291,12 @@ func TestRangeProofFake(t *testing.T) {
 	s.l2 = 2
 
 	proof := s.fakeProof(g)
-	if !s.verifyProofStructure(proof) {
-		t.Error("Fake proof structure rejected.")
-	}
+	assert.True(t, s.verifyProofStructure(proof), "Fake proof structure rejected.")
 }
 
 func TestRangeProofJSON(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for Range proof testing")
-		return
-	}
+	require.True(t, gok, "Failed to setup group for Range proof testing")
 
 	var s rangeProofStructure
 	s.lhs = []lhsContribution{
@@ -363,19 +311,11 @@ func TestRangeProofJSON(t *testing.T) {
 
 	proofBefore := s.fakeProof(g)
 	proofJSON, err := json.Marshal(proofBefore)
-	if err != nil {
-		t.Errorf("error during json marshal: %s", err.Error())
-		return
-	}
+	require.NoError(t, err, "error during json marshal")
 
 	var proofAfter RangeProof
 	err = json.Unmarshal(proofJSON, &proofAfter)
-	if err != nil {
-		t.Errorf("error during json unmarshal: %s", err.Error())
-		return
-	}
+	require.NoError(t, err, "error during json unmarshal")
 
-	if !s.verifyProofStructure(proofAfter) {
-		t.Error("json'ed proof structure rejected")
-	}
+	assert.True(t, s.verifyProofStructure(proofAfter), "json'ed proof structure rejected")
 }

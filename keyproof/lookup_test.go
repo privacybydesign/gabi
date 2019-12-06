@@ -1,30 +1,25 @@
 package keyproof
 
-import "testing"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"testing"
+
+	"github.com/privacybydesign/gabi/big"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
 
 func TestGroupAsLookupBase(t *testing.T) {
 	const p = 26903
 	g, ok := buildGroup(big.NewInt(p))
-
-	if !ok {
-		t.Error("Problem generating group")
-		return
-	}
+	require.True(t, ok, "Problem generating group")
 
 	t1 := g.getBase("g")
 	t2 := g.getBase("h")
 	t3 := g.getBase("x")
 
-	if t1 == nil {
-		t.Error("Group base lookup g failed")
-	}
-	if t2 == nil {
-		t.Error("Group base lookup h failed")
-	}
-	if t3 != nil {
-		t.Error("Group base lookup x incorrectly returned result")
-	}
+	assert.NotNil(t, t1, "Group base lookup g failed")
+	assert.NotNil(t, t2, "Group base lookup h failed")
+	assert.Nil(t, t3, "Group base lookup x incorrectly returned result")
 }
 
 type TestLookup struct {
@@ -73,17 +68,11 @@ func TestBaseMerge(t *testing.T) {
 
 	to := newBaseMerge(&a, &b)
 	t1 := to.getBase("n1")
-	if t1 == nil || t1.Cmp(big.NewInt(1)) != 0 {
-		t.Error("Incorrect lookup of n1")
-	}
+	assert.Equal(t, t1, big.NewInt(1), "Incorrect lookup of n1")
 	t2 := to.getBase("n2")
-	if t2 == nil || t2.Cmp(big.NewInt(3)) != 0 {
-		t.Error("Incorrect lookup of n2")
-	}
+	assert.Equal(t, t2, big.NewInt(3), "Incorrect lookup of n2")
 	t3 := to.getBase("n3")
-	if t3 != nil {
-		t.Error("Incorrectly got result for lookup of n3")
-	}
+	assert.Nil(t, t3, "Incorrectly got result for lookup of n3")
 }
 
 func TestSecretMerge(t *testing.T) {
@@ -96,30 +85,18 @@ func TestSecretMerge(t *testing.T) {
 
 	to := newSecretMerge(&a, &b)
 	t1 := to.getSecret("n1")
-	if t1 == nil || t1.Cmp(big.NewInt(1)) != 0 {
-		t.Error("Incorrect secret lookup of n1")
-	}
+	assert.Equal(t, t1, big.NewInt(1), "Incorrect secret lookup of n1")
 	t2 := to.getSecret("n2")
-	if t2 == nil || t2.Cmp(big.NewInt(3)) != 0 {
-		t.Error("Incorrect secret lookup of n2")
-	}
+	assert.Equal(t, t2, big.NewInt(3), "Incorrect secret lookup of n2")
 	t3 := to.getSecret("n3")
-	if t3 != nil {
-		t.Error("Incorrectly got result for secret lookup of n3")
-	}
+	assert.Nil(t, t3, "Incorrectly got result for secret lookup of n3")
 
 	t4 := to.getRandomizer("n1")
-	if t4 == nil || t4.Cmp(big.NewInt(1)) != 0 {
-		t.Error("Incorrect randomizer lookup of n1")
-	}
+	assert.Equal(t, t4, big.NewInt(1), "Incorrect randomizer lookup of n1")
 	t5 := to.getRandomizer("n2")
-	if t5 == nil || t5.Cmp(big.NewInt(3)) != 0 {
-		t.Error("Incorrect randomizer lookup of n2")
-	}
+	assert.Equal(t, t5, big.NewInt(3), "Incorrect randomizer lookup of n2")
 	t6 := to.getRandomizer("n3")
-	if t6 != nil {
-		t.Error("Incorrectly got result for randomizer lookup of n3")
-	}
+	assert.Nil(t, t6, "Incorrectly got result for randomizer lookup of n3")
 }
 
 func TestProofMerge(t *testing.T) {
@@ -132,15 +109,9 @@ func TestProofMerge(t *testing.T) {
 
 	to := newProofMerge(&a, &b)
 	t1 := to.getResult("n1")
-	if t1 == nil || t1.Cmp(big.NewInt(1)) != 0 {
-		t.Error("Incorrect lookup of n1")
-	}
+	assert.Equal(t, t1, big.NewInt(1), "Incorrect lookup of n1")
 	t2 := to.getResult("n2")
-	if t2 == nil || t2.Cmp(big.NewInt(3)) != 0 {
-		t.Error("Incorrect lookup of n2")
-	}
+	assert.Equal(t, t2, big.NewInt(3), "Incorrect lookup of n2")
 	t3 := to.getResult("n3")
-	if t3 != nil {
-		t.Error("Incorrectly got result for lookup of n3")
-	}
+	assert.Nil(t, t3, "Incorrectly got result for lookup of n3")
 }

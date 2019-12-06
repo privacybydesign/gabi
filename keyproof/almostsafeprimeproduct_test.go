@@ -1,30 +1,25 @@
 package keyproof
 
-import "testing"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"testing"
+
+	"github.com/privacybydesign/gabi/big"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
 
 func TestAlmostSafePrimeProductCycle(t *testing.T) {
 	const p = 13451
 	const q = 13901
 	listBefore, commit := almostSafePrimeProductBuildCommitments([]*big.Int{}, big.NewInt(p), big.NewInt(q))
 	proof := almostSafePrimeProductBuildProof(big.NewInt(p), big.NewInt(q), big.NewInt(12345), big.NewInt(3), commit)
-	if !almostSafePrimeProductVerifyStructure(proof) {
-		t.Error("Proof structure rejected")
-		return
-	}
+	require.True(t, almostSafePrimeProductVerifyStructure(proof), "Proof structure rejected")
+
 	listAfter := almostSafePrimeProductExtractCommitments([]*big.Int{}, proof)
-	ok := almostSafePrimeProductVerifyProof(big.NewInt((2*p+1)*(2*q+1)), big.NewInt(12345), big.NewInt(3), proof)
-	if !ok {
-		t.Error("AlmostSafePrimeProduct rejected")
-	}
-	if len(listBefore) != len(listAfter) {
-		t.Error("Difference between commitment contribution lengths")
-	}
-	for i, ref := range listBefore {
-		if ref.Cmp(listAfter[i]) != 0 {
-			t.Errorf("Difference between commitment %v\n", i)
-		}
-	}
+	assert.True(t,
+		almostSafePrimeProductVerifyProof(big.NewInt((2*p+1)*(2*q+1)), big.NewInt(12345), big.NewInt(3), proof),
+		"AlmostSafePrimeProduct rejected")
+	assert.Equal(t, listBefore, listAfter, "Difference between commitments")
 }
 
 func TestAlmostSafePrimeProductCycleIncorrectNonce(t *testing.T) {
@@ -33,10 +28,9 @@ func TestAlmostSafePrimeProductCycleIncorrectNonce(t *testing.T) {
 	_, commit := almostSafePrimeProductBuildCommitments([]*big.Int{}, big.NewInt(p), big.NewInt(q))
 	proof := almostSafePrimeProductBuildProof(big.NewInt(p), big.NewInt(q), big.NewInt(12345), big.NewInt(3), commit)
 	proof.Nonce.Sub(proof.Nonce, big.NewInt(1))
-	ok := almostSafePrimeProductVerifyProof(big.NewInt((2*p+1)*(2*q+1)), big.NewInt(12345), big.NewInt(3), proof)
-	if ok {
-		t.Error("Incorrect AlmostSafePrimeProductProof accepted.")
-	}
+	assert.False(t,
+		almostSafePrimeProductVerifyProof(big.NewInt((2*p+1)*(2*q+1)), big.NewInt(12345), big.NewInt(3), proof),
+		"Incorrect AlmostSafePrimeProductProof accepted.")
 }
 
 func TestAlmostSafePrimeProductCycleIncorrectCommitment(t *testing.T) {
@@ -45,10 +39,9 @@ func TestAlmostSafePrimeProductCycleIncorrectCommitment(t *testing.T) {
 	_, commit := almostSafePrimeProductBuildCommitments([]*big.Int{}, big.NewInt(p), big.NewInt(q))
 	proof := almostSafePrimeProductBuildProof(big.NewInt(p), big.NewInt(q), big.NewInt(12345), big.NewInt(3), commit)
 	proof.Commitments[0].Add(proof.Commitments[0], big.NewInt(1))
-	ok := almostSafePrimeProductVerifyProof(big.NewInt((2*p+1)*(2*q+1)), big.NewInt(12345), big.NewInt(3), proof)
-	if ok {
-		t.Error("Incorrect AlmostSafePrimeProductProof accepted.")
-	}
+	assert.False(t,
+		almostSafePrimeProductVerifyProof(big.NewInt((2*p+1)*(2*q+1)), big.NewInt(12345), big.NewInt(3), proof),
+		"Incorrect AlmostSafePrimeProductProof accepted.")
 }
 
 func TestAlmostSafePrimeProductCycleIncorrectResponse(t *testing.T) {
@@ -57,10 +50,9 @@ func TestAlmostSafePrimeProductCycleIncorrectResponse(t *testing.T) {
 	_, commit := almostSafePrimeProductBuildCommitments([]*big.Int{}, big.NewInt(p), big.NewInt(q))
 	proof := almostSafePrimeProductBuildProof(big.NewInt(p), big.NewInt(q), big.NewInt(12345), big.NewInt(3), commit)
 	proof.Responses[0].Add(proof.Responses[0], big.NewInt(1))
-	ok := almostSafePrimeProductVerifyProof(big.NewInt((2*p+1)*(2*q+1)), big.NewInt(12345), big.NewInt(3), proof)
-	if ok {
-		t.Error("Incorrect AlmostSafePrimeProductProof accepted.")
-	}
+	assert.False(t,
+		almostSafePrimeProductVerifyProof(big.NewInt((2*p+1)*(2*q+1)), big.NewInt(12345), big.NewInt(3), proof),
+		"Incorrect AlmostSafePrimeProductProof accepted.")
 }
 
 func TestAlmostSafePrimeProductVerifyStructure(t *testing.T) {
@@ -71,40 +63,28 @@ func TestAlmostSafePrimeProductVerifyStructure(t *testing.T) {
 
 	listBackup := proof.Commitments
 	proof.Commitments = proof.Commitments[:len(proof.Commitments)-1]
-	if almostSafePrimeProductVerifyStructure(proof) {
-		t.Error("Accepiting too short commitments")
-	}
+	assert.False(t, almostSafePrimeProductVerifyStructure(proof), "Accepiting too short commitments")
 	proof.Commitments = listBackup
 
 	listBackup = proof.Responses
 	proof.Responses = proof.Responses[:len(proof.Responses)-1]
-	if almostSafePrimeProductVerifyStructure(proof) {
-		t.Error("Accepting too short responses")
-	}
+	assert.False(t, almostSafePrimeProductVerifyStructure(proof), "Accepting too short responses")
 	proof.Responses = listBackup
 
 	valBackup := proof.Commitments[2]
 	proof.Commitments[2] = nil
-	if almostSafePrimeProductVerifyStructure(proof) {
-		t.Error("Accepting missing commitment")
-	}
+	assert.False(t, almostSafePrimeProductVerifyStructure(proof), "Accepting missing commitment")
 	proof.Commitments[2] = valBackup
 
 	valBackup = proof.Responses[3]
 	proof.Responses[3] = nil
-	if almostSafePrimeProductVerifyStructure(proof) {
-		t.Error("Accepting missing response")
-	}
+	assert.False(t, almostSafePrimeProductVerifyStructure(proof), "Accepting missing response")
 	proof.Responses[3] = valBackup
 
 	valBackup = proof.Nonce
 	proof.Nonce = nil
-	if almostSafePrimeProductVerifyStructure(proof) {
-		t.Error("Accepting missing nonce")
-	}
+	assert.False(t, almostSafePrimeProductVerifyStructure(proof), "Accepting missing nonce")
 	proof.Nonce = valBackup
 
-	if !almostSafePrimeProductVerifyStructure(proof) {
-		t.Error("Testing messed up testdata")
-	}
+	assert.True(t, almostSafePrimeProductVerifyStructure(proof), "Testing messed up testdata")
 }

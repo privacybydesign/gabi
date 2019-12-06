@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExpProofFlow(t *testing.T) {
@@ -14,10 +16,7 @@ func TestExpProofFlow(t *testing.T) {
 	const r = -1
 
 	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for exp proof testing")
-		return
-	}
+	require.True(t, gok, "Failed to setup group for exp proof testing")
 
 	Follower.(*TestFollower).count = 0
 
@@ -36,27 +35,17 @@ func TestExpProofFlow(t *testing.T) {
 
 	s := newExpProofStructure("a", "b", "n", "r", 4)
 
-	if !s.isTrue(&secrets) {
-		t.Error("proof premise deemed false")
-	}
+	assert.True(t, s.isTrue(&secrets), "proof premise deemed false")
 
 	listSecrets, commit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &bases, &secrets)
 
-	if len(listSecrets) != s.numCommitments() {
-		t.Error("NumCommitments is off")
-	}
-
-	if Follower.(*TestFollower).count != s.numRangeProofs() {
-		t.Error("Logging is off GenerateCommitmentsFromSecrets")
-	}
+	assert.Equal(t, len(listSecrets), s.numCommitments(), "NumCommitments is off")
+	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
 	Follower.(*TestFollower).count = 0
 
 	proof := s.buildProof(g, big.NewInt(12345), commit, &secrets)
 
-	if !s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("proof structure rejected")
-		return
-	}
+	require.True(t, s.verifyProofStructure(big.NewInt(12345), proof), "proof structure rejected")
 
 	aProof := aPedersens.buildProof(g, big.NewInt(12345), aPedersen)
 	aProof.setName("a")
@@ -72,160 +61,104 @@ func TestExpProofFlow(t *testing.T) {
 
 	listProof := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &proofBases, &proofs, proof)
 
-	if Follower.(*TestFollower).count != s.numRangeProofs() {
-		t.Error("Logging is off on GenerateCommitmentsFromProof")
-	}
-
-	if !listCmp(listSecrets, listProof) {
-		t.Errorf("Commitment lists differ\n%v\n%v", listSecrets, listProof)
-	}
+	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
+	assert.Equal(t, listSecrets, listProof, "Commitment lists differ")
 }
 
 func TestExpProofFake(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for exp proof testing")
-		return
-	}
+	require.True(t, gok, "Failed to setup group for exp proof testing")
 
 	s := newExpProofStructure("a", "b", "n", "r", 4)
 
 	proof := s.fakeProof(g, big.NewInt(12345))
-	if !s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("fake proof structure rejected")
-	}
+	assert.True(t, s.verifyProofStructure(big.NewInt(12345), proof), "fake proof structure rejected")
 }
 
 func TestExpProofJSON(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for exp proof testing")
-		return
-	}
+	require.True(t, gok, "Failed to setup group for exp proof testing")
 
 	s := newExpProofStructure("a", "b", "n", "r", 4)
 
 	proofBefore := s.fakeProof(g, big.NewInt(12345))
 	proofJSON, err := json.Marshal(proofBefore)
-	if err != nil {
-		t.Errorf("error during json marshal: %s", err.Error())
-		return
-	}
+	require.NoError(t, err, "error during json marshal")
 
 	var proofAfter ExpProof
 	err = json.Unmarshal(proofJSON, &proofAfter)
-	if err != nil {
-		t.Errorf("error during json unmarshal: %s", err.Error())
-		return
-	}
+	require.NoError(t, err, "error during json unmarshal")
 
-	if !s.verifyProofStructure(big.NewInt(12345), proofAfter) {
-		t.Error("json'ed proof structure rejected")
-	}
+	assert.True(t, s.verifyProofStructure(big.NewInt(12345), proofAfter), "json'ed proof structure rejected")
 }
 
 func TestExpProofVerifyStructure(t *testing.T) {
 	g, gok := buildGroup(big.NewInt(47))
-	if !gok {
-		t.Error("Failed to setup group for exp proof testing")
-		return
-	}
+	require.True(t, gok, "Failed to setup group for exp proof testing")
 
 	s := newExpProofStructure("a", "b", "n", "r", 4)
 
 	proof := s.fakeProof(g, big.NewInt(12345))
 	proof.ExpBitEqHider.Result = nil
-	if s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("accepting missing expbiteqresult")
-	}
+	assert.False(t, s.verifyProofStructure(big.NewInt(12345), proof), "accepting missing expbiteqresult")
 
 	proof = s.fakeProof(g, big.NewInt(12345))
 	proof.ExpBitProofs = proof.ExpBitProofs[:len(proof.ExpBitProofs)-1]
-	if s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("accepting too short expbitproofs")
-	}
+	assert.False(t, s.verifyProofStructure(big.NewInt(12345), proof), "accepting too short expbitproofs")
 
 	proof = s.fakeProof(g, big.NewInt(12345))
 	proof.ExpBitProofs[2].Commit = nil
-	if s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("accepting corrupted expbitproof")
-	}
+	assert.False(t, s.verifyProofStructure(big.NewInt(12345), proof), "accepting corrupted expbitproof")
 
 	proof = s.fakeProof(g, big.NewInt(12345))
 	proof.BasePowProofs = proof.BasePowProofs[:len(proof.BasePowProofs)-1]
-	if s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("accepting too short basepowproofs")
-	}
+	assert.False(t, s.verifyProofStructure(big.NewInt(12345), proof), "accepting too short basepowproofs")
 
 	proof = s.fakeProof(g, big.NewInt(12345))
 	proof.BasePowProofs[1].Commit = nil
-	if s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("Accepting corrupted basepowproofs")
-	}
+	assert.False(t, s.verifyProofStructure(big.NewInt(12345), proof), "Accepting corrupted basepowproofs")
 
 	proof = s.fakeProof(g, big.NewInt(12345))
 	proof.BasePowRangeProofs = proof.BasePowRangeProofs[:len(proof.BasePowRangeProofs)-1]
-	if s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("Accepting too short basepowrangeproofs")
-	}
+	assert.False(t, s.verifyProofStructure(big.NewInt(12345), proof), "Accepting too short basepowrangeproofs")
 
 	proof = s.fakeProof(g, big.NewInt(12345))
 	proof.BasePowRangeProofs[1].Results = nil
-	if s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("Accepting corrupted basepowrangeproofs")
-	}
+	assert.False(t, s.verifyProofStructure(big.NewInt(12345), proof), "Accepting corrupted basepowrangeproofs")
 
 	proof = s.fakeProof(g, big.NewInt(12345))
 	proof.BasePowRelProofs = proof.BasePowRelProofs[:len(proof.BasePowRelProofs)-1]
-	if s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("Accepting too short basepowrelproofs")
-	}
+	assert.False(t, s.verifyProofStructure(big.NewInt(12345), proof), "Accepting too short basepowrelproofs")
 
 	proof = s.fakeProof(g, big.NewInt(12345))
 	proof.BasePowRelProofs[2].Hider.Result = nil
-	if s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("Accepting corrupted basepowrelproof")
-	}
+	assert.False(t, s.verifyProofStructure(big.NewInt(12345), proof), "Accepting corrupted basepowrelproof")
 
 	proof = s.fakeProof(g, big.NewInt(12345))
 	proof.StartProof.Commit = nil
-	if s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("Accepting corrupted startproof")
-	}
+	assert.False(t, s.verifyProofStructure(big.NewInt(12345), proof), "Accepting corrupted startproof")
 
 	proof = s.fakeProof(g, big.NewInt(12345))
 	proof.InterResProofs = proof.InterResProofs[:len(proof.InterResProofs)-1]
-	if s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("Accepting too short interresproofs")
-	}
+	assert.False(t, s.verifyProofStructure(big.NewInt(12345), proof), "Accepting too short interresproofs")
 
 	proof = s.fakeProof(g, big.NewInt(12345))
 	proof.InterResProofs[1].Commit = nil
-	if s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("Accepting corrupted interresproof")
-	}
+	assert.False(t, s.verifyProofStructure(big.NewInt(12345), proof), "Accepting corrupted interresproof")
 
 	proof = s.fakeProof(g, big.NewInt(12345))
 	proof.InterResRangeProofs = proof.InterResRangeProofs[:len(proof.InterResRangeProofs)-1]
-	if s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("Accepting too short interresrangeproofs")
-	}
+	assert.False(t, s.verifyProofStructure(big.NewInt(12345), proof), "Accepting too short interresrangeproofs")
 
 	proof = s.fakeProof(g, big.NewInt(12345))
 	proof.InterResRangeProofs[2].Results = nil
-	if s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("Accepting corrupted interresrangeproofs")
-	}
+	assert.False(t, s.verifyProofStructure(big.NewInt(12345), proof), "Accepting corrupted interresrangeproofs")
 
 	proof = s.fakeProof(g, big.NewInt(12345))
 	proof.InterStepsProofs = proof.InterStepsProofs[:len(proof.InterStepsProofs)-1]
-	if s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("Accepting too short interstepsproof")
-	}
+	assert.False(t, s.verifyProofStructure(big.NewInt(12345), proof), "Accepting too short interstepsproof")
 
 	proof = s.fakeProof(g, big.NewInt(12345))
 	proof.InterStepsProofs[2].Achallenge = nil
-	if s.verifyProofStructure(big.NewInt(12345), proof) {
-		t.Error("Accepting corrupted interstepsproof")
-	}
+	assert.False(t, s.verifyProofStructure(big.NewInt(12345), proof), "Accepting corrupted interstepsproof")
 }
