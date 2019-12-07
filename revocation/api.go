@@ -21,7 +21,7 @@ which the verifier concludes that the credential is not currently revoked.
 
 - The issuer can revoke a credential by removing its nonrevocation attribute e from the accumulator, by
   (1) Updating the accumulator value as follows:
-         NewNu := Nu^(1/e mod P*Q)
+         NewNu := Nu^(1/e mod (P-1)*(Q-1))
       where P, Q is the issuer Idemix private key
   (2) Broadcasting (NewNu, e) to all IRMA apps and verifiers
   (3) All IRMA clients update their nonrevocation witness, using an algorithm taking the broadcast
@@ -32,10 +32,10 @@ which the verifier concludes that the credential is not currently revoked.
 To keep track of previous and current accumulators, each Accumulator has an index which is
 incremented each time a credential is revoked and the accumulator changes value.
 
-Issuers supporting revocation use ECDSA private/public keys to sign the accumulator update messages
-into messages called revocation records. All IRMA participants (client, verifier, issuer) require
-the latest revocation record to be able to function. The client additionally needs to know the
-complete chain of all records to be able to update its witness to the latest accumulator.
+Issuers supporting revocation use ECDSA private/public keys to sign the accumulator update messages.
+All IRMA participants (client, verifier, issuer) require the latest revocation record to be able
+to function. The client additionally needs to know the complete chain of all events to be able to
+update its witness to the latest accumulator.
 
 Notes
 
@@ -65,9 +65,14 @@ package revocation
 
 import (
 	"crypto/ecdsa"
-	"time"
+	"crypto/sha256"
+	"database/sql/driver" // only imported to refer to the driver.Value type
+	"encoding/base64"
+	"encoding/binary"
+	"encoding/json"
 
 	"github.com/go-errors/errors"
+	"github.com/jinzhu/gorm"
 
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
@@ -78,30 +83,51 @@ type (
 	// Accumulator is an RSA-B accumulator against which clients with a corresponding Witness
 	// having the same Index can prove that their witness is accumulated, i.e. not revoked.
 	Accumulator struct {
-		Nu    *big.Int
-		Index uint64
+		Nu        *big.Int
+		Index     uint64
+		EventHash Hash
 	}
+
+	// SignedAccumulator is the above signed with the issuer's ECDSA key, along with the key index.
+	SignedAccumulator struct {
+		Message signed.Message
+		PKIndex uint
+	}
+
+	// Event contains the data clients need to update to the Accumulator of the specified index,
+	// after it has been updated by the issuer by revoking. Forms a chain through the
+	// ParentHash which is the SHA256 hash of its parent.
+	Event struct {
+		Index      uint64 `gorm:"primary_key"`
+		E          *big.Int
+		ParentHash Hash
+	}
+
+	// Update contains all information for clients to update their witness to the latest accumulator:
+	// the accumulator itself and a set of revocation attributes.
+	// Its hash structure makes this message into a chain with the SignedAccumulator on top:
+	// The accumulator contains the hash of the first Event, and each Event has a hash of its parent.
+	// Thus the signature over the accumulator effectively signs the entire Update message,
+	// and the partial tree specified by Events is verifiable regardless of its length.
+	Update struct { // TODO: make these not pointers?
+		SignedAccumulator *SignedAccumulator
+		Events            []*Event
+	}
+
+	// Hash represents a SHA256 hash and has marshaling methods to/from JSON and SQL tables.
+	Hash [32]byte
 
 	// Witness is a witness for the RSA-B accumulator, used for proving nonrevocation against the
 	// Accumulator with the same Index.
 	Witness struct {
 		// U^E = Accumulator.Nu mod N
 		U, E *big.Int
-		// Record signed by the issuer containing the Accumulator against which the witness verifies.
-		Record *Record
-		// Accumulator against which the witness verifies. Constructed from Record.
-		Accumulator Accumulator `json:"-"`
+		// Accumulator against which the witness verifies.
+		SignedAccumulator *SignedAccumulator
+		// Accumulator value for local computations, extracted from verified SignedAccumulator
+		Accumulator *Accumulator `json:"-"`
 
 		randomizer *big.Int
-	}
-
-	// AccumulatorUpdate contains the data clients and verifiers need to update to the included
-	// Accumulator, after it has been updated by the issuer by revoking.
-	AccumulatorUpdate struct {
-		Accumulator Accumulator
-		Revoked     []*big.Int
-		StartIndex  uint64
-		Time        int64
 	}
 
 	// PrivateKey is the private key needed for revoking.
@@ -118,74 +144,149 @@ type (
 		ECDSA   *ecdsa.PublicKey
 		Group   *QrGroup
 	}
-
-	// Record contains a signed AccumulatorUpdate and associated information and is ued
-	// by clients, issuers and verifiers to update their revocation state, so that they can create
-	// and verify nonrevocation proofs and witnesses.
-	Record struct {
-		StartIndex     uint64
-		EndIndex       uint64 `gorm:"primary_key"`
-		PublicKeyIndex uint
-		Message        signed.Message // signed AccumulatorUpdate
-	}
 )
+
+// Hash returns the SHA256 hash of the Event.
+func (event *Event) Hash() Hash {
+	// TODO
+	bts := make([]byte, 8, 8+len(event.ParentHash)+int(parameters.attributeMaxSize)/8)
+	binary.BigEndian.PutUint64(bts, event.Index)
+	bts = append(bts, event.ParentHash[:]...)
+	bts = append(bts, event.E.Bytes()...)
+	return sha256.Sum256(bts)
+}
 
 const AccumulatorStartIndex uint64 = 1
 
-func NewAccumulator(sk *PrivateKey) (signed.Message, *Accumulator, error) {
-	update := AccumulatorUpdate{
-		Accumulator: Accumulator{
-			Nu:    common.RandomQR(sk.N),
-			Index: AccumulatorStartIndex,
-		},
-		StartIndex: AccumulatorStartIndex,
-		Time:       time.Now().UnixNano(),
-		Revoked:    nil,
+func NewAccumulator(sk *PrivateKey) (*Update, error) {
+	initialEvent := &Event{
+		Index:      AccumulatorStartIndex,
+		E:          big.NewInt(0),
+		ParentHash: Hash{},
 	}
-
-	msg, err := signed.MarshalSign(sk.ECDSA, &update)
+	acc := &Accumulator{
+		Nu:        common.RandomQR(sk.N),
+		Index:     AccumulatorStartIndex,
+		EventHash: initialEvent.Hash(),
+	}
+	sig, err := acc.Sign(sk)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-
-	return msg, &update.Accumulator, nil
+	return &Update{
+		SignedAccumulator: sig,
+		Events:            []*Event{initialEvent},
+	}, nil
 }
 
-// Remove returns a new accumulator with the specified e removed from it, and an increased index.
-func (b *Accumulator) Remove(sk *PrivateKey, e *big.Int) (*Accumulator, error) {
+// Sign the accumulator into a SignedAccumulator (c.f. SignedAccumulator.UnmarshalVerify()).
+func (acc *Accumulator) Sign(sk *PrivateKey) (*SignedAccumulator, error) {
+	sig, err := signed.MarshalSign(sk.ECDSA, acc)
+	if err != nil {
+		return nil, err
+	}
+	return &SignedAccumulator{Message: sig, PKIndex: sk.Counter}, nil
+}
+
+// Remove generates a new accumulator with the specified e removed from it; signs it;
+// and returns an Update message for clients to update their witness.
+func (acc *Accumulator) Remove(sk *PrivateKey, e *big.Int, parent *Event) (*Update, error) {
 	eInverse, ok := common.ModInverse(e, new(big.Int).Mul(sk.P, sk.Q))
 	if !ok {
 		// since N = P*Q and P, Q prime, e has no inverse if and only if e equals either P or Q
 		return nil, errors.New("revocation attribute has no inverse")
 	}
 
-	return &Accumulator{
-		Index: b.Index + 1,
-		Nu:    new(big.Int).Exp(b.Nu, eInverse, sk.N),
+	newAcc := Accumulator{
+		Index: acc.Index + 1,
+		Nu:    new(big.Int).Exp(acc.Nu, eInverse, sk.N),
+	}
+	event := &Event{
+		Index:      newAcc.Index,
+		E:          e,
+		ParentHash: parent.Hash(),
+	}
+	newAcc.EventHash = event.Hash()
+
+	sig, err := newAcc.Sign(sk)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Update{
+		SignedAccumulator: sig,
+		Events:            []*Event{event},
 	}, nil
 }
 
-func (r *Record) UnmarshalVerify(pk *PublicKey) (*AccumulatorUpdate, error) {
-	msg := &AccumulatorUpdate{}
-	if err := signed.UnmarshalVerify(pk.ECDSA, r.Message, msg); err != nil {
-		return nil, err
+// UnmarshalVerify verifies the signature and unmarshals the accumulator
+// (c.f. Accumulator.Sign()).
+func (s *SignedAccumulator) UnmarshalVerify(pk *PublicKey) (*Accumulator, error) {
+	msg := &Accumulator{}
+	if pk.Counter != s.PKIndex {
+		return nil, errors.New("wrong public key")
 	}
-	if (r.StartIndex != msg.StartIndex) ||
-		(r.EndIndex != msg.Accumulator.Index) ||
-		(r.EndIndex > AccumulatorStartIndex && r.EndIndex != msg.StartIndex+uint64(len(msg.Revoked))-1) {
-		return nil, errors.New("record has invalid start or end index")
+	if err := signed.UnmarshalVerify(pk.ECDSA, s.Message, msg); err != nil {
+		return nil, err
 	}
 	return msg, nil
 }
 
+// Verify the witness against its SignedAccumulator.
 func (w *Witness) Verify(pk *PublicKey) error {
-	acc, err := w.Record.UnmarshalVerify(pk)
+	acc, err := w.SignedAccumulator.UnmarshalVerify(pk)
 	if err != nil {
 		return err
 	}
-	w.Accumulator = acc.Accumulator
-	if !verify(w.U, w.E, &acc.Accumulator, pk.Group) {
+	w.Accumulator = acc
+	if !verify(w.U, w.E, w.Accumulator, pk.Group) {
 		return errors.New("invalid witness")
 	}
 	return nil
+}
+
+func (hash *Hash) MarshalJSON() ([]byte, error) {
+	return json.Marshal(hash.String())
+}
+
+func (hash *Hash) UnmarshalJSON(b []byte) error {
+	var s string
+	err := json.Unmarshal(b, &s)
+	if err != nil {
+		return err
+	}
+	b, err = base64.URLEncoding.DecodeString(s)
+	if err != nil {
+		return err
+	}
+	copy(hash[:], b)
+	return nil
+}
+
+func (hash Hash) String() string {
+	return base64.URLEncoding.EncodeToString(hash[:])
+}
+
+func (hash Hash) Value() (driver.Value, error) {
+	return hash[:], nil
+}
+
+func (hash *Hash) Scan(src interface{}) error {
+	s, ok := src.([]byte)
+	if !ok {
+		return errors.New("cannot convert source: not a []byte")
+	}
+	copy((*hash)[:], s)
+	return nil
+}
+
+func (Hash) GormDataType(dialect gorm.Dialect) string {
+	switch dialect.GetName() {
+	case "postgres":
+		return "bytea"
+	case "mysql":
+		return "blob"
+	default:
+		return ""
+	}
 }
