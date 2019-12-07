@@ -7,7 +7,6 @@ import (
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
 	"github.com/privacybydesign/gabi/keyproof"
-	"github.com/privacybydesign/gabi/signed"
 )
 
 /*
@@ -48,22 +47,25 @@ with the following differences.
 */
 
 type (
+	// Proof is a proof that a Witness is valid against the Accumulator from the specified
+	// SignedAccumulator.
 	Proof struct {
-		Cr          *big.Int // Cr = g^r2 * h^r3      = g^epsilon * h^zeta
-		Cu          *big.Int // Cu = u    * h^r2
-		Nu          *big.Int // nu = Cu^e * h^(-e*r2) = Cu^alpha * h^-beta
-		Challenge   *big.Int
-		Results     map[string]*big.Int
-		Record      *Record      // Record containing the accumulator against which to verify
-		Accumulator *Accumulator `json:"-"` // Extracted from Record during verification
+		Cr                *big.Int // Cr = g^r2 * h^r3      = g^epsilon * h^zeta
+		Cu                *big.Int // Cu = u    * h^r2
+		Nu                *big.Int // nu = Cu^e * h^(-e*r2) = Cu^alpha * h^-beta
+		Challenge         *big.Int
+		Results           map[string]*big.Int
+		SignedAccumulator *SignedAccumulator
+		acc               *Accumulator // Extracted from SignedAccumulator during verification
 	}
 
+	// ProofCommit contains the commitment state of a nonrevocation Proof.
 	ProofCommit struct {
 		cu, cr, nu  *big.Int
 		secrets     map[string]*big.Int
 		randomizers map[string]*big.Int
 		g           *qrGroup
-		record      *Record
+		sacc        *SignedAccumulator
 	}
 
 	proofStructure struct {
@@ -161,7 +163,7 @@ func NewProofCommit(grp *QrGroup, witn *Witness, randomizer *big.Int) ([]*big.In
 
 	bases := keyproof.NewBaseMerge((*qrGroup)(grp), &accumulator{Nu: witn.Accumulator.Nu})
 	list, commit := proofstructure.generateCommitmentsFromSecrets((*qrGroup)(grp), []*big.Int{}, &bases, (*witness)(witn))
-	commit.record = witn.Record
+	commit.sacc = witn.SignedAccumulator
 	return list, (*ProofCommit)(&commit), nil
 }
 
@@ -177,12 +179,12 @@ func (p *Proof) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.I
 	if (*proof)(p).GetResult("alpha").Cmp(parameters.bTwoZk) > 0 {
 		return false
 	}
-	update, err := p.Record.UnmarshalVerify(pk)
+	acc, err := p.SignedAccumulator.UnmarshalVerify(pk)
 	if err != nil {
 		return false
 	}
-	p.Accumulator = &update.Accumulator
-	if p.Nu.Cmp(p.Accumulator.Nu) != 0 {
+	p.acc = acc
+	if p.Nu.Cmp(p.acc.Nu) != 0 {
 		return false
 	}
 	return p.Challenge.Cmp(reconstructedChallenge) == 0
@@ -201,9 +203,9 @@ func (c *ProofCommit) BuildProof(challenge *big.Int) *Proof {
 
 	return &Proof{
 		Cr: c.cr, Cu: c.cu, Nu: c.nu,
-		Challenge: challenge,
-		Results:   results,
-		Record:    c.record,
+		Challenge:         challenge,
+		Results:           results,
+		SignedAccumulator: c.sacc,
 	}
 }
 
@@ -211,7 +213,7 @@ func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
 	c.cu = new(big.Int).Exp(c.g.H, c.secrets["epsilon"], c.g.N)
 	c.cu.Mul(c.cu, witness.U)
 	c.nu = witness.Accumulator.Nu
-	c.record = witness.Record
+	c.sacc = witness.SignedAccumulator
 
 	commit := (*proofCommit)(c)
 	b := keyproof.NewBaseMerge(c.g, commit)
@@ -222,34 +224,62 @@ func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
 	commitments[4] = l[0]
 }
 
-// update updates the witness using the specified record from the issuer,
+// Verify that the specified update message is a validly signed partial chain:
+// - the accumulator is validly signed
+// - the accumulator includes the hash of the last item in the hash chain
+// - the hash chain is valid (each chain item has the correct hash of its parent).
+func (update *Update) Verify(pk *PublicKey, index uint64) (*Accumulator, *big.Int, error) {
+	count := len(update.Events)
+	if count == 0 {
+		return nil, nil, errors.New("no accumulator update specified")
+	}
+
+	acc, err := update.SignedAccumulator.UnmarshalVerify(pk)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if acc.EventHash != update.Events[count-1].Hash() {
+		return nil, nil, errors.New("update chain has wrong hash")
+	}
+
+	// compute product of all revoked attributes, going backwards along the chain from the
+	// signed accumulator until the current position of the witness, verifying the hashes
+	// of the chain along the way
+	startIndex := update.Events[0].Index
+	prod := new(big.Int).SetInt64(1)
+	for i, event := range update.Events {
+		if i != 0 && event.ParentHash != update.Events[i-1].Hash() {
+			return nil, nil, errors.Errorf("event %d has wrong parent hash: found %s, expected %s",
+				i, update.Events[i-1].Hash().String(), event.ParentHash.String())
+		}
+		if uint64(i)+startIndex != event.Index {
+			return nil, nil, errors.Errorf("event %d has wrong index, found %d, expected %d", event.Index, uint64(i)+startIndex)
+		}
+		if uint64(i)+startIndex <= index {
+			continue
+		}
+		prod.Mul(prod, event.E)
+	}
+
+	return acc, prod, nil
+}
+
+// Update updates the witness using the specified update data from the issuer,
 // after which the witness can be used to prove nonrevocation against the latest Accumulator
 // (contained in the update message).
-func (w *Witness) Update(pk *PublicKey, record *Record) error {
-	var err error
-	var update AccumulatorUpdate
-	if err = signed.UnmarshalVerify(pk.ECDSA, record.Message, &update); err != nil {
+func (w *Witness) Update(pk *PublicKey, update *Update) error {
+	acc, prod, err := update.Verify(pk, w.Accumulator.Index)
+	if err != nil {
 		return err
 	}
 
-	if update.Accumulator.Index <= w.Accumulator.Index || update.StartIndex > w.Accumulator.Index+1 {
-		return nil // update was already applied or is too new
+	startIndex, endIndex := update.Events[0].Index, acc.Index
+	if endIndex <= w.Accumulator.Index || startIndex > w.Accumulator.Index+1 {
+		return nil // update is already applied or too new
 	}
-
-	// compute product of all revoked attributes
-	var a, b, prod big.Int
-	prod.SetInt64(1)
-	for i, e := range update.Revoked {
-		if uint64(i)+update.StartIndex <= w.Accumulator.Index {
-			continue
-		}
-		if e == w.E {
-			return errors.New("revoked")
-		}
-		prod.Mul(&prod, e)
-	}
-
-	if new(big.Int).GCD(&a, &b, w.E, &prod).Cmp(bigOne) != 0 {
+	var a, b big.Int
+	if new(big.Int).GCD(&a, &b, w.E, prod).Cmp(bigOne) != 0 {
 		return errors.New("revoked")
 	}
 
@@ -257,17 +287,17 @@ func (w *Witness) Update(pk *PublicKey, record *Record) error {
 	newU := new(big.Int)
 	newU.Mul(
 		new(big.Int).Exp(w.U, &b, pk.Group.N),
-		new(big.Int).Exp(update.Accumulator.Nu, &a, pk.Group.N),
+		new(big.Int).Exp(acc.Nu, &a, pk.Group.N),
 	).Mod(newU, pk.Group.N)
 
-	if !verify(newU, w.E, &update.Accumulator, pk.Group) {
+	if !verify(newU, w.E, acc, pk.Group) {
 		return errors.New("nonrevocation witness invalidated by update")
 	}
 
 	// Update witness state only now after all possible errors have not occured
 	w.U = newU
-	w.Accumulator = update.Accumulator
-	w.Record = record
+	w.SignedAccumulator = update.SignedAccumulator
+	w.Accumulator = acc
 
 	return nil
 }
