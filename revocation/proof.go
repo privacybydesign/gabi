@@ -224,47 +224,6 @@ func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
 	commitments[4] = l[0]
 }
 
-// Verify that the specified update message is a validly signed partial chain:
-// - the accumulator is validly signed
-// - the accumulator includes the hash of the last item in the hash chain
-// - the hash chain is valid (each chain item has the correct hash of its parent).
-func (update *Update) Verify(pk *PublicKey, index uint64) (*Accumulator, *big.Int, error) {
-	count := len(update.Events)
-	if count == 0 {
-		return nil, nil, errors.New("no accumulator update specified")
-	}
-
-	acc, err := update.SignedAccumulator.UnmarshalVerify(pk)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if acc.EventHash != update.Events[count-1].Hash() {
-		return nil, nil, errors.New("update chain has wrong hash")
-	}
-
-	// compute product of all revoked attributes, going backwards along the chain from the
-	// signed accumulator until the current position of the witness, verifying the hashes
-	// of the chain along the way
-	startIndex := update.Events[0].Index
-	prod := new(big.Int).SetInt64(1)
-	for i, event := range update.Events {
-		if i != 0 && event.ParentHash != update.Events[i-1].Hash() {
-			return nil, nil, errors.Errorf("event %d has wrong parent hash: found %s, expected %s",
-				i, update.Events[i-1].Hash().String(), event.ParentHash.String())
-		}
-		if uint64(i)+startIndex != event.Index {
-			return nil, nil, errors.Errorf("event %d has wrong index, found %d, expected %d", event.Index, uint64(i)+startIndex)
-		}
-		if uint64(i)+startIndex <= index {
-			continue
-		}
-		prod.Mul(prod, event.E)
-	}
-
-	return acc, prod, nil
-}
-
 // Update updates the witness using the specified update data from the issuer,
 // after which the witness can be used to prove nonrevocation against the latest Accumulator
 // (contained in the update message).
