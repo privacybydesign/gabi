@@ -88,9 +88,9 @@ type (
 		EventHash Hash
 	}
 
-	// SignedAccumulator is the above signed with the issuer's ECDSA key, along with the key index.
+	// SignedAccumulator is an Accumulator signed with the issuer's ECDSA key, along with the key index.
 	SignedAccumulator struct {
-		Message signed.Message
+		Data    signed.Message
 		PKIndex uint
 	}
 
@@ -185,7 +185,7 @@ func (acc *Accumulator) Sign(sk *PrivateKey) (*SignedAccumulator, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &SignedAccumulator{Message: sig, PKIndex: sk.Counter}, nil
+	return &SignedAccumulator{Data: sig, PKIndex: sk.Counter}, nil
 }
 
 // Remove generates a new accumulator with the specified e removed from it; signs it;
@@ -226,7 +226,7 @@ func (s *SignedAccumulator) UnmarshalVerify(pk *PublicKey) (*Accumulator, error)
 	if pk.Counter != s.PKIndex {
 		return nil, errors.New("wrong public key")
 	}
-	if err := signed.UnmarshalVerify(pk.ECDSA, s.Message, msg); err != nil {
+	if err := signed.UnmarshalVerify(pk.ECDSA, s.Data, msg); err != nil {
 		return nil, err
 	}
 	return msg, nil
@@ -312,19 +312,19 @@ func (update *Update) MarshalJSON() ([]byte, error) {
 }
 
 func (update *Update) UnmarshalJSON(bts []byte) error {
-	var ju jsonUpdate
-	if err := json.Unmarshal(bts, &ju); err != nil {
+	var u jsonUpdate
+	if err := json.Unmarshal(bts, &u); err != nil {
 		return err
 	}
-	update.SignedAccumulator = ju.SignedAccumulator
-	update.Events = make([]*Event, len(ju.E))
+	update.SignedAccumulator = u.SignedAccumulator
+	update.Events = make([]*Event, len(u.E))
 	for i := range update.Events {
 		update.Events[i] = &Event{
-			E:     ju.E[i],
-			Index: uint64(i) + ju.Index,
+			E:     u.E[i],
+			Index: uint64(i) + u.Index,
 		}
 		if i == 0 {
-			update.Events[i].ParentHash = ju.ParentHash
+			update.Events[i].ParentHash = u.ParentHash
 		} else {
 			update.Events[i].ParentHash = update.Events[i-1].Hash()
 		}
