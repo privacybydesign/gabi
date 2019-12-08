@@ -53,12 +53,16 @@ func (pl ProofList) GetFirstProofU() (*ProofU, error) {
 
 // challengeContributions collects and returns all the challenge contributions
 // of the proofs contained in the proof list.
-func (pl ProofList) challengeContributions(publicKeys []*PublicKey, context, nonce *big.Int) []*big.Int {
+func (pl ProofList) challengeContributions(publicKeys []*PublicKey, context, nonce *big.Int) ([]*big.Int, error) {
 	contributions := make([]*big.Int, 0, len(pl)*2)
 	for i, proof := range pl {
-		contributions = append(contributions, proof.ChallengeContribution(publicKeys[i])...)
+		contrib, err := proof.ChallengeContribution(publicKeys[i])
+		if err != nil {
+			return nil, err
+		}
+		contributions = append(contributions, contrib...)
 	}
-	return contributions
+	return contributions, nil
 }
 
 // Verify returns true when all the proofs inside verify.
@@ -83,7 +87,10 @@ func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, iss
 	// During verification of the proofs we keep track of their secret key responses in this map.
 	secretkeyResponses := make(map[string]*big.Int)
 
-	contributions := pl.challengeContributions(publicKeys, context, nonce)
+	contributions, err := pl.challengeContributions(publicKeys, context, nonce)
+	if err != nil {
+		return false
+	}
 	expectedChallenge := createChallenge(context, nonce, contributions, issig)
 
 	// If keyshareServers == nil then we never update this variable,

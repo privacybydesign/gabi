@@ -231,7 +231,9 @@ func TestProofU(t *testing.T) {
 	b := NewCredentialBuilder(testPubK, context, secret, nonce2)
 	proofU := b.CreateProof(createChallenge(context, nonce1, b.Commit(map[string]*big.Int{"secretkey": secret}), false))
 
-	assert.True(t, proofU.VerifyWithChallenge(testPubK, createChallenge(context, nonce1, proofU.ChallengeContribution(testPubK), false)), "ProofU does not verify, whereas it should.")
+	contrib, err := proofU.ChallengeContribution(testPubK)
+	require.NoError(t, err)
+	assert.True(t, proofU.VerifyWithChallenge(testPubK, createChallenge(context, nonce1, contrib, false)), "ProofU does not verify, whereas it should.")
 }
 
 func TestProofULogged(t *testing.T) {
@@ -636,12 +638,16 @@ func TestRevocation(t *testing.T) {
 
 	revkey, err := testPrivK.RevocationKey()
 	require.NoError(t, err)
-	_, acc, err := revocation.NewAccumulator(revkey)
+	update, err := revocation.NewAccumulator(revkey)
 	require.NoError(t, err)
+
+	revpk, err := testPubK.RevocationKey()
+	require.NoError(t, err)
+	acc, err := update.SignedAccumulator.UnmarshalVerify(revpk)
 
 	witness, err := testPrivK.RevocationGenerateWitness(acc)
 	require.NoError(t, err)
-	require.Zero(t, new(big.Int).Exp(witness.U, witness.E, testPubK.N).Cmp(witness.Nu))
+	require.Zero(t, new(big.Int).Exp(witness.U, witness.E, testPubK.N).Cmp(witness.Accumulator.Nu))
 
 	signature, err := SignMessageBlock(testPrivK, testPubK, testAttributes1, witness.E)
 	require.NoError(t, err)
