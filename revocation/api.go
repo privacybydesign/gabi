@@ -109,7 +109,7 @@ type (
 	// The accumulator contains the hash of the first Event, and each Event has a hash of its parent.
 	// Thus the signature over the accumulator effectively signs the entire Update message,
 	// and the partial tree specified by Events is verifiable regardless of its length.
-	Update struct { // TODO: make these not pointers?
+	Update struct {
 		SignedAccumulator *SignedAccumulator
 		Events            []*Event
 	}
@@ -245,7 +245,7 @@ func (w *Witness) Verify(pk *PublicKey) error {
 	return nil
 }
 
-func (hash *Hash) MarshalJSON() ([]byte, error) {
+func (hash Hash) MarshalJSON() ([]byte, error) {
 	return json.Marshal(hash.String())
 }
 
@@ -289,4 +289,86 @@ func (Hash) GormDataType(dialect gorm.Dialect) string {
 	default:
 		return ""
 	}
+}
+
+type jsonUpdate struct {
+	SignedAccumulator *SignedAccumulator `json:"sacc"`
+	Index             uint64             `json:"i"`
+	ParentHash        Hash               `json:"hash"`
+	E                 []*big.Int         `json:"e"`
+}
+
+func (update *Update) MarshalJSON() ([]byte, error) {
+	ju := jsonUpdate{
+		SignedAccumulator: update.SignedAccumulator,
+		Index:             update.Events[0].Index,
+		ParentHash:        update.Events[0].ParentHash,
+		E:                 make([]*big.Int, len(update.Events)),
+	}
+	for i := range update.Events {
+		ju.E[i] = update.Events[i].E
+	}
+	return json.Marshal(ju)
+}
+
+func (update *Update) UnmarshalJSON(bts []byte) error {
+	var ju jsonUpdate
+	if err := json.Unmarshal(bts, &ju); err != nil {
+		return err
+	}
+	update.SignedAccumulator = ju.SignedAccumulator
+	update.Events = make([]*Event, len(ju.E))
+	for i := range update.Events {
+		update.Events[i] = &Event{
+			E:     ju.E[i],
+			Index: uint64(i) + ju.Index,
+		}
+		if i == 0 {
+			update.Events[i].ParentHash = ju.ParentHash
+		} else {
+			update.Events[i].ParentHash = update.Events[i-1].Hash()
+		}
+	}
+	return nil
+}
+
+// Verify that the specified update message is a validly signed partial chain:
+// - the accumulator is validly signed
+// - the accumulator includes the hash of the last item in the hash chain
+// - the hash chain is valid (each chain item has the correct hash of its parent).
+func (update *Update) Verify(pk *PublicKey, index uint64) (*Accumulator, *big.Int, error) {
+	count := len(update.Events)
+	if count == 0 {
+		return nil, nil, errors.New("no accumulator update specified")
+	}
+
+	acc, err := update.SignedAccumulator.UnmarshalVerify(pk)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if acc.EventHash != update.Events[count-1].Hash() {
+		return nil, nil, errors.New("update chain has wrong hash")
+	}
+
+	// compute product of all revoked attributes, going backwards along the chain from the
+	// signed accumulator until the current position of the witness, verifying the hashes
+	// of the chain along the way
+	startIndex := update.Events[0].Index
+	prod := new(big.Int).SetInt64(1)
+	for i, event := range update.Events {
+		if i != 0 && event.ParentHash != update.Events[i-1].Hash() {
+			return nil, nil, errors.Errorf("event %d has wrong parent hash: found %s, expected %s",
+				i, update.Events[i-1].Hash().String(), event.ParentHash.String())
+		}
+		if uint64(i)+startIndex != event.Index {
+			return nil, nil, errors.Errorf("event %d has wrong index, found %d, expected %d", event.Index, uint64(i)+startIndex)
+		}
+		if uint64(i)+startIndex <= index {
+			continue
+		}
+		prod.Mul(prod, event.E)
+	}
+
+	return acc, prod, nil
 }
