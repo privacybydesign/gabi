@@ -14,7 +14,7 @@ import (
 type Proof interface {
 	VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.Int) bool
 	SecretKeyResponse() *big.Int
-	ChallengeContribution(pk *PublicKey) []*big.Int
+	ChallengeContribution(pk *PublicKey) ([]*big.Int, error)
 	MergeProofP(proofP *ProofP, pk *PublicKey)
 }
 
@@ -48,7 +48,11 @@ func (p *ProofU) MergeProofP(proofP *ProofP, pk *PublicKey) {
 
 // Verify verifies whether the proof is correct.
 func (p *ProofU) Verify(pk *PublicKey, context, nonce *big.Int) bool {
-	return p.VerifyWithChallenge(pk, createChallenge(context, nonce, p.ChallengeContribution(pk), false))
+	contrib, err := p.ChallengeContribution(pk)
+	if err != nil {
+		return false
+	}
+	return p.VerifyWithChallenge(pk, createChallenge(context, nonce, contrib, false))
 }
 
 // correctResponseSizes checks the sizes of the elements in the ProofU proof.
@@ -92,8 +96,8 @@ func (p *ProofU) Challenge() *big.Int {
 
 // ChallengeContribution returns the contribution of this proof to the
 // challenge.
-func (p *ProofU) ChallengeContribution(pk *PublicKey) []*big.Int {
-	return []*big.Int{p.U, p.reconstructUcommit(pk)}
+func (p *ProofU) ChallengeContribution(pk *PublicKey) ([]*big.Int, error) {
+	return []*big.Int{p.U, p.reconstructUcommit(pk)}, nil
 }
 
 // ProofS represents a proof.
@@ -196,7 +200,11 @@ func (p *ProofD) reconstructZ(pk *PublicKey) *big.Int {
 
 // Verify verifies the proof against the given public key, context, and nonce.
 func (p *ProofD) Verify(pk *PublicKey, context, nonce1 *big.Int, issig bool) bool {
-	return p.VerifyWithChallenge(pk, createChallenge(context, nonce1, p.ChallengeContribution(pk), issig))
+	contrib, err := p.ChallengeContribution(pk)
+	if err != nil {
+		return false
+	}
+	return p.VerifyWithChallenge(pk, createChallenge(context, nonce1, contrib, issig))
 }
 
 func (p *ProofD) HasNonRevocationProof() bool {
@@ -224,13 +232,20 @@ func (p *ProofD) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.
 
 // ChallengeContribution returns the contribution of this proof to the
 // challenge.
-func (p *ProofD) ChallengeContribution(pk *PublicKey) []*big.Int {
+func (p *ProofD) ChallengeContribution(pk *PublicKey) ([]*big.Int, error) {
 	l := []*big.Int{p.A, p.reconstructZ(pk)}
 	if p.NonRevocationProof != nil {
-		revPk, _ := pk.RevocationKey()
-		l = append(l, p.NonRevocationProof.ChallengeContributions(revPk.Group)...)
+		revPk, err := pk.RevocationKey()
+		if err != nil {
+			return nil, err
+		}
+		if err = p.NonRevocationProof.SetExpected(revPk, p.C, p.NonRevocationResponse); err != nil {
+			return nil, err
+		}
+		contrib := p.NonRevocationProof.ChallengeContributions(revPk.Group)
+		l = append(l, contrib...)
 	}
-	return l
+	return l, nil
 }
 
 // SecretKeyResponse returns the secret key response (as part of Proof

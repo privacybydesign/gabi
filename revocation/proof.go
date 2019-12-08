@@ -52,8 +52,8 @@ type (
 	Proof struct {
 		Cr                *big.Int // Cr = g^r2 * h^r3      = g^epsilon * h^zeta
 		Cu                *big.Int // Cu = u    * h^r2
-		Nu                *big.Int // nu = Cu^e * h^(-e*r2) = Cu^alpha * h^-beta
-		Challenge         *big.Int
+		Nu                *big.Int `json:"-"` // nu = Cu^e * h^(-e*r2) = Cu^alpha * h^-beta
+		Challenge         *big.Int `json:"-"`
 		Results           map[string]*big.Int
 		SignedAccumulator *SignedAccumulator
 		acc               *Accumulator // Extracted from SignedAccumulator during verification
@@ -167,9 +167,22 @@ func NewProofCommit(grp *QrGroup, witn *Witness, randomizer *big.Int) ([]*big.In
 	return list, (*ProofCommit)(&commit), nil
 }
 
+// SetExpected sets certain values of the proof to expected values, inferred from the containing proofs,
+// before verification.
+func (p *Proof) SetExpected(pk *PublicKey, challenge, response *big.Int) error {
+	acc, err := p.SignedAccumulator.UnmarshalVerify(pk)
+	if err != nil {
+		return err
+	}
+	p.Nu = acc.Nu
+	p.Challenge = challenge
+	p.Results["alpha"] = response
+	return nil
+}
+
 func (p *Proof) ChallengeContributions(grp *QrGroup) []*big.Int {
-	return proofstructure.generateCommitmentsFromProof(
-		(*qrGroup)(grp), []*big.Int{}, p.Challenge, (*qrGroup)(grp), (*proof)(p), (*proof)(p))
+	return proofstructure.generateCommitmentsFromProof((*qrGroup)(grp), []*big.Int{},
+		p.Challenge, (*qrGroup)(grp), (*proof)(p), (*proof)(p))
 }
 
 func (p *Proof) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.Int) bool {
