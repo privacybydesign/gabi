@@ -64,11 +64,13 @@ choice was made instead that the issuer is always the revocation authority.
 package revocation
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"database/sql/driver" // only imported to refer to the driver.Value type
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/gob"
 	"encoding/json"
 
 	"github.com/go-errors/errors"
@@ -291,44 +293,69 @@ func (Hash) GormDataType(dialect gorm.Dialect) string {
 	}
 }
 
-type jsonUpdate struct {
+type compressedUpdate struct {
 	SignedAccumulator *SignedAccumulator `json:"sacc"`
 	Index             uint64             `json:"i"`
 	ParentHash        Hash               `json:"hash"`
 	E                 []*big.Int         `json:"e"`
 }
 
-func (update *Update) MarshalJSON() ([]byte, error) {
-	ju := jsonUpdate{
+func (update *Update) compress() *compressedUpdate {
+	c := compressedUpdate{
 		SignedAccumulator: update.SignedAccumulator,
 		Index:             update.Events[0].Index,
 		ParentHash:        update.Events[0].ParentHash,
 		E:                 make([]*big.Int, len(update.Events)),
 	}
 	for i := range update.Events {
-		ju.E[i] = update.Events[i].E
+		c.E[i] = update.Events[i].E
 	}
-	return json.Marshal(ju)
+	return &c
 }
 
-func (update *Update) UnmarshalJSON(bts []byte) error {
-	var u jsonUpdate
-	if err := json.Unmarshal(bts, &u); err != nil {
-		return err
-	}
-	update.SignedAccumulator = u.SignedAccumulator
-	update.Events = make([]*Event, len(u.E))
+func (update *Update) uncompress(c *compressedUpdate) {
+	update.SignedAccumulator = c.SignedAccumulator
+	update.Events = make([]*Event, len(c.E))
 	for i := range update.Events {
 		update.Events[i] = &Event{
-			E:     u.E[i],
-			Index: uint64(i) + u.Index,
+			E:     c.E[i],
+			Index: uint64(i) + c.Index,
 		}
 		if i == 0 {
-			update.Events[i].ParentHash = u.ParentHash
+			update.Events[i].ParentHash = c.ParentHash
 		} else {
 			update.Events[i].ParentHash = update.Events[i-1].Hash()
 		}
 	}
+}
+
+func (update *Update) MarshalJSON() ([]byte, error) {
+	return json.Marshal(update.compress())
+}
+
+func (update *Update) UnmarshalJSON(bts []byte) error {
+	var c compressedUpdate
+	if err := json.Unmarshal(bts, &c); err != nil {
+		return err
+	}
+	update.uncompress(&c)
+	return nil
+}
+
+func (update *Update) GobEncode() ([]byte, error) {
+	var buf bytes.Buffer
+	if err := gob.NewEncoder(&buf).Encode(update.compress()); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func (update *Update) GobDecode(data []byte) error {
+	var c compressedUpdate
+	if err := gob.NewDecoder(bytes.NewBuffer(data)).Decode(&c); err != nil {
+		return err
+	}
+	update.uncompress(&c)
 	return nil
 }
 
