@@ -85,6 +85,8 @@ type (
 )
 
 var (
+	ErrorRevoked = errors.New("revoked")
+
 	parameters = struct {
 		attributeMinSize    uint     // minimum size in bits for prime e
 		attributeMaxSize    uint     // maximum size in bits for prime e
@@ -252,7 +254,7 @@ func (w *Witness) Update(pk *PublicKey, update *Update) error {
 	}
 	var a, b big.Int
 	if new(big.Int).GCD(&a, &b, w.E, prod).Cmp(bigOne) != 0 {
-		return errors.New("revoked")
+		return ErrorRevoked
 	}
 
 	// u' = u^b * newNu^a mod n
