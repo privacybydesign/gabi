@@ -92,17 +92,17 @@ type (
 
 	// SignedAccumulator is an Accumulator signed with the issuer's ECDSA key, along with the key index.
 	SignedAccumulator struct {
-		Data    signed.Message
-		PKIndex uint
+		Data    signed.Message `json:"data"`
+		PKIndex uint           `json:"pkindex"`
 	}
 
 	// Event contains the data clients need to update to the Accumulator of the specified index,
 	// after it has been updated by the issuer by revoking. Forms a chain through the
 	// ParentHash which is the SHA256 hash of its parent.
 	Event struct {
-		Index      uint64 `gorm:"primary_key"`
-		E          *big.Int
-		ParentHash Hash
+		Index      uint64   `json:"i" gorm:"primary_key"`
+		E          *big.Int `json:"e"`
+		ParentHash Hash     `json"parenthash"`
 	}
 
 	// Update contains all information for clients to update their witness to the latest accumulator:
@@ -123,9 +123,10 @@ type (
 	// Accumulator with the same Index.
 	Witness struct {
 		// U^E = Accumulator.Nu mod N
-		U, E *big.Int
+		U *big.Int `json:"u"`
+		E *big.Int `json:"e"`
 		// Accumulator against which the witness verifies.
-		SignedAccumulator *SignedAccumulator
+		SignedAccumulator *SignedAccumulator `json:"sacc"`
 		// Accumulator value for local computations, extracted from verified SignedAccumulator
 		Accumulator *Accumulator `json:"-"`
 
@@ -147,16 +148,6 @@ type (
 		Group   *QrGroup
 	}
 )
-
-// Hash returns the SHA256 hash of the Event.
-func (event *Event) Hash() Hash {
-	// TODO
-	bts := make([]byte, 8, 8+len(event.ParentHash)+int(parameters.attributeMaxSize)/8)
-	binary.BigEndian.PutUint64(bts, event.Index)
-	bts = append(bts, event.ParentHash[:]...)
-	bts = append(bts, event.E.Bytes()...)
-	return sha256.Sum256(bts)
-}
 
 const AccumulatorStartIndex uint64 = 1
 
@@ -291,6 +282,15 @@ func (Hash) GormDataType(dialect gorm.Dialect) string {
 	default:
 		return ""
 	}
+}
+
+// Hash returns the SHA256 hash of the Event.
+func (event *Event) Hash() Hash {
+	bts := make([]byte, 8, 8+len(event.ParentHash)+int(parameters.attributeMaxSize)/8+1)
+	binary.BigEndian.PutUint64(bts, event.Index)
+	bts = append(bts, event.ParentHash[:]...)
+	bts = append(bts, event.E.Bytes()...)
+	return sha256.Sum256(bts)
 }
 
 type compressedUpdate struct {

@@ -221,7 +221,7 @@ func (p *ProofD) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.
 			return false
 		}
 		notrevoked = p.NonRevocationProof.VerifyWithChallenge(rpk, reconstructedChallenge) &&
-			p.NonRevocationProof.Results["alpha"].Cmp(p.NonRevocationResponse) == 0
+			p.NonRevocationProof.Responses["alpha"].Cmp(p.NonRevocationResponse) == 0
 	} else {
 		notrevoked = true
 	}
