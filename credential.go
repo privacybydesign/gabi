@@ -324,7 +324,7 @@ func (d *DisclosureProofBuilder) CreateProof(challenge *big.Int) Proof {
 	}
 	if d.nonrevBuilder != nil {
 		nonrevProof = d.nonrevBuilder.CreateProof(challenge)
-		delete(nonrevProof.Results, "alpha") // reset from NonRevocationResponse during verification
+		delete(nonrevProof.Responses, "alpha") // reset from NonRevocationResponse during verification
 	}
 
 	return &ProofD{

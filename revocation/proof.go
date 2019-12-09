@@ -50,13 +50,13 @@ type (
 	// Proof is a proof that a Witness is valid against the Accumulator from the specified
 	// SignedAccumulator.
 	Proof struct {
-		Cr                *big.Int // Cr = g^r2 * h^r3      = g^epsilon * h^zeta
-		Cu                *big.Int // Cu = u    * h^r2
-		Nu                *big.Int `json:"-"` // nu = Cu^e * h^(-e*r2) = Cu^alpha * h^-beta
-		Challenge         *big.Int `json:"-"`
-		Results           map[string]*big.Int
-		SignedAccumulator *SignedAccumulator
-		acc               *Accumulator // Extracted from SignedAccumulator during verification
+		Cr                *big.Int            `json:"C_r"` // Cr = g^r2 * h^r3      = g^epsilon * h^zeta
+		Cu                *big.Int            `json:"C_u"` // Cu = u    * h^r2
+		Nu                *big.Int            `json:"-"`   // nu = Cu^e * h^(-e*r2) = Cu^alpha * h^-beta
+		Challenge         *big.Int            `json:"-"`
+		Responses         map[string]*big.Int `json:"responses"`
+		SignedAccumulator *SignedAccumulator  `json:"sacc"`
+		acc               *Accumulator        // Extracted from SignedAccumulator during verification
 	}
 
 	// ProofCommit contains the commitment state of a nonrevocation Proof.
@@ -176,7 +176,7 @@ func (p *Proof) SetExpected(pk *PublicKey, challenge, response *big.Int) error {
 	}
 	p.Nu = acc.Nu
 	p.Challenge = challenge
-	p.Results["alpha"] = response
+	p.Responses["alpha"] = response
 	return nil
 }
 
@@ -204,9 +204,9 @@ func (p *Proof) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.I
 }
 
 func (c *ProofCommit) BuildProof(challenge *big.Int) *Proof {
-	results := make(map[string]*big.Int, 5)
+	responses := make(map[string]*big.Int, 5)
 	for _, name := range secretNames {
-		results[name] = new(big.Int).Add(
+		responses[name] = new(big.Int).Add(
 			(*proofCommit)(c).GetRandomizer(name),
 			new(big.Int).Mul(
 				challenge,
@@ -217,7 +217,7 @@ func (c *ProofCommit) BuildProof(challenge *big.Int) *Proof {
 	return &Proof{
 		Cr: c.cr, Cu: c.cu, Nu: c.nu,
 		Challenge:         challenge,
-		Results:           results,
+		Responses:         responses,
 		SignedAccumulator: c.sacc,
 	}
 }
@@ -309,7 +309,7 @@ func (c *proofCommit) GetRandomizer(name string) *big.Int {
 }
 
 func (p *proof) GetResult(name string) *big.Int {
-	return p.Results[name]
+	return p.Responses[name]
 }
 
 func (p *proof) verify(pk *PublicKey) bool {
@@ -379,7 +379,7 @@ func (s *proofStructure) generateCommitmentsFromProof(g *qrGroup, list []*big.In
 
 func (s *proofStructure) verifyProofStructure(p *proof) bool {
 	for _, name := range secretNames {
-		if p.Results[name] == nil {
+		if p.Responses[name] == nil {
 			return false
 		}
 	}
