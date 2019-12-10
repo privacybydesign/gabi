@@ -100,7 +100,7 @@ type (
 	// after it has been updated by the issuer by revoking. Forms a chain through the
 	// ParentHash which is the SHA256 hash of its parent.
 	Event struct {
-		Index      uint64   `json:"i" gorm:"primary_key"`
+		Index      uint64   `json:"i" gorm:"primary_key;column:eventindex"`
 		E          *big.Int `json:"e"`
 		ParentHash Hash     `json"parenthash"`
 	}
