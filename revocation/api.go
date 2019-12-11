@@ -67,15 +67,12 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/sha256"
-	"database/sql/driver" // only imported to refer to the driver.Value type
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/gob"
 	"encoding/json"
 
 	"github.com/go-errors/errors"
-	"github.com/jinzhu/gorm"
-
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
 	"github.com/privacybydesign/gabi/signed"
@@ -116,7 +113,7 @@ type (
 		Events            []*Event
 	}
 
-	// Hash represents a SHA256 hash and has marshaling methods to/from JSON and SQL tables.
+	// Hash represents a SHA256 hash and has marshaling methods to/from JSON.
 	Hash [32]byte
 
 	// Witness is a witness for the RSA-B accumulator, used for proving nonrevocation against the
@@ -258,30 +255,6 @@ func (hash *Hash) UnmarshalJSON(b []byte) error {
 
 func (hash Hash) String() string {
 	return base64.URLEncoding.EncodeToString(hash[:])
-}
-
-func (hash Hash) Value() (driver.Value, error) {
-	return hash[:], nil
-}
-
-func (hash *Hash) Scan(src interface{}) error {
-	s, ok := src.([]byte)
-	if !ok {
-		return errors.New("cannot convert source: not a []byte")
-	}
-	copy((*hash)[:], s)
-	return nil
-}
-
-func (Hash) GormDataType(dialect gorm.Dialect) string {
-	switch dialect.GetName() {
-	case "postgres":
-		return "bytea"
-	case "mysql":
-		return "blob"
-	default:
-		return ""
-	}
 }
 
 // Hash returns the SHA256 hash of the Event.
