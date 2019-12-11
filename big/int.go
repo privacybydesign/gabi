@@ -11,43 +11,12 @@ import (
 	"math/big"
 	"math/rand"
 
-	// we use this package exactly once, to implement the driver.Valuer for SQL marshaling:
-	// Int.Value() below returns a driver.Value, which is interface{}.
-	"database/sql/driver"
-
 	"github.com/go-errors/errors"
-	"github.com/jinzhu/gorm"
 )
 
 // Int is an API-compatible "math/big".Int that JSON-marshals to and from Base64.
 // Only supports positive integers.
 type Int big.Int
-
-// Value implements driver.Valuer, for SQL marshaling (to []byte).
-func (i *Int) Value() (driver.Value, error) {
-	return i.Bytes(), nil
-}
-
-// Scan implements sql.Scanner, for SQL unmarshaling (from a []byte).
-func (i *Int) Scan(src interface{}) error {
-	b, ok := src.([]byte)
-	if !ok {
-		return errors.New("cannot convert source: not a byte slice")
-	}
-	i.SetBytes(b)
-	return nil
-}
-
-func (Int) GormDataType(dialect gorm.Dialect) string {
-	switch dialect.GetName() {
-	case "postgres":
-		return "bytea"
-	case "mysql":
-		return "blob"
-	default:
-		return ""
-	}
-}
 
 func (i *Int) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 	return e.EncodeElement(i.String(), start)
