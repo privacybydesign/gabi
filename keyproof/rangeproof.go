@@ -1,7 +1,9 @@
 package keyproof
 
-import "github.com/privacybydesign/gabi/internal/common"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/internal/common"
+)
 
 type rangeProofStructure struct {
 	representationProofStructure
@@ -21,26 +23,6 @@ type rangeCommit struct {
 type rangeCommitSecretLookup struct {
 	rangeCommit
 	i int
-}
-
-func (r *rangeCommitSecretLookup) getSecret(name string) *big.Int {
-	return nil
-}
-
-func (r *rangeCommitSecretLookup) getRandomizer(name string) *big.Int {
-	clist, ok := r.commits[name]
-	if !ok {
-		return nil
-	}
-	return clist[r.i]
-}
-
-func (s *rangeProofStructure) numRangeProofs() int {
-	return 1
-}
-
-func (s *rangeProofStructure) numCommitments() int {
-	return rangeProofIters
 }
 
 func (s *rangeProofStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, rangeCommit) {
@@ -219,4 +201,24 @@ func (s *rangeProofStructure) generateCommitmentsFromProof(g group, list []*big.
 	Follower.Tick()
 
 	return list
+}
+
+func (r *rangeCommitSecretLookup) getSecret(name string) *big.Int {
+	return nil
+}
+
+func (r *rangeCommitSecretLookup) getRandomizer(name string) *big.Int {
+	clist, ok := r.commits[name]
+	if !ok {
+		return nil
+	}
+	return clist[r.i]
+}
+
+func (s *rangeProofStructure) numRangeProofs() int {
+	return 1
+}
+
+func (s *rangeProofStructure) numCommitments() int {
+	return rangeProofIters
 }

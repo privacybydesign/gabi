@@ -1,7 +1,9 @@
 package keyproof
 
-import "github.com/privacybydesign/gabi/internal/common"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/internal/common"
+)
 
 type expStepStructure struct {
 	bitname string
@@ -35,14 +37,6 @@ func newExpStepStructure(bitname, prename, postname, mulname, modname string, bi
 	structure.stepa = newExpStepAStructure(bitname, prename, postname)
 	structure.stepb = newExpStepBStructure(bitname, prename, postname, mulname, modname, bitlen)
 	return structure
-}
-
-func (s *expStepStructure) numRangeProofs() int {
-	return s.stepa.numRangeProofs() + s.stepb.numRangeProofs()
-}
-
-func (s *expStepStructure) numCommitments() int {
-	return s.stepa.numCommitments() + s.stepb.numCommitments()
 }
 
 func (s *expStepStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, expStepCommit) {
@@ -128,4 +122,12 @@ func (s *expStepStructure) generateCommitmentsFromProof(g group, list []*big.Int
 
 func (s *expStepStructure) isTrue(secretdata secretLookup) bool {
 	return s.stepa.isTrue(secretdata) || s.stepb.isTrue(secretdata)
+}
+
+func (s *expStepStructure) numRangeProofs() int {
+	return s.stepa.numRangeProofs() + s.stepb.numRangeProofs()
+}
+
+func (s *expStepStructure) numCommitments() int {
+	return s.stepa.numCommitments() + s.stepb.numCommitments()
 }

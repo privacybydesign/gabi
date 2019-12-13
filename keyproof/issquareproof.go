@@ -107,41 +107,6 @@ func newIsSquareProofStructure(N *big.Int, Squares []*big.Int) isSquareProofStru
 	return result
 }
 
-func (s *isSquareProofStructure) numRangeProofs() int {
-	result := 0
-	for _, ms := range s.rootsValid {
-		result += ms.numRangeProofs()
-	}
-
-	return result + len(s.rootsRange)
-}
-
-func (s *isSquareProofStructure) numCommitments() int {
-	// Constants
-	res := 1 + len(s.squares)
-	// Pedersens
-	res += s.nPedersen.numCommitments()
-	for i, _ := range s.squaresPedersen {
-		res += s.squaresPedersen[i].numCommitments()
-	}
-	for i, _ := range s.rootsRep {
-		res += s.rootsRep[i].numCommitments()
-	}
-	// Representationproofs
-	res += s.nRep.numCommitments()
-	for i, _ := range s.squaresRep {
-		res += s.squaresRep[i].numCommitments()
-	}
-	// ValidityProofs
-	for i := range s.rootsRange {
-		res += s.rootsRange[i].numCommitments()
-	}
-	for i := range s.rootsValid {
-		res += s.rootsValid[i].numCommitments()
-	}
-	return res
-}
-
 func (s *isSquareProofStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, P *big.Int, Q *big.Int) ([]*big.Int, isSquareProofCommit) {
 	var commit isSquareProofCommit
 
@@ -310,4 +275,39 @@ func (s *isSquareProofStructure) generateCommitmentsFromProof(g group, list []*b
 	}
 
 	return list
+}
+
+func (s *isSquareProofStructure) numRangeProofs() int {
+	result := 0
+	for _, ms := range s.rootsValid {
+		result += ms.numRangeProofs()
+	}
+
+	return result + len(s.rootsRange)
+}
+
+func (s *isSquareProofStructure) numCommitments() int {
+	// Constants
+	res := 1 + len(s.squares)
+	// Pedersens
+	res += s.nPedersen.numCommitments()
+	for i, _ := range s.squaresPedersen {
+		res += s.squaresPedersen[i].numCommitments()
+	}
+	for i, _ := range s.rootsRep {
+		res += s.rootsRep[i].numCommitments()
+	}
+	// Representationproofs
+	res += s.nRep.numCommitments()
+	for i, _ := range s.squaresRep {
+		res += s.squaresRep[i].numCommitments()
+	}
+	// ValidityProofs
+	for i := range s.rootsRange {
+		res += s.rootsRange[i].numCommitments()
+	}
+	for i := range s.rootsValid {
+		res += s.rootsValid[i].numCommitments()
+	}
+	return res
 }

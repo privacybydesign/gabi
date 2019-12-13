@@ -90,10 +90,6 @@ func NewValidKeyProofStructure(N *big.Int, Z *big.Int, S *big.Int, Bases []*big.
 	return structure
 }
 
-func (s *ValidKeyProofStructure) numRangeProofs() int {
-	return s.pprimeIsPrime.numRangeProofs() + s.qprimeIsPrime.numRangeProofs() + s.basesValid.numRangeProofs()
-}
-
 func (s *ValidKeyProofStructure) BuildProof(Pprime *big.Int, Qprime *big.Int) ValidKeyProof {
 	// Generate proof group
 	Follower.StepStart("Generating group prime", 0)
@@ -239,4 +235,8 @@ func (s *ValidKeyProofStructure) VerifyProof(proof ValidKeyProof) bool {
 
 	// And the QSPP proof
 	return quasiSafePrimeProductVerifyProof(s.n, proof.Challenge, proof.QSPPproof)
+}
+
+func (s *ValidKeyProofStructure) numRangeProofs() int {
+	return s.pprimeIsPrime.numRangeProofs() + s.qprimeIsPrime.numRangeProofs() + s.basesValid.numRangeProofs()
 }
