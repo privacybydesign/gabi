@@ -64,22 +64,22 @@ func (s *additionProofStructure) generateCommitmentsFromSecrets(g group, list []
 	commit.modAdd = newSecret(g, strings.Join([]string{s.myname, "mod"}, "_"),
 		new(big.Int).Div(
 			new(big.Int).Sub(
-				secretdata.getSecret(s.result),
+				secretdata.secret(s.result),
 				new(big.Int).Add(
-					secretdata.getSecret(s.a1),
-					secretdata.getSecret(s.a2))),
-			secretdata.getSecret(s.mod)))
+					secretdata.secret(s.a1),
+					secretdata.secret(s.a2))),
+			secretdata.secret(s.mod)))
 	commit.hider = newSecret(g, strings.Join([]string{s.myname, "hider"}, "_"),
 		new(big.Int).Mod(
 			new(big.Int).Sub(
-				secretdata.getSecret(strings.Join([]string{s.result, "hider"}, "_")),
+				secretdata.secret(strings.Join([]string{s.result, "hider"}, "_")),
 				new(big.Int).Add(
 					new(big.Int).Add(
-						secretdata.getSecret(strings.Join([]string{s.a1, "hider"}, "_")),
-						secretdata.getSecret(strings.Join([]string{s.a2, "hider"}, "_"))),
+						secretdata.secret(strings.Join([]string{s.a1, "hider"}, "_")),
+						secretdata.secret(strings.Join([]string{s.a2, "hider"}, "_"))),
 					new(big.Int).Mul(
-						secretdata.getSecret(strings.Join([]string{s.mod, "hider"}, "_")),
-						commit.modAdd.secret))),
+						secretdata.secret(strings.Join([]string{s.mod, "hider"}, "_")),
+						commit.modAdd.secretv))),
 			g.order))
 
 	// build inner secrets
@@ -142,11 +142,11 @@ func (s *additionProofStructure) isTrue(secretdata secretLookup) bool {
 
 	div.DivMod(
 		new(big.Int).Sub(
-			secretdata.getSecret(s.result),
+			secretdata.secret(s.result),
 			new(big.Int).Add(
-				secretdata.getSecret(s.a1),
-				secretdata.getSecret(s.a2))),
-		secretdata.getSecret(s.mod),
+				secretdata.secret(s.a1),
+				secretdata.secret(s.a2))),
+		secretdata.secret(s.mod),
 		mod)
 
 	return mod.Cmp(big.NewInt(0)) == 0 && uint(div.BitLen()) <= s.addRange.l2

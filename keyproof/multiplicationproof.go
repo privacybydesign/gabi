@@ -61,20 +61,20 @@ func (s *multiplicationProofStructure) generateCommitmentsFromSecrets(g group, l
 	list, commit.modMultPedersen = s.modMultPedersen.generateCommitmentsFromSecrets(g, list, new(big.Int).Div(
 		new(big.Int).Sub(
 			new(big.Int).Mul(
-				secretdata.getSecret(s.m1),
-				secretdata.getSecret(s.m2)),
-			secretdata.getSecret(s.result)),
-		secretdata.getSecret(s.mod)))
+				secretdata.secret(s.m1),
+				secretdata.secret(s.m2)),
+			secretdata.secret(s.result)),
+		secretdata.secret(s.mod)))
 	commit.hider = newSecret(g, strings.Join([]string{s.myname, "hider"}, "_"), new(big.Int).Mod(
 		new(big.Int).Add(
 			new(big.Int).Sub(
-				secretdata.getSecret(strings.Join([]string{s.result, "hider"}, "_")),
+				secretdata.secret(strings.Join([]string{s.result, "hider"}, "_")),
 				new(big.Int).Mul(
-					secretdata.getSecret(s.m1),
-					secretdata.getSecret(strings.Join([]string{s.m2, "hider"}, "_")))),
+					secretdata.secret(s.m1),
+					secretdata.secret(strings.Join([]string{s.m2, "hider"}, "_")))),
 			new(big.Int).Mul(
-				commit.modMultPedersen.secret.secret,
-				secretdata.getSecret(strings.Join([]string{s.mod, "hider"}, "_")))),
+				commit.modMultPedersen.secretv.secretv,
+				secretdata.secret(strings.Join([]string{s.mod, "hider"}, "_")))),
 		g.order))
 
 	// Build inner secrets
@@ -142,10 +142,10 @@ func (s *multiplicationProofStructure) isTrue(secretdata secretLookup) bool {
 	div.DivMod(
 		new(big.Int).Sub(
 			new(big.Int).Mul(
-				secretdata.getSecret(s.m1),
-				secretdata.getSecret(s.m2)),
-			secretdata.getSecret(s.result)),
-		secretdata.getSecret(s.mod),
+				secretdata.secret(s.m1),
+				secretdata.secret(s.m2)),
+			secretdata.secret(s.result)),
+		secretdata.secret(s.mod),
 		mod)
 
 	return mod.Cmp(big.NewInt(0)) == 0 && uint(div.BitLen()) <= s.modMultRange.l2

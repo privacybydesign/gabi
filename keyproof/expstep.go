@@ -44,7 +44,7 @@ func newExpStepStructure(bitname, prename, postname, mulname, modname string, bi
 func (s *expStepStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, expStepCommit) {
 	var commit expStepCommit
 
-	if secretdata.getSecret(s.bitname).Cmp(big.NewInt(0)) == 0 {
+	if secretdata.secret(s.bitname).Cmp(big.NewInt(0)) == 0 {
 		commit.isTypeA = true
 
 		// prove a

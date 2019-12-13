@@ -219,11 +219,11 @@ func (s *expProofStructure) generateCommitmentsFromSecrets(g group, list []*big.
 	// Build up commit structure
 
 	// exponent bits
-	BitEqHider := new(big.Int).Neg(secretdata.getSecret(strings.Join([]string{s.exponent, "hider"}, "_")))
+	BitEqHider := new(big.Int).Neg(secretdata.secret(strings.Join([]string{s.exponent, "hider"}, "_")))
 	commit.expBits = make([]pedersenCommit, s.bitlen)
 	for i := uint(0); i < s.bitlen; i++ {
-		list, commit.expBits[i] = s.expBits[i].generateCommitmentsFromSecrets(g, list, big.NewInt(int64(secretdata.getSecret(s.exponent).Bit(int(i)))))
-		BitEqHider.Add(BitEqHider, new(big.Int).Lsh(commit.expBits[i].hider.secret, i))
+		list, commit.expBits[i] = s.expBits[i].generateCommitmentsFromSecrets(g, list, big.NewInt(int64(secretdata.secret(s.exponent).Bit(int(i)))))
+		BitEqHider.Add(BitEqHider, new(big.Int).Lsh(commit.expBits[i].hider.secretv, i))
 	}
 	BitEqHider.Mod(BitEqHider, g.order)
 	commit.expBitEqHider = newSecret(g, strings.Join([]string{s.myname, "biteqhider"}, "_"), BitEqHider)
@@ -233,9 +233,9 @@ func (s *expProofStructure) generateCommitmentsFromSecrets(g group, list []*big.
 	for i := uint(0); i < s.bitlen; i++ {
 		list, commit.basePows[i] = s.basePows[i].generateCommitmentsFromSecrets(g, list,
 			new(big.Int).Exp(
-				secretdata.getSecret(s.base),
+				secretdata.secret(s.base),
 				new(big.Int).Lsh(big.NewInt(1), i),
-				secretdata.getSecret(s.mod)))
+				secretdata.secret(s.mod)))
 	}
 
 	// Start pedersen
@@ -245,16 +245,16 @@ func (s *expProofStructure) generateCommitmentsFromSecrets(g group, list []*big.
 	curInterRes := big.NewInt(1)
 	commit.interRess = make([]pedersenCommit, s.bitlen-1)
 	for i := uint(0); i < s.bitlen-1; i++ {
-		if secretdata.getSecret(s.exponent).Bit(int(i)) == 1 {
+		if secretdata.secret(s.exponent).Bit(int(i)) == 1 {
 			curInterRes.Mod(
 				new(big.Int).Mul(
 					curInterRes,
 					new(big.Int).Exp(
-						secretdata.getSecret(s.base),
+						secretdata.secret(s.base),
 						new(big.Int).Lsh(big.NewInt(1), i),
-						secretdata.getSecret(s.mod))),
-				secretdata.getSecret(s.mod))
-			if curInterRes.Cmp(new(big.Int).Sub(secretdata.getSecret(s.mod), big.NewInt(1))) == 0 {
+						secretdata.secret(s.mod))),
+				secretdata.secret(s.mod))
+			if curInterRes.Cmp(new(big.Int).Sub(secretdata.secret(s.mod), big.NewInt(1))) == 0 {
 				curInterRes.SetInt64(-1) // ugly(ish) hack to make comparisons to -1 work
 			}
 		}
@@ -709,11 +709,11 @@ func (s *expProofStructure) isTrue(secretdata secretLookup) bool {
 	div.DivMod(
 		new(big.Int).Sub(
 			new(big.Int).Exp(
-				secretdata.getSecret(s.base),
-				secretdata.getSecret(s.exponent),
-				secretdata.getSecret(s.mod)),
-			secretdata.getSecret(s.result)),
-		secretdata.getSecret(s.mod),
+				secretdata.secret(s.base),
+				secretdata.secret(s.exponent),
+				secretdata.secret(s.mod)),
+			secretdata.secret(s.result)),
+		secretdata.secret(s.mod),
 		mod)
 
 	return mod.Cmp(big.NewInt(0)) == 0 && uint(div.BitLen()) <= s.bitlen

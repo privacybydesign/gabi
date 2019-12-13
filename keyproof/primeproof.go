@@ -165,15 +165,15 @@ func (s *primeProofStructure) generateCommitmentsFromSecrets(g group, list []*bi
 	var commit primeProofCommit
 
 	// Build prea
-	list, commit.prea = s.prea.generateCommitmentsFromSecrets(g, list, common.FastRandomBigInt(secretdata.getSecret(s.primeName)))
+	list, commit.prea = s.prea.generateCommitmentsFromSecrets(g, list, common.FastRandomBigInt(secretdata.secret(s.primeName)))
 
 	// Calculate aAdd, a, and d
 	aAdd := common.GetHashNumber(commit.prea.commit, nil, 0, s.bitlen)
 	d, a := new(big.Int).DivMod(
 		new(big.Int).Add(
-			commit.prea.secret.secret,
+			commit.prea.secretv.secretv,
 			aAdd),
-		secretdata.getSecret(s.primeName),
+		secretdata.secret(s.primeName),
 		new(big.Int))
 
 	// Catch rare generation error
@@ -187,42 +187,42 @@ func (s *primeProofStructure) generateCommitmentsFromSecrets(g group, list []*bi
 	commit.preaHider = newSecret(g, strings.Join([]string{s.myname, "preahider"}, "_"),
 		new(big.Int).Mod(
 			new(big.Int).Sub(
-				commit.prea.hider.secret,
+				commit.prea.hider.secretv,
 				new(big.Int).Add(
-					commit.a.hider.secret,
+					commit.a.hider.secretv,
 					new(big.Int).Mul(
 						d,
-						secretdata.getSecret(strings.Join([]string{s.primeName, "hider"}, "_"))))),
+						secretdata.secret(strings.Join([]string{s.primeName, "hider"}, "_"))))),
 			g.order))
 
 	// Find aneg
-	aneg := common.FastRandomBigInt(secretdata.getSecret(s.primeName))
-	anegPow := new(big.Int).Exp(aneg, new(big.Int).Rsh(secretdata.getSecret(s.primeName), 1), secretdata.getSecret(s.primeName))
-	for anegPow.Cmp(new(big.Int).Sub(secretdata.getSecret(s.primeName), big.NewInt(1))) != 0 {
-		aneg.Set(common.FastRandomBigInt(secretdata.getSecret(s.primeName)))
-		anegPow.Exp(aneg, new(big.Int).Rsh(secretdata.getSecret(s.primeName), 1), secretdata.getSecret(s.primeName))
+	aneg := common.FastRandomBigInt(secretdata.secret(s.primeName))
+	anegPow := new(big.Int).Exp(aneg, new(big.Int).Rsh(secretdata.secret(s.primeName), 1), secretdata.secret(s.primeName))
+	for anegPow.Cmp(new(big.Int).Sub(secretdata.secret(s.primeName), big.NewInt(1))) != 0 {
+		aneg.Set(common.FastRandomBigInt(secretdata.secret(s.primeName)))
+		anegPow.Exp(aneg, new(big.Int).Rsh(secretdata.secret(s.primeName), 1), secretdata.secret(s.primeName))
 	}
 
 	// And build its pedersen commitment
 	list, commit.aneg = s.aneg.generateCommitmentsFromSecrets(g, list, aneg)
 
 	// Generate result pedersen commits and proof data
-	aRes := new(big.Int).Exp(a, new(big.Int).Rsh(secretdata.getSecret(s.primeName), 1), secretdata.getSecret(s.primeName))
+	aRes := new(big.Int).Exp(a, new(big.Int).Rsh(secretdata.secret(s.primeName), 1), secretdata.secret(s.primeName))
 	if aRes.Cmp(big.NewInt(1)) != 0 {
-		aRes.Sub(aRes, secretdata.getSecret(s.primeName))
+		aRes.Sub(aRes, secretdata.secret(s.primeName))
 	}
-	anegRes := new(big.Int).Exp(aneg, new(big.Int).Rsh(secretdata.getSecret(s.primeName), 1), secretdata.getSecret(s.primeName))
-	anegRes.Sub(anegRes, secretdata.getSecret(s.primeName))
+	anegRes := new(big.Int).Exp(aneg, new(big.Int).Rsh(secretdata.secret(s.primeName), 1), secretdata.secret(s.primeName))
+	anegRes.Sub(anegRes, secretdata.secret(s.primeName))
 	list, commit.aRes = s.aRes.generateCommitmentsFromSecrets(g, list, aRes)
 	list, commit.anegRes = s.anegRes.generateCommitmentsFromSecrets(g, list, anegRes)
 	commit.aInvalid = fakeProof(g)
 	commit.aInvalidChallenge = common.FastRandomBigInt(g.order)
 	if aRes.Cmp(big.NewInt(1)) == 0 {
-		commit.aValid = newSecret(g, strings.Join([]string{s.myname, "aresplus1hider"}, "_"), commit.aRes.hider.secret)
+		commit.aValid = newSecret(g, strings.Join([]string{s.myname, "aresplus1hider"}, "_"), commit.aRes.hider.secretv)
 		commit.aInvalid.setName(strings.Join([]string{s.myname, "aresmin1hider"}, "_"))
 		commit.aPositive = true
 	} else {
-		commit.aValid = newSecret(g, strings.Join([]string{s.myname, "aresmin1hider"}, "_"), commit.aRes.hider.secret)
+		commit.aValid = newSecret(g, strings.Join([]string{s.myname, "aresmin1hider"}, "_"), commit.aRes.hider.secretv)
 		commit.aInvalid.setName(strings.Join([]string{s.myname, "aresplus1hider"}, "_"))
 		commit.aPositive = false
 	}
@@ -230,7 +230,7 @@ func (s *primeProofStructure) generateCommitmentsFromSecrets(g group, list []*bi
 	// the half p pedersen commit
 	list, commit.halfP = s.halfP.generateCommitmentsFromSecrets(g, list,
 		new(big.Int).Rsh(
-			secretdata.getSecret(s.primeName),
+			secretdata.secret(s.primeName),
 			1))
 
 	// Build structure for the a generation proofs
@@ -552,7 +552,7 @@ func (s *primeProofStructure) generateCommitmentsFromProof(g group, list []*big.
 }
 
 func (s *primeProofStructure) isTrue(secretdata secretLookup) bool {
-	return secretdata.getSecret(s.primeName).ProbablyPrime(40)
+	return secretdata.secret(s.primeName).ProbablyPrime(40)
 }
 
 func (s *primeProofStructure) numRangeProofs() int {
