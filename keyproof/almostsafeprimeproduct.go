@@ -1,19 +1,23 @@
 package keyproof
 
-import "github.com/privacybydesign/gabi/internal/common"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/internal/common"
+)
 
-type AlmostSafePrimeProductProof struct {
-	Nonce       *big.Int
-	Commitments []*big.Int
-	Responses   []*big.Int
-}
+type (
+	AlmostSafePrimeProductProof struct {
+		Nonce       *big.Int
+		Commitments []*big.Int
+		Responses   []*big.Int
+	}
 
-type almostSafePrimeProductCommit struct {
-	nonce       *big.Int
-	commitments []*big.Int
-	logs        []*big.Int
-}
+	almostSafePrimeProductCommit struct {
+		nonce       *big.Int
+		commitments []*big.Int
+		logs        []*big.Int
+	}
+)
 
 func almostSafePrimeProductBuildCommitments(list []*big.Int, Pprime *big.Int, Qprime *big.Int) ([]*big.Int, almostSafePrimeProductCommit) {
 	// Setup proof structure

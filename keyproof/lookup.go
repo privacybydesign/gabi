@@ -7,20 +7,36 @@ import (
 	"fmt"
 )
 
-type baseLookup interface {
-	getBase(name string) *big.Int
-	exp(ret *big.Int, name string, exp, P *big.Int) bool
-	names() []string
-}
+type (
+	baseLookup interface {
+		getBase(name string) *big.Int
+		exp(ret *big.Int, name string, exp, P *big.Int) bool
+		names() []string
+	}
 
-type secretLookup interface {
-	getSecret(name string) *big.Int
-	getRandomizer(name string) *big.Int
-}
+	secretLookup interface {
+		getSecret(name string) *big.Int
+		getRandomizer(name string) *big.Int
+	}
 
-type proofLookup interface {
-	getResult(name string) *big.Int
-}
+	proofLookup interface {
+		getResult(name string) *big.Int
+	}
+
+	baseMerge struct {
+		parts  []baseLookup
+		inames []string
+		lut    map[string]baseLookup
+	}
+
+	secretMerge struct {
+		parts []secretLookup
+	}
+
+	proofMerge struct {
+		parts []proofLookup
+	}
+)
 
 func (g *group) exp(ret *big.Int, name string, exp, P *big.Int) bool {
 	var table *exptable.Table
@@ -56,12 +72,6 @@ func (g *group) getBase(name string) *big.Int {
 		return g.h
 	}
 	return nil
-}
-
-type baseMerge struct {
-	parts  []baseLookup
-	inames []string
-	lut    map[string]baseLookup
 }
 
 func newBaseMerge(parts ...baseLookup) baseMerge {
@@ -120,10 +130,6 @@ func (b *baseMerge) exp(ret *big.Int, name string, exp, P *big.Int) bool {
 	return false
 }
 
-type secretMerge struct {
-	parts []secretLookup
-}
-
 func newSecretMerge(parts ...secretLookup) secretMerge {
 	var result secretMerge
 	result.parts = parts
@@ -148,10 +154,6 @@ func (s *secretMerge) getRandomizer(name string) *big.Int {
 		}
 	}
 	return nil
-}
-
-type proofMerge struct {
-	parts []proofLookup
 }
 
 func newProofMerge(parts ...proofLookup) proofMerge {

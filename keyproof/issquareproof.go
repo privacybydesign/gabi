@@ -8,36 +8,38 @@ import (
 	"github.com/privacybydesign/gabi/internal/common"
 )
 
-type isSquareProofStructure struct {
-	n               *big.Int
-	nPedersen       pedersenStructure
-	squares         []*big.Int
-	squaresPedersen []pedersenStructure
+type (
+	isSquareProofStructure struct {
+		n               *big.Int
+		nPedersen       pedersenStructure
+		squares         []*big.Int
+		squaresPedersen []pedersenStructure
 
-	nRep representationProofStructure
+		nRep representationProofStructure
 
-	squaresRep []representationProofStructure
-	rootsRep   []pedersenStructure
-	rootsRange []rangeProofStructure
-	rootsValid []multiplicationProofStructure
-}
+		squaresRep []representationProofStructure
+		rootsRep   []pedersenStructure
+		rootsRange []rangeProofStructure
+		rootsValid []multiplicationProofStructure
+	}
 
-type IsSquareProof struct {
-	NProof          PedersenProof
-	SquaresProof    []PedersenProof
-	RootsProof      []PedersenProof
-	RootsRangeProof []RangeProof
-	RootsValidProof []MultiplicationProof
-}
+	IsSquareProof struct {
+		NProof          PedersenProof
+		SquaresProof    []PedersenProof
+		RootsProof      []PedersenProof
+		RootsRangeProof []RangeProof
+		RootsValidProof []MultiplicationProof
+	}
 
-type isSquareProofCommit struct {
-	squares []pedersenCommit
-	roots   []pedersenCommit
-	n       pedersenCommit
+	isSquareProofCommit struct {
+		squares []pedersenCommit
+		roots   []pedersenCommit
+		n       pedersenCommit
 
-	rootRangeCommit []rangeCommit
-	rootValidCommit []multiplicationProofCommit
-}
+		rootRangeCommit []rangeCommit
+		rootValidCommit []multiplicationProofCommit
+	}
+)
 
 func newIsSquareProofStructure(N *big.Int, Squares []*big.Int) isSquareProofStructure {
 	var result isSquareProofStructure

@@ -5,38 +5,40 @@ import (
 	"github.com/privacybydesign/gabi/internal/common"
 )
 
-type ValidKeyProofStructure struct {
-	n          *big.Int
-	p          pedersenStructure
-	q          pedersenStructure
-	pprime     pedersenStructure
-	qprime     pedersenStructure
-	pPprimeRel representationProofStructure
-	qQprimeRel representationProofStructure
-	pQNRel     representationProofStructure
+type (
+	ValidKeyProofStructure struct {
+		n          *big.Int
+		p          pedersenStructure
+		q          pedersenStructure
+		pprime     pedersenStructure
+		qprime     pedersenStructure
+		pPprimeRel representationProofStructure
+		qQprimeRel representationProofStructure
+		pQNRel     representationProofStructure
 
-	pprimeIsPrime primeProofStructure
-	qprimeIsPrime primeProofStructure
+		pprimeIsPrime primeProofStructure
+		qprimeIsPrime primeProofStructure
 
-	basesValid isSquareProofStructure
-}
+		basesValid isSquareProofStructure
+	}
 
-type ValidKeyProof struct {
-	PProof      PedersenProof
-	QProof      PedersenProof
-	PprimeProof PedersenProof
-	QprimeProof PedersenProof
-	PQNRel      Proof
-	Challenge   *big.Int
-	GroupPrime  *big.Int
+	ValidKeyProof struct {
+		PProof      PedersenProof
+		QProof      PedersenProof
+		PprimeProof PedersenProof
+		QprimeProof PedersenProof
+		PQNRel      Proof
+		Challenge   *big.Int
+		GroupPrime  *big.Int
 
-	PprimeIsPrimeProof PrimeProof
-	QprimeIsPrimeProof PrimeProof
+		PprimeIsPrimeProof PrimeProof
+		QprimeIsPrimeProof PrimeProof
 
-	QSPPproof QuasiSafePrimeProductProof
+		QSPPproof QuasiSafePrimeProductProof
 
-	BasesValidProof IsSquareProof
-}
+		BasesValidProof IsSquareProof
+	}
+)
 
 func NewValidKeyProofStructure(N *big.Int, Z *big.Int, S *big.Int, Bases []*big.Int) ValidKeyProofStructure {
 	var structure ValidKeyProofStructure

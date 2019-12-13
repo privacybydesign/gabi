@@ -2,16 +2,18 @@ package keyproof
 
 import "github.com/privacybydesign/gabi/big"
 
-type quasiSafePrimeProductCommit struct {
-	asppCommit almostSafePrimeProductCommit
-}
+type (
+	quasiSafePrimeProductCommit struct {
+		asppCommit almostSafePrimeProductCommit
+	}
 
-type QuasiSafePrimeProductProof struct {
-	SFproof   SquareFreeProof
-	PPPproof  PrimePowerProductProof
-	DPPproof  DisjointPrimeProductProof
-	ASPPproof AlmostSafePrimeProductProof
-}
+	QuasiSafePrimeProductProof struct {
+		SFproof   SquareFreeProof
+		PPPproof  PrimePowerProductProof
+		DPPproof  DisjointPrimeProductProof
+		ASPPproof AlmostSafePrimeProductProof
+	}
+)
 
 func quasiSafePrimeProductBuildCommitments(list []*big.Int, Pprime *big.Int, Qprime *big.Int) ([]*big.Int, quasiSafePrimeProductCommit) {
 	var commit quasiSafePrimeProductCommit

@@ -4,21 +4,23 @@ import (
 	"github.com/privacybydesign/gabi/big"
 )
 
-type lhsContribution struct {
-	base  string
-	power *big.Int
-}
+type (
+	lhsContribution struct {
+		base  string
+		power *big.Int
+	}
 
-type rhsContribution struct {
-	base   string
-	secret string
-	power  int64
-}
+	rhsContribution struct {
+		base   string
+		secret string
+		power  int64
+	}
 
-type representationProofStructure struct {
-	lhs []lhsContribution
-	rhs []rhsContribution
-}
+	representationProofStructure struct {
+		lhs []lhsContribution
+		rhs []rhsContribution
+	}
+)
 
 func (s *representationProofStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) []*big.Int {
 	commitment := big.NewInt(1)

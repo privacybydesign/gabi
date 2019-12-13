@@ -7,58 +7,60 @@ import (
 	"github.com/privacybydesign/gabi/internal/common"
 )
 
-type primeProofStructure struct {
-	primeName string
-	myname    string
-	bitlen    uint
+type (
+	primeProofStructure struct {
+		primeName string
+		myname    string
+		bitlen    uint
 
-	halfP    pedersenStructure
-	halfPRep representationProofStructure
+		halfP    pedersenStructure
+		halfPRep representationProofStructure
 
-	prea      pedersenStructure
-	preaRange rangeProofStructure
+		prea      pedersenStructure
+		preaRange rangeProofStructure
 
-	a      pedersenStructure
-	aRange rangeProofStructure
+		a      pedersenStructure
+		aRange rangeProofStructure
 
-	aneg      pedersenStructure
-	anegRange rangeProofStructure
+		aneg      pedersenStructure
+		anegRange rangeProofStructure
 
-	aRes         pedersenStructure
-	anegRes      pedersenStructure
-	aPlus1ResRep representationProofStructure
-	aMin1ResRep  representationProofStructure
+		aRes         pedersenStructure
+		anegRes      pedersenStructure
+		aPlus1ResRep representationProofStructure
+		aMin1ResRep  representationProofStructure
 
-	anegResRep representationProofStructure
+		anegResRep representationProofStructure
 
-	aExp    expProofStructure
-	anegExp expProofStructure
-}
+		aExp    expProofStructure
+		anegExp expProofStructure
+	}
 
-type PrimeProof struct {
-	HalfPCommit   PedersenProof
-	PreaCommit    PedersenProof
-	ACommit       PedersenProof
-	AnegCommit    PedersenProof
-	AResCommit    PedersenProof
-	AnegResCommit PedersenProof
+	PrimeProof struct {
+		HalfPCommit   PedersenProof
+		PreaCommit    PedersenProof
+		ACommit       PedersenProof
+		AnegCommit    PedersenProof
+		AResCommit    PedersenProof
+		AnegResCommit PedersenProof
 
-	PreaMod   Proof
-	PreaHider Proof
+		PreaMod   Proof
+		PreaHider Proof
 
-	APlus1          Proof
-	AMin1           Proof
-	APlus1Challenge *big.Int
-	AMin1Challenge  *big.Int
+		APlus1          Proof
+		AMin1           Proof
+		APlus1Challenge *big.Int
+		AMin1Challenge  *big.Int
 
-	PreaRangeProof    RangeProof
-	ARangeProof       RangeProof
-	AnegRangeProof    RangeProof
-	PreaModRangeProof RangeProof
+		PreaRangeProof    RangeProof
+		ARangeProof       RangeProof
+		AnegRangeProof    RangeProof
+		PreaModRangeProof RangeProof
 
-	AExpProof    ExpProof
-	AnegExpProof ExpProof
-}
+		AExpProof    ExpProof
+		AnegExpProof ExpProof
+	}
+)
 
 type primeProofCommit struct {
 	halfP   pedersenCommit

@@ -7,26 +7,28 @@ import (
 	"github.com/privacybydesign/gabi/internal/common"
 )
 
-type pedersenStructure struct {
-	name           string
-	representation representationProofStructure
-}
+type (
+	pedersenStructure struct {
+		name           string
+		representation representationProofStructure
+	}
 
-type pedersenCommit struct {
-	name   string
-	secret secret
-	hider  secret
-	commit *big.Int
+	pedersenCommit struct {
+		name   string
+		secret secret
+		hider  secret
+		commit *big.Int
 
-	g *group
-}
+		g *group
+	}
 
-type PedersenProof struct {
-	name    string
-	Commit  *big.Int
-	Sresult Proof
-	Hresult Proof
-}
+	PedersenProof struct {
+		name    string
+		Commit  *big.Int
+		Sresult Proof
+		Hresult Proof
+	}
+)
 
 func newPedersenStructure(name string) pedersenStructure {
 	return pedersenStructure{
