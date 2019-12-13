@@ -57,11 +57,11 @@ func (s *expStepAStructure) generateCommitmentsFromSecrets(g group, list []*big.
 	var commit expStepACommit
 
 	// Build commit structure
-	commit.bit = newSecret(g, strings.Join([]string{s.bitname, "hider"}, "_"), secretdata.getSecret(strings.Join([]string{s.bitname, "hider"}, "_")))
+	commit.bit = newSecret(g, strings.Join([]string{s.bitname, "hider"}, "_"), secretdata.secret(strings.Join([]string{s.bitname, "hider"}, "_")))
 	commit.equalityHider = newSecret(g, strings.Join([]string{s.myname, "eqhider"}, "_"), new(big.Int).Mod(
 		new(big.Int).Sub(
-			secretdata.getSecret(strings.Join([]string{s.prename, "hider"}, "_")),
-			secretdata.getSecret(strings.Join([]string{s.postname, "hider"}, "_"))),
+			secretdata.secret(strings.Join([]string{s.prename, "hider"}, "_")),
+			secretdata.secret(strings.Join([]string{s.postname, "hider"}, "_"))),
 		g.order))
 
 	// inner secrets
@@ -111,10 +111,10 @@ func (s *expStepAStructure) generateCommitmentsFromProof(g group, list []*big.In
 }
 
 func (s *expStepAStructure) isTrue(secretdata secretLookup) bool {
-	if secretdata.getSecret(s.bitname).Cmp(big.NewInt(0)) != 0 {
+	if secretdata.secret(s.bitname).Cmp(big.NewInt(0)) != 0 {
 		return false
 	}
-	if secretdata.getSecret(s.prename).Cmp(secretdata.getSecret(s.postname)) != 0 {
+	if secretdata.secret(s.prename).Cmp(secretdata.secret(s.postname)) != 0 {
 		return false
 	}
 	return true

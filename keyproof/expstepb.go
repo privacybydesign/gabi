@@ -52,9 +52,9 @@ func (s *expStepBStructure) generateCommitmentsFromSecrets(g group, list []*big.
 	var commit expStepBCommit
 
 	// build up commit structure
-	commit.bit = newSecret(g, strings.Join([]string{s.bitname, "hider"}, "_"), secretdata.getSecret(strings.Join([]string{s.bitname, "hider"}, "_")))
-	list, commit.mul = s.mul.generateCommitmentsDuplicate(g, list, secretdata.getSecret(s.mulname),
-		secretdata.getSecret(strings.Join([]string{s.mulname, "hider"}, "_")))
+	commit.bit = newSecret(g, strings.Join([]string{s.bitname, "hider"}, "_"), secretdata.secret(strings.Join([]string{s.bitname, "hider"}, "_")))
+	list, commit.mul = s.mul.generateCommitmentsDuplicate(g, list, secretdata.secret(s.mulname),
+		secretdata.secret(strings.Join([]string{s.mulname, "hider"}, "_")))
 
 	// Inner secrets
 	secrets := newSecretMerge(&commit.mul, &commit.bit, secretdata)
@@ -111,7 +111,7 @@ func (s *expStepBStructure) generateCommitmentsFromProof(g group, list []*big.In
 }
 
 func (s *expStepBStructure) isTrue(secretdata secretLookup) bool {
-	if secretdata.getSecret(s.bitname).Cmp(big.NewInt(1)) != 0 {
+	if secretdata.secret(s.bitname).Cmp(big.NewInt(1)) != 0 {
 		return false
 	}
 	return s.prePostMul.isTrue(secretdata)

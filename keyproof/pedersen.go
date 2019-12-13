@@ -14,10 +14,10 @@ type (
 	}
 
 	pedersenCommit struct {
-		name   string
-		secret secret
-		hider  secret
-		commit *big.Int
+		name    string
+		secretv secret
+		hider   secret
+		commit  *big.Int
 
 		g *group
 	}
@@ -71,7 +71,7 @@ func (s *pedersenStructure) numCommitments() int {
 func (s *pedersenStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, value *big.Int) ([]*big.Int, pedersenCommit) {
 	var result pedersenCommit
 	result.name = s.name
-	result.secret = newSecret(g, s.name, value)
+	result.secretv = newSecret(g, s.name, value)
 	result.hider = newSecret(g, strings.Join([]string{s.name, "hider"}, "_"), common.FastRandomBigInt(g.order))
 	result.g = &g
 	result.commit = new(big.Int)
@@ -84,11 +84,11 @@ func (s *pedersenStructure) generateCommitmentsFromSecrets(g group, list []*big.
 
 func (s *pedersenStructure) generateCommitmentsDuplicate(g group, list []*big.Int, value *big.Int, hider *big.Int) ([]*big.Int, pedersenCommit) {
 	var result = pedersenCommit{
-		name:   s.name,
-		secret: newSecret(g, s.name, value),
-		hider:  newSecret(g, strings.Join([]string{s.name, "hider"}, "_"), hider),
-		g:      &g,
-		commit: new(big.Int),
+		name:    s.name,
+		secretv: newSecret(g, s.name, value),
+		hider:   newSecret(g, strings.Join([]string{s.name, "hider"}, "_"), hider),
+		g:       &g,
+		commit:  new(big.Int),
 	}
 	result.exp(result.commit, s.name, big.NewInt(1), g.p)
 
@@ -100,7 +100,7 @@ func (s *pedersenStructure) generateCommitmentsDuplicate(g group, list []*big.In
 func (s *pedersenStructure) buildProof(g group, challenge *big.Int, commit pedersenCommit) PedersenProof {
 	var proof PedersenProof
 	proof.Commit = commit.commit
-	proof.Sresult = commit.secret.buildProof(g, challenge)
+	proof.Sresult = commit.secretv.buildProof(g, challenge)
 	proof.Hresult = commit.hider.buildProof(g, challenge)
 	return proof
 }
@@ -129,7 +129,7 @@ func (s *pedersenStructure) generateCommitmentsFromProof(g group, list []*big.In
 	return s.representation.generateCommitmentsFromProof(g, list, challenge, &bases, &proof)
 }
 
-func (c *pedersenCommit) getBase(name string) *big.Int {
+func (c *pedersenCommit) base(name string) *big.Int {
 	if name == c.name {
 		return c.commit
 	} else {
@@ -144,9 +144,9 @@ func (c *pedersenCommit) exp(ret *big.Int, name string, exp, P *big.Int) bool {
 	// We effectively compute c.commit^exp, which is more expensive to do
 	// directly, than with two table-backed exponentiations.
 	var exp1, exp2, ret1, ret2, tmp big.Int
-	tmp.Mul(c.secret.secret, exp)
+	tmp.Mul(c.secretv.secretv, exp)
 	c.g.orderMod.Mod(&exp1, &tmp)
-	tmp.Mul(c.hider.secret, exp)
+	tmp.Mul(c.hider.secretv, exp)
 	c.g.orderMod.Mod(&exp2, &tmp)
 	c.g.exp(&ret1, "g", &exp1, c.g.p)
 	c.g.exp(&ret2, "h", &exp2, c.g.p)
@@ -159,18 +159,18 @@ func (c *pedersenCommit) names() []string {
 	return []string{c.name}
 }
 
-func (c *pedersenCommit) getSecret(name string) *big.Int {
-	result := c.secret.getSecret(name)
+func (c *pedersenCommit) secret(name string) *big.Int {
+	result := c.secretv.secret(name)
 	if result == nil {
-		result = c.hider.getSecret(name)
+		result = c.hider.secret(name)
 	}
 	return result
 }
 
-func (c *pedersenCommit) getRandomizer(name string) *big.Int {
-	result := c.secret.getRandomizer(name)
+func (c *pedersenCommit) randomizer(name string) *big.Int {
+	result := c.secretv.randomizer(name)
 	if result == nil {
-		result = c.hider.getRandomizer(name)
+		result = c.hider.randomizer(name)
 	}
 	return result
 }
@@ -181,7 +181,7 @@ func (p *PedersenProof) setName(name string) {
 	p.Hresult.setName(strings.Join([]string{name, "hider"}, "_"))
 }
 
-func (p *PedersenProof) getBase(name string) *big.Int {
+func (p *PedersenProof) base(name string) *big.Int {
 	if p.name == name {
 		return p.Commit
 	}
@@ -189,7 +189,7 @@ func (p *PedersenProof) getBase(name string) *big.Int {
 }
 
 func (p *PedersenProof) exp(ret *big.Int, name string, exp, P *big.Int) bool {
-	base := p.getBase(name)
+	base := p.base(name)
 	if base == nil {
 		return false
 	}
@@ -201,10 +201,10 @@ func (p *PedersenProof) names() []string {
 	return []string{p.name}
 }
 
-func (p *PedersenProof) getResult(name string) *big.Int {
-	result := p.Sresult.getResult(name)
+func (p *PedersenProof) result(name string) *big.Int {
+	result := p.Sresult.result(name)
 	if result == nil {
-		result = p.Hresult.getResult(name)
+		result = p.Hresult.result(name)
 	}
 	return result
 }

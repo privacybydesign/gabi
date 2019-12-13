@@ -30,7 +30,7 @@ func (s *representationProofStructure) generateCommitmentsFromSecrets(g group, l
 		// base := bases.Exp(curRhs.Base, big.NewInt(curRhs.Power), g.P)
 		// contribution := new(big.Int).Exp(base, secretdata.GetRandomizer(curRhs.Secret), g.P)
 		exp.Set(big.NewInt(curRhs.power))
-		exp.Mul(&exp, secretdata.getRandomizer(curRhs.secret))
+		exp.Mul(&exp, secretdata.randomizer(curRhs.secret))
 		g.orderMod.Mod(&exp, &exp)
 		bases.exp(&contribution, curRhs.base, &exp, g.p)
 		commitment.Mul(commitment, &contribution)
@@ -54,7 +54,7 @@ func (s *representationProofStructure) generateCommitmentsFromProof(g group, lis
 	for _, curRhs := range s.rhs {
 		// base := bases.Exp(curRhs.Base, big.NewInt(curRhs.Power), g.P)
 		// contribution := new(big.Int).Exp(base, proofdata.GetResult(curRhs.Secret), g.P)
-		exp.Mul(big.NewInt(curRhs.power), proofdata.getResult(curRhs.secret))
+		exp.Mul(big.NewInt(curRhs.power), proofdata.result(curRhs.secret))
 		g.orderMod.Mod(&exp, &exp)
 		bases.exp(&contribution, curRhs.base, &exp, g.p)
 		commitment.Mul(commitment, &contribution)
@@ -77,7 +77,7 @@ func (s *representationProofStructure) isTrue(g group, bases baseLookup, secretd
 	var exp, contribution big.Int
 	for _, curRhs := range s.rhs {
 		exp.SetInt64(curRhs.power)
-		tmp.Mul(&exp, secretdata.getSecret(curRhs.secret))
+		tmp.Mul(&exp, secretdata.secret(curRhs.secret))
 		g.orderMod.Mod(&exp, &tmp)
 		bases.exp(&contribution, curRhs.base, &exp, g.p)
 		tmp.Mul(&rhs, &contribution)

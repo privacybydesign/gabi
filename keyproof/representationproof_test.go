@@ -13,7 +13,7 @@ type RepTestSecret struct {
 	randomizers map[string]*big.Int
 }
 
-func (rs *RepTestSecret) getSecret(name string) *big.Int {
+func (rs *RepTestSecret) secret(name string) *big.Int {
 	res, ok := rs.secrets[name]
 	if ok {
 		return res
@@ -21,7 +21,7 @@ func (rs *RepTestSecret) getSecret(name string) *big.Int {
 	return nil
 }
 
-func (rs *RepTestSecret) getRandomizer(name string) *big.Int {
+func (rs *RepTestSecret) randomizer(name string) *big.Int {
 	res, ok := rs.randomizers[name]
 	if ok {
 		return res
@@ -33,7 +33,7 @@ type RepTestProof struct {
 	results map[string]*big.Int
 }
 
-func (rp *RepTestProof) getResult(name string) *big.Int {
+func (rp *RepTestProof) result(name string) *big.Int {
 	res, ok := rp.results[name]
 	if ok {
 		return res
@@ -45,7 +45,7 @@ type RepTestCommit struct {
 	commits map[string]*big.Int
 }
 
-func (rc *RepTestCommit) getBase(name string) *big.Int {
+func (rc *RepTestCommit) base(name string) *big.Int {
 	res, ok := rc.commits[name]
 	if ok {
 		return res
@@ -53,7 +53,7 @@ func (rc *RepTestCommit) getBase(name string) *big.Int {
 	return nil
 }
 func (rc *RepTestCommit) exp(ret *big.Int, name string, exp, P *big.Int) bool {
-	base := rc.getBase(name)
+	base := rc.base(name)
 	ret.Exp(base, exp, P)
 	return true
 }

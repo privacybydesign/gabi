@@ -9,18 +9,18 @@ import (
 
 type (
 	baseLookup interface {
-		getBase(name string) *big.Int
+		base(name string) *big.Int
 		exp(ret *big.Int, name string, exp, P *big.Int) bool
 		names() []string
 	}
 
 	secretLookup interface {
-		getSecret(name string) *big.Int
-		getRandomizer(name string) *big.Int
+		secret(name string) *big.Int
+		randomizer(name string) *big.Int
 	}
 
 	proofLookup interface {
-		getResult(name string) *big.Int
+		result(name string) *big.Int
 	}
 
 	baseMerge struct {
@@ -64,7 +64,7 @@ func (g *group) names() []string {
 	return []string{"g", "h"}
 }
 
-func (g *group) getBase(name string) *big.Int {
+func (g *group) base(name string) *big.Int {
 	if name == "g" {
 		return g.g
 	}
@@ -96,16 +96,16 @@ func newBaseMerge(parts ...baseLookup) baseMerge {
 func (b *baseMerge) names() []string {
 	return b.inames
 }
-func (b *baseMerge) getBase(name string) *big.Int {
+func (b *baseMerge) base(name string) *big.Int {
 	if b.lut != nil {
 		part, ok := b.lut[name]
 		if !ok {
 			return nil
 		}
-		return part.getBase(name)
+		return part.base(name)
 	}
 	for _, part := range b.parts {
-		res := part.getBase(name)
+		res := part.base(name)
 		if res != nil {
 			return res
 		}
@@ -136,9 +136,9 @@ func newSecretMerge(parts ...secretLookup) secretMerge {
 	return result
 }
 
-func (s *secretMerge) getSecret(name string) *big.Int {
+func (s *secretMerge) secret(name string) *big.Int {
 	for _, part := range s.parts {
-		res := part.getSecret(name)
+		res := part.secret(name)
 		if res != nil {
 			return res
 		}
@@ -146,9 +146,9 @@ func (s *secretMerge) getSecret(name string) *big.Int {
 	return nil
 }
 
-func (s *secretMerge) getRandomizer(name string) *big.Int {
+func (s *secretMerge) randomizer(name string) *big.Int {
 	for _, part := range s.parts {
-		res := part.getRandomizer(name)
+		res := part.randomizer(name)
 		if res != nil {
 			return res
 		}
@@ -162,9 +162,9 @@ func newProofMerge(parts ...proofLookup) proofMerge {
 	return result
 }
 
-func (p *proofMerge) getResult(name string) *big.Int {
+func (p *proofMerge) result(name string) *big.Int {
 	for _, part := range p.parts {
-		res := part.getResult(name)
+		res := part.result(name)
 		if res != nil {
 			return res
 		}

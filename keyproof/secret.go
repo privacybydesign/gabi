@@ -7,9 +7,9 @@ import (
 
 type (
 	secret struct {
-		name       string
-		secret     *big.Int
-		randomizer *big.Int
+		name        string
+		secretv     *big.Int
+		randomizerv *big.Int
 	}
 
 	Proof struct {
@@ -29,7 +29,7 @@ func newSecret(g group, name string, value *big.Int) secret {
 func (s *secret) buildProof(g group, challenge *big.Int) Proof {
 	return Proof{
 		s.name,
-		new(big.Int).Mod(new(big.Int).Sub(s.randomizer, new(big.Int).Mul(s.secret, challenge)), g.order),
+		new(big.Int).Mod(new(big.Int).Sub(s.randomizerv, new(big.Int).Mul(s.secretv, challenge)), g.order),
 	}
 }
 
@@ -44,23 +44,23 @@ func fakeProof(g group) Proof {
 	}
 }
 
-func (s *secret) getSecret(name string) *big.Int {
+func (s *secret) secret(name string) *big.Int {
 	if name == s.name {
-		return s.secret
+		return s.secretv
 	} else {
 		return nil
 	}
 }
 
-func (s *secret) getRandomizer(name string) *big.Int {
+func (s *secret) randomizer(name string) *big.Int {
 	if name == s.name {
-		return s.randomizer
+		return s.randomizerv
 	} else {
 		return nil
 	}
 }
 
-func (p *Proof) getResult(name string) *big.Int {
+func (p *Proof) result(name string) *big.Int {
 	if name == p.name {
 		return p.Result
 	} else {

@@ -81,7 +81,7 @@ func (s *rangeProofStructure) buildProof(g group, challenge *big.Int, commit ran
 			for i := 0; i < rangeProofIters; i++ {
 				var res *big.Int
 				if challenge.Bit(i) == 1 {
-					res = new(big.Int).Sub(new(big.Int).Add(clist[i], l1Offset), secretdata.getSecret(name))
+					res = new(big.Int).Sub(new(big.Int).Add(clist[i], l1Offset), secretdata.secret(name))
 				} else {
 					res = new(big.Int).Set(clist[i])
 				}
@@ -92,7 +92,7 @@ func (s *rangeProofStructure) buildProof(g group, challenge *big.Int, commit ran
 			for i := 0; i < rangeProofIters; i++ {
 				var res *big.Int
 				if challenge.Bit(i) == 1 {
-					res = new(big.Int).Mod(new(big.Int).Sub(clist[i], secretdata.getSecret(name)), g.order)
+					res = new(big.Int).Mod(new(big.Int).Sub(clist[i], secretdata.secret(name)), g.order)
 				} else {
 					res = new(big.Int).Set(clist[i])
 				}
@@ -166,7 +166,7 @@ type rangeProofResultLookup struct {
 	Results map[string]*big.Int
 }
 
-func (r *rangeProofResultLookup) getResult(name string) *big.Int {
+func (r *rangeProofResultLookup) result(name string) *big.Int {
 	res, ok := r.Results[name]
 	if !ok {
 		return nil
@@ -205,11 +205,11 @@ func (s *rangeProofStructure) generateCommitmentsFromProof(g group, list []*big.
 	return list
 }
 
-func (r *rangeCommitSecretLookup) getSecret(name string) *big.Int {
+func (r *rangeCommitSecretLookup) secret(name string) *big.Int {
 	return nil
 }
 
-func (r *rangeCommitSecretLookup) getRandomizer(name string) *big.Int {
+func (r *rangeCommitSecretLookup) randomizer(name string) *big.Int {
 	clist, ok := r.commits[name]
 	if !ok {
 		return nil

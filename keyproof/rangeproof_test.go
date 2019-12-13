@@ -14,7 +14,7 @@ type RangeTestSecret struct {
 	randomizers map[string]*big.Int
 }
 
-func (rs *RangeTestSecret) getSecret(name string) *big.Int {
+func (rs *RangeTestSecret) secret(name string) *big.Int {
 	res, ok := rs.secrets[name]
 	if ok {
 		return res
@@ -22,7 +22,7 @@ func (rs *RangeTestSecret) getSecret(name string) *big.Int {
 	return nil
 }
 
-func (rs *RangeTestSecret) getRandomizer(name string) *big.Int {
+func (rs *RangeTestSecret) randomizer(name string) *big.Int {
 	res, ok := rs.randomizers[name]
 	if ok {
 		return res
@@ -40,7 +40,7 @@ func (rc *RangeTestCommit) names() (ret []string) {
 	}
 	return
 }
-func (rc *RangeTestCommit) getBase(name string) *big.Int {
+func (rc *RangeTestCommit) base(name string) *big.Int {
 	res, ok := rc.commits[name]
 	if ok {
 		return res
@@ -48,7 +48,7 @@ func (rc *RangeTestCommit) getBase(name string) *big.Int {
 	return nil
 }
 func (rc *RangeTestCommit) exp(ret *big.Int, name string, exp, P *big.Int) bool {
-	base := rc.getBase(name)
+	base := rc.base(name)
 	ret.Exp(base, exp, P)
 	return true
 }
