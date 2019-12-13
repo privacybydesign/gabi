@@ -5,31 +5,33 @@ import (
 	"github.com/privacybydesign/gabi/internal/common"
 )
 
-type expStepStructure struct {
-	bitname string
-	stepa   expStepAStructure
-	stepb   expStepBStructure
-}
+type (
+	expStepStructure struct {
+		bitname string
+		stepa   expStepAStructure
+		stepb   expStepBStructure
+	}
 
-type expStepCommit struct {
-	isTypeA bool
+	expStepCommit struct {
+		isTypeA bool
 
-	acommit    expStepACommit
-	aproof     ExpStepAProof
-	achallenge *big.Int
+		acommit    expStepACommit
+		aproof     ExpStepAProof
+		achallenge *big.Int
 
-	bcommit    expStepBCommit
-	bproof     ExpStepBProof
-	bchallenge *big.Int
-}
+		bcommit    expStepBCommit
+		bproof     ExpStepBProof
+		bchallenge *big.Int
+	}
 
-type ExpStepProof struct {
-	Achallenge *big.Int
-	Aproof     ExpStepAProof
+	ExpStepProof struct {
+		Achallenge *big.Int
+		Aproof     ExpStepAProof
 
-	Bchallenge *big.Int
-	Bproof     ExpStepBProof
-}
+		Bchallenge *big.Int
+		Bproof     ExpStepBProof
+	}
+)
 
 func newExpStepStructure(bitname, prename, postname, mulname, modname string, bitlen uint) expStepStructure {
 	var structure expStepStructure

@@ -6,26 +6,28 @@ import (
 	"github.com/privacybydesign/gabi/big"
 )
 
-type expStepBStructure struct {
-	bitname    string
-	mulname    string
-	myname     string
-	bitRep     representationProofStructure
-	mul        pedersenStructure
-	prePostMul multiplicationProofStructure
-}
+type (
+	expStepBStructure struct {
+		bitname    string
+		mulname    string
+		myname     string
+		bitRep     representationProofStructure
+		mul        pedersenStructure
+		prePostMul multiplicationProofStructure
+	}
 
-type ExpStepBProof struct {
-	Mul                 PedersenProof
-	Bit                 Proof
-	MultiplicationProof MultiplicationProof
-}
+	ExpStepBProof struct {
+		Mul                 PedersenProof
+		Bit                 Proof
+		MultiplicationProof MultiplicationProof
+	}
 
-type expStepBCommit struct {
-	mul                  pedersenCommit
-	bit                  secret
-	multiplicationCommit multiplicationProofCommit
-}
+	expStepBCommit struct {
+		mul                  pedersenCommit
+		bit                  secret
+		multiplicationCommit multiplicationProofCommit
+	}
+)
 
 func newExpStepBStructure(bitname, prename, postname, mulname, modname string, bitlen uint) expStepBStructure {
 	var structure expStepBStructure

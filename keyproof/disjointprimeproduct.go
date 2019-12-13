@@ -1,7 +1,9 @@
 package keyproof
 
-import "github.com/privacybydesign/gabi/internal/common"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/internal/common"
+)
 
 type DisjointPrimeProductProof struct {
 	Responses []*big.Int

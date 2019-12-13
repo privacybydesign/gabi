@@ -6,28 +6,30 @@ import (
 	"github.com/privacybydesign/gabi/big"
 )
 
-type multiplicationProofStructure struct {
-	m1                 string
-	m2                 string
-	mod                string
-	result             string
-	myname             string
-	modMultPedersen    pedersenStructure
-	modMultRange       rangeProofStructure
-	multRepresentation representationProofStructure
-}
+type (
+	multiplicationProofStructure struct {
+		m1                 string
+		m2                 string
+		mod                string
+		result             string
+		myname             string
+		modMultPedersen    pedersenStructure
+		modMultRange       rangeProofStructure
+		multRepresentation representationProofStructure
+	}
 
-type MultiplicationProof struct {
-	ModMultProof PedersenProof
-	Hider        Proof
-	RangeProof   RangeProof
-}
+	MultiplicationProof struct {
+		ModMultProof PedersenProof
+		Hider        Proof
+		RangeProof   RangeProof
+	}
 
-type multiplicationProofCommit struct {
-	modMultPedersen pedersenCommit
-	hider           secret
-	rangeCommit     rangeCommit
-}
+	multiplicationProofCommit struct {
+		modMultPedersen pedersenCommit
+		hider           secret
+		rangeCommit     rangeCommit
+	}
+)
 
 // Note, m1, m2, mod and result should be names of pedersen commitments
 func newMultiplicationProofStructure(m1, m2, mod, result string, l uint) multiplicationProofStructure {

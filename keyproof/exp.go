@@ -10,61 +10,63 @@ import (
 	"sync/atomic"
 )
 
-type expProofStructure struct {
-	base     string
-	exponent string
-	mod      string
-	result   string
-	myname   string
-	bitlen   uint
+type (
+	expProofStructure struct {
+		base     string
+		exponent string
+		mod      string
+		result   string
+		myname   string
+		bitlen   uint
 
-	expBits  []pedersenStructure
-	expBitEq representationProofStructure
+		expBits  []pedersenStructure
+		expBitEq representationProofStructure
 
-	basePows     []pedersenStructure
-	basePowRange []rangeProofStructure
-	basePowRels  []multiplicationProofStructure
+		basePows     []pedersenStructure
+		basePowRange []rangeProofStructure
+		basePowRels  []multiplicationProofStructure
 
-	start    pedersenStructure
-	startRep representationProofStructure
+		start    pedersenStructure
+		startRep representationProofStructure
 
-	interRess     []pedersenStructure
-	interResRange []rangeProofStructure
+		interRess     []pedersenStructure
+		interResRange []rangeProofStructure
 
-	interSteps []expStepStructure
-}
+		interSteps []expStepStructure
+	}
 
-type expProofCommit struct {
-	expBits       []pedersenCommit
-	expBitEqHider secret
+	expProofCommit struct {
+		expBits       []pedersenCommit
+		expBitEqHider secret
 
-	basePows           []pedersenCommit
-	basePowRangeCommit []rangeCommit
-	basePowRelCommit   []multiplicationProofCommit
+		basePows           []pedersenCommit
+		basePowRangeCommit []rangeCommit
+		basePowRelCommit   []multiplicationProofCommit
 
-	start pedersenCommit
+		start pedersenCommit
 
-	interRess           []pedersenCommit
-	interResRangeCommit []rangeCommit
+		interRess           []pedersenCommit
+		interResRangeCommit []rangeCommit
 
-	interStepsCommit []expStepCommit
-}
+		interStepsCommit []expStepCommit
+	}
 
-type ExpProof struct {
-	ExpBitProofs  []PedersenProof
-	ExpBitEqHider Proof
+	ExpProof struct {
+		ExpBitProofs  []PedersenProof
+		ExpBitEqHider Proof
 
-	BasePowProofs      []PedersenProof
-	BasePowRangeProofs []RangeProof
-	BasePowRelProofs   []MultiplicationProof
+		BasePowProofs      []PedersenProof
+		BasePowRangeProofs []RangeProof
+		BasePowRelProofs   []MultiplicationProof
 
-	StartProof PedersenProof
+		StartProof PedersenProof
 
-	InterResProofs      []PedersenProof
-	InterResRangeProofs []RangeProof
+		InterResProofs      []PedersenProof
+		InterResRangeProofs []RangeProof
 
-	InterStepsProofs []ExpStepProof
-}
+		InterStepsProofs []ExpStepProof
+	}
+)
 
 func newExpProofStructure(base, exponent, mod, result string, bitlen uint) expProofStructure {
 	var structure expProofStructure

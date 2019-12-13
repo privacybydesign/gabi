@@ -5,16 +5,18 @@ import (
 	"github.com/privacybydesign/gabi/internal/common"
 )
 
-type secret struct {
-	name       string
-	secret     *big.Int
-	randomizer *big.Int
-}
+type (
+	secret struct {
+		name       string
+		secret     *big.Int
+		randomizer *big.Int
+	}
 
-type Proof struct {
-	name   string
-	Result *big.Int
-}
+	Proof struct {
+		name   string
+		Result *big.Int
+	}
+)
 
 func newSecret(g group, name string, value *big.Int) secret {
 	return secret{

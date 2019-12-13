@@ -5,25 +5,27 @@ import (
 	"github.com/privacybydesign/gabi/internal/common"
 )
 
-type rangeProofStructure struct {
-	representationProofStructure
-	rangeSecret string
-	l1          uint
-	l2          uint
-}
+type (
+	rangeProofStructure struct {
+		representationProofStructure
+		rangeSecret string
+		l1          uint
+		l2          uint
+	}
 
-type RangeProof struct {
-	Results map[string][]*big.Int
-}
+	RangeProof struct {
+		Results map[string][]*big.Int
+	}
 
-type rangeCommit struct {
-	commits map[string][]*big.Int
-}
+	rangeCommit struct {
+		commits map[string][]*big.Int
+	}
 
-type rangeCommitSecretLookup struct {
-	rangeCommit
-	i int
-}
+	rangeCommitSecretLookup struct {
+		rangeCommit
+		i int
+	}
+)
 
 func (s *rangeProofStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, rangeCommit) {
 	var commit rangeCommitSecretLookup

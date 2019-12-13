@@ -6,24 +6,26 @@ import (
 	"github.com/privacybydesign/gabi/big"
 )
 
-type expStepAStructure struct {
-	bitname     string
-	prename     string
-	postname    string
-	myname      string
-	bitRep      representationProofStructure
-	equalityRep representationProofStructure
-}
+type (
+	expStepAStructure struct {
+		bitname     string
+		prename     string
+		postname    string
+		myname      string
+		bitRep      representationProofStructure
+		equalityRep representationProofStructure
+	}
 
-type ExpStepAProof struct {
-	Bit           Proof // Needed to make sure we can fake these proofs, which is needed for the OR in expstep
-	EqualityHider Proof
-}
+	ExpStepAProof struct {
+		Bit           Proof // Needed to make sure we can fake these proofs, which is needed for the OR in expstep
+		EqualityHider Proof
+	}
 
-type expStepACommit struct {
-	bit           secret // Needed to make sure we can fake these proofs, which is needed for the OR in expstep
-	equalityHider secret
-}
+	expStepACommit struct {
+		bit           secret // Needed to make sure we can fake these proofs, which is needed for the OR in expstep
+		equalityHider secret
+	}
+)
 
 func newExpStepAStructure(bitname, prename, postname string) expStepAStructure {
 	var structure expStepAStructure

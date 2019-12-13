@@ -6,51 +6,29 @@ import (
 	"github.com/privacybydesign/gabi/big"
 )
 
-type additionProofStructure struct {
-	a1                string
-	a2                string
-	mod               string
-	result            string
-	myname            string
-	addRepresentation representationProofStructure
-	addRange          rangeProofStructure
-}
-
-type AdditionProof struct {
-	ModAddProof Proof
-	HiderProof  Proof
-	RangeProof  RangeProof
-}
-
-type additionProofCommit struct {
-	modAdd      secret
-	hider       secret
-	rangeCommit rangeCommit
-}
-
-/*func (p *AdditionProof) getResult(name string) *big.Int {
-	result := p.ModAddProof.getResult(name)
-	if result == nil {
-		result = p.HiderProof.getResult(name)
+type (
+	additionProofStructure struct {
+		a1                string
+		a2                string
+		mod               string
+		result            string
+		myname            string
+		addRepresentation representationProofStructure
+		addRange          rangeProofStructure
 	}
-	return result
-}
 
-func (c *additionProofCommit) getSecret(name string) *big.Int {
-	result := c.modAdd.getSecret(name)
-	if result == nil {
-		result = c.hider.getSecret(name)
+	AdditionProof struct {
+		ModAddProof Proof
+		HiderProof  Proof
+		RangeProof  RangeProof
 	}
-	return result
-}
 
-func (c *additionProofCommit) getRandomizer(name string) *big.Int {
-	result := c.modAdd.getRandomizer(name)
-	if result == nil {
-		result = c.hider.getRandomizer(name)
+	additionProofCommit struct {
+		modAdd      secret
+		hider       secret
+		rangeCommit rangeCommit
 	}
-	return result
-}*/
+)
 
 func newAdditionProofStructure(a1, a2, mod, result string, l uint) additionProofStructure {
 	var structure additionProofStructure
