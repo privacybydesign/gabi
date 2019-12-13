@@ -276,6 +276,19 @@ func (w *Witness) Update(pk *PublicKey, update *Update) error {
 	return nil
 }
 
+// Verify the witness against its SignedAccumulator.
+func (w *Witness) Verify(pk *PublicKey) error {
+	acc, err := w.SignedAccumulator.UnmarshalVerify(pk)
+	if err != nil {
+		return err
+	}
+	w.Accumulator = acc
+	if !verify(w.U, w.E, w.Accumulator, pk.Group) {
+		return errors.New("invalid witness")
+	}
+	return nil
+}
+
 // Zero-knowledge proof methods
 
 func (c *proofCommit) Exp(ret *big.Int, name string, exp, n *big.Int) bool {

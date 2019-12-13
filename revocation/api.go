@@ -66,13 +66,14 @@ package revocation
 import (
 	"bytes"
 	"crypto/ecdsa"
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/gob"
 	"encoding/json"
+	"fmt"
 
 	"github.com/go-errors/errors"
+	"github.com/multiformats/go-multihash"
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
 	"github.com/privacybydesign/gabi/signed"
@@ -114,7 +115,7 @@ type (
 	}
 
 	// Hash represents a SHA256 hash and has marshaling methods to/from JSON.
-	Hash [32]byte
+	Hash multihash.Multihash
 
 	// Witness is a witness for the RSA-B accumulator, used for proving nonrevocation against the
 	// Accumulator with the same Index.
@@ -146,18 +147,27 @@ type (
 	}
 )
 
-const AccumulatorStartIndex uint64 = 1
+const (
+	AccumulatorStartIndex uint64 = 1
+
+	HashAlgorithm = multihash.SHA2_256
+)
 
 func NewAccumulator(sk *PrivateKey) (*Update, error) {
+	empty := [32]byte{}
+	emptyhash, err := multihash.Encode(empty[:], HashAlgorithm)
 	initialEvent := &Event{
 		Index:      AccumulatorStartIndex,
 		E:          big.NewInt(0),
-		ParentHash: Hash{},
+		ParentHash: emptyhash,
+	}
+	if err != nil {
+		return nil, err
 	}
 	acc := &Accumulator{
 		Nu:        common.RandomQR(sk.N),
 		Index:     AccumulatorStartIndex,
-		EventHash: initialEvent.Hash(),
+		EventHash: initialEvent.hash(),
 	}
 	sig, err := acc.Sign(sk)
 	if err != nil {
@@ -194,10 +204,9 @@ func (acc *Accumulator) Remove(sk *PrivateKey, e *big.Int, parent *Event) (*Upda
 	event := &Event{
 		Index:      newAcc.Index,
 		E:          e,
-		ParentHash: parent.Hash(),
+		ParentHash: parent.hash(),
 	}
-	newAcc.EventHash = event.Hash()
-
+	newAcc.EventHash = event.hash()
 	sig, err := newAcc.Sign(sk)
 	if err != nil {
 		return nil, err
@@ -220,50 +229,6 @@ func (s *SignedAccumulator) UnmarshalVerify(pk *PublicKey) (*Accumulator, error)
 		return nil, err
 	}
 	return msg, nil
-}
-
-// Verify the witness against its SignedAccumulator.
-func (w *Witness) Verify(pk *PublicKey) error {
-	acc, err := w.SignedAccumulator.UnmarshalVerify(pk)
-	if err != nil {
-		return err
-	}
-	w.Accumulator = acc
-	if !verify(w.U, w.E, w.Accumulator, pk.Group) {
-		return errors.New("invalid witness")
-	}
-	return nil
-}
-
-func (hash Hash) MarshalJSON() ([]byte, error) {
-	return json.Marshal(hash.String())
-}
-
-func (hash *Hash) UnmarshalJSON(b []byte) error {
-	var s string
-	err := json.Unmarshal(b, &s)
-	if err != nil {
-		return err
-	}
-	b, err = base64.URLEncoding.DecodeString(s)
-	if err != nil {
-		return err
-	}
-	copy(hash[:], b)
-	return nil
-}
-
-func (hash Hash) String() string {
-	return base64.URLEncoding.EncodeToString(hash[:])
-}
-
-// Hash returns the SHA256 hash of the Event.
-func (event *Event) Hash() Hash {
-	bts := make([]byte, 8, 8+len(event.ParentHash)+int(parameters.attributeMaxSize)/8+1)
-	binary.BigEndian.PutUint64(bts, event.Index)
-	bts = append(bts, event.ParentHash[:]...)
-	bts = append(bts, event.E.Bytes()...)
-	return sha256.Sum256(bts)
 }
 
 type compressedUpdate struct {
@@ -297,7 +262,7 @@ func (update *Update) uncompress(c *compressedUpdate) {
 		if i == 0 {
 			update.Events[i].ParentHash = c.ParentHash
 		} else {
-			update.Events[i].ParentHash = update.Events[i-1].Hash()
+			update.Events[i].ParentHash = update.Events[i-1].hash()
 		}
 	}
 }
@@ -347,19 +312,20 @@ func (update *Update) Verify(pk *PublicKey, index uint64) (*Accumulator, *big.In
 		return nil, nil, err
 	}
 
-	if acc.EventHash != update.Events[count-1].Hash() {
-		return nil, nil, errors.New("update chain has wrong hash")
+	if err = update.Events[count-1].hashEquals(acc.EventHash); err != nil {
+		return nil, nil, errors.WrapPrefix(err, "update chain has wrong hash", 0)
 	}
 
-	// compute product of all revoked attributes, going backwards along the chain from the
-	// signed accumulator until the current position of the witness, verifying the hashes
-	// of the chain along the way
+	// Verify the hashes of the chain, computing the product of all revoked attributes along the way
 	startIndex := update.Events[0].Index
 	prod := new(big.Int).SetInt64(1)
 	for i, event := range update.Events {
-		if i != 0 && event.ParentHash != update.Events[i-1].Hash() {
-			return nil, nil, errors.Errorf("event %d has wrong parent hash: found %s, expected %s",
-				i, update.Events[i-1].Hash().String(), event.ParentHash.String())
+		if i != 0 {
+			if err = update.Events[i-1].hashEquals(event.ParentHash); err != nil {
+				return nil, nil, errors.WrapPrefix(
+					err, fmt.Sprintf("event chain element %d has wrong parent hash", i), 0,
+				)
+			}
 		}
 		if uint64(i)+startIndex != event.Index {
 			return nil, nil, errors.Errorf("event %d has wrong index, found %d, expected %d", event.Index, uint64(i)+startIndex)
@@ -371,4 +337,110 @@ func (update *Update) Verify(pk *PublicKey, index uint64) (*Accumulator, *big.In
 	}
 
 	return acc, prod, nil
+}
+
+// whitelist of hash algorithms that we currently accept consisting of just SHA256
+func checkHashAlg(code uint64) error {
+	switch code {
+	case multihash.SHA2_256:
+		return nil
+	default:
+		return errors.New("unsupported hash algorithm")
+	}
+}
+
+// Hash returns the SHA256 hash of the Event.
+func (event *Event) hash() Hash {
+	hash, err := event.hashUsingAlg(HashAlgorithm)
+	if err != nil {
+		// multihash only emits errors if using an unsupported hashing algorithm
+		panic("failed to compute event multihash: " + err.Error())
+	}
+	return hash
+}
+
+func (event *Event) hashBytes() []byte {
+	bts := make([]byte, 8, 8+len(event.ParentHash)+int(parameters.attributeMaxSize)/8+1)
+	binary.BigEndian.PutUint64(bts, event.Index)
+	bts = append(bts, event.ParentHash[:]...)
+	bts = append(bts, event.E.Bytes()...)
+	return bts
+}
+
+func (event *Event) hashUsingAlg(code uint64) (Hash, error) {
+	if err := checkHashAlg(code); err != nil {
+		return nil, err
+	}
+	hash, err := multihash.Sum(event.hashBytes(), code, -1)
+	if err != nil {
+		return nil, err
+	}
+	return Hash(hash), nil
+}
+
+func (event *Event) hashEquals(h Hash) error {
+	alg, err := h.Algorithm()
+	if err != nil {
+		return err
+	}
+	ours, err := event.hashUsingAlg(alg)
+	if err != nil {
+		return err
+	}
+	if !ours.Equal(h) {
+		return errors.New("unequal hash")
+	}
+	return nil
+}
+
+func (hash Hash) MarshalJSON() ([]byte, error) {
+	return json.Marshal(hash.String())
+}
+
+func (hash *Hash) UnmarshalJSON(b []byte) error {
+	var s string
+	err := json.Unmarshal(b, &s)
+	if err != nil {
+		return err
+	}
+	b, err = base64.URLEncoding.DecodeString(s)
+	if err != nil {
+		return err
+	}
+	_, mh, err := multihash.MHFromBytes(b)
+	if err != nil {
+		return err
+	}
+	*hash = Hash(mh)
+	return nil
+}
+
+func (hash Hash) String() string {
+	return base64.URLEncoding.EncodeToString(hash[:])
+}
+
+func (hash Hash) Equal(other Hash) bool {
+	for i := range hash {
+		if i == len(other) {
+			break
+		}
+		if hash[i] != other[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func (hash Hash) Algorithm() (uint64, error) {
+	mh, err := multihash.Decode(hash)
+	if err != nil {
+		return 0, err
+	}
+	if !multihash.ValidCode(mh.Code) {
+		return 0, errors.New("unknown multihash algorithm")
+	}
+	if err = checkHashAlg(mh.Code); err != nil {
+		return 0, err
+	}
+	return mh.Code, nil
 }
