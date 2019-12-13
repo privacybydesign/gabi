@@ -51,14 +51,6 @@ func newExpStepAStructure(bitname, prename, postname string) expStepAStructure {
 	return structure
 }
 
-func (s *expStepAStructure) numRangeProofs() int {
-	return 0
-}
-
-func (s *expStepAStructure) numCommitments() int {
-	return s.bitRep.numCommitments() + s.equalityRep.numCommitments()
-}
-
 func (s *expStepAStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, expStepACommit) {
 	var commit expStepACommit
 
@@ -124,4 +116,12 @@ func (s *expStepAStructure) isTrue(secretdata secretLookup) bool {
 		return false
 	}
 	return true
+}
+
+func (s *expStepAStructure) numRangeProofs() int {
+	return 0
+}
+
+func (s *expStepAStructure) numCommitments() int {
+	return s.bitRep.numCommitments() + s.equalityRep.numCommitments()
 }

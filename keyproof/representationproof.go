@@ -20,14 +20,6 @@ type representationProofStructure struct {
 	rhs []rhsContribution
 }
 
-func (s *representationProofStructure) numRangeProofs() int {
-	return 0
-}
-
-func (s *representationProofStructure) numCommitments() int {
-	return 1
-}
-
 func (s *representationProofStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) []*big.Int {
 	commitment := big.NewInt(1)
 	var exp, contribution big.Int
@@ -91,4 +83,12 @@ func (s *representationProofStructure) isTrue(g group, bases baseLookup, secretd
 	}
 
 	return lhs.Cmp(&rhs) == 0
+}
+
+func (s *representationProofStructure) numRangeProofs() int {
+	return 0
+}
+
+func (s *representationProofStructure) numCommitments() int {
+	return 1
 }

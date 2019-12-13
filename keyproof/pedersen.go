@@ -28,86 +28,6 @@ type PedersenProof struct {
 	Hresult Proof
 }
 
-func (c *pedersenCommit) getBase(name string) *big.Int {
-	if name == c.name {
-		return c.commit
-	} else {
-		return nil
-	}
-}
-
-func (c *pedersenCommit) exp(ret *big.Int, name string, exp, P *big.Int) bool {
-	if name != c.name {
-		return false
-	}
-	// We effectively compute c.commit^exp, which is more expensive to do
-	// directly, than with two table-backed exponentiations.
-	var exp1, exp2, ret1, ret2, tmp big.Int
-	tmp.Mul(c.secret.secret, exp)
-	c.g.orderMod.Mod(&exp1, &tmp)
-	tmp.Mul(c.hider.secret, exp)
-	c.g.orderMod.Mod(&exp2, &tmp)
-	c.g.exp(&ret1, "g", &exp1, c.g.p)
-	c.g.exp(&ret2, "h", &exp2, c.g.p)
-	tmp.Mul(&ret1, &ret2)
-	c.g.pMod.Mod(ret, &tmp)
-	return true
-}
-
-func (c *pedersenCommit) names() []string {
-	return []string{c.name}
-}
-
-func (c *pedersenCommit) getSecret(name string) *big.Int {
-	result := c.secret.getSecret(name)
-	if result == nil {
-		result = c.hider.getSecret(name)
-	}
-	return result
-}
-
-func (c *pedersenCommit) getRandomizer(name string) *big.Int {
-	result := c.secret.getRandomizer(name)
-	if result == nil {
-		result = c.hider.getRandomizer(name)
-	}
-	return result
-}
-
-func (p *PedersenProof) setName(name string) {
-	p.name = name
-	p.Sresult.setName(name)
-	p.Hresult.setName(strings.Join([]string{name, "hider"}, "_"))
-}
-
-func (p *PedersenProof) getBase(name string) *big.Int {
-	if p.name == name {
-		return p.Commit
-	}
-	return nil
-}
-
-func (p *PedersenProof) exp(ret *big.Int, name string, exp, P *big.Int) bool {
-	base := p.getBase(name)
-	if base == nil {
-		return false
-	}
-	ret.Exp(base, exp, P)
-	return true
-}
-
-func (p *PedersenProof) names() []string {
-	return []string{p.name}
-}
-
-func (p *PedersenProof) getResult(name string) *big.Int {
-	result := p.Sresult.getResult(name)
-	if result == nil {
-		result = p.Hresult.getResult(name)
-	}
-	return result
-}
-
 func newPedersenStructure(name string) pedersenStructure {
 	return pedersenStructure{
 		name,
@@ -205,4 +125,84 @@ func (s *pedersenStructure) generateCommitmentsFromProof(g group, list []*big.In
 	bases := newBaseMerge(&proof, &g)
 	list = append(list, proof.Commit)
 	return s.representation.generateCommitmentsFromProof(g, list, challenge, &bases, &proof)
+}
+
+func (c *pedersenCommit) getBase(name string) *big.Int {
+	if name == c.name {
+		return c.commit
+	} else {
+		return nil
+	}
+}
+
+func (c *pedersenCommit) exp(ret *big.Int, name string, exp, P *big.Int) bool {
+	if name != c.name {
+		return false
+	}
+	// We effectively compute c.commit^exp, which is more expensive to do
+	// directly, than with two table-backed exponentiations.
+	var exp1, exp2, ret1, ret2, tmp big.Int
+	tmp.Mul(c.secret.secret, exp)
+	c.g.orderMod.Mod(&exp1, &tmp)
+	tmp.Mul(c.hider.secret, exp)
+	c.g.orderMod.Mod(&exp2, &tmp)
+	c.g.exp(&ret1, "g", &exp1, c.g.p)
+	c.g.exp(&ret2, "h", &exp2, c.g.p)
+	tmp.Mul(&ret1, &ret2)
+	c.g.pMod.Mod(ret, &tmp)
+	return true
+}
+
+func (c *pedersenCommit) names() []string {
+	return []string{c.name}
+}
+
+func (c *pedersenCommit) getSecret(name string) *big.Int {
+	result := c.secret.getSecret(name)
+	if result == nil {
+		result = c.hider.getSecret(name)
+	}
+	return result
+}
+
+func (c *pedersenCommit) getRandomizer(name string) *big.Int {
+	result := c.secret.getRandomizer(name)
+	if result == nil {
+		result = c.hider.getRandomizer(name)
+	}
+	return result
+}
+
+func (p *PedersenProof) setName(name string) {
+	p.name = name
+	p.Sresult.setName(name)
+	p.Hresult.setName(strings.Join([]string{name, "hider"}, "_"))
+}
+
+func (p *PedersenProof) getBase(name string) *big.Int {
+	if p.name == name {
+		return p.Commit
+	}
+	return nil
+}
+
+func (p *PedersenProof) exp(ret *big.Int, name string, exp, P *big.Int) bool {
+	base := p.getBase(name)
+	if base == nil {
+		return false
+	}
+	ret.Exp(base, exp, P)
+	return true
+}
+
+func (p *PedersenProof) names() []string {
+	return []string{p.name}
+}
+
+func (p *PedersenProof) getResult(name string) *big.Int {
+	result := p.Sresult.getResult(name)
+	if result == nil {
+		result = p.Hresult.getResult(name)
+	}
+	return result
 }

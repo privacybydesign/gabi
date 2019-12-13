@@ -209,47 +209,6 @@ func newExpProofStructure(base, exponent, mod, result string, bitlen uint) expPr
 	return structure
 }
 
-func (s *expProofStructure) numRangeProofs() int {
-	res := len(s.basePowRange)
-	for i, _ := range s.basePowRels {
-		res += s.basePowRels[i].numRangeProofs()
-	}
-	res += len(s.interResRange)
-	for i, _ := range s.interSteps {
-		res += s.interSteps[i].numRangeProofs()
-	}
-	return res
-}
-
-func (s *expProofStructure) numCommitments() int {
-	res := 0
-	for i, _ := range s.expBits {
-		res += s.expBits[i].numCommitments()
-	}
-	res += s.expBitEq.numCommitments()
-	for i, _ := range s.basePows {
-		res += s.basePows[i].numCommitments()
-	}
-	for i, _ := range s.basePowRange {
-		res += s.basePowRange[i].numCommitments()
-	}
-	for i, _ := range s.basePowRels {
-		res += s.basePowRels[i].numCommitments()
-	}
-	res += s.start.numCommitments()
-	res += s.startRep.numCommitments()
-	for i, _ := range s.interRess {
-		res += s.interRess[i].numCommitments()
-	}
-	for i, _ := range s.interResRange {
-		res += s.interResRange[i].numCommitments()
-	}
-	for i, _ := range s.interSteps {
-		res += s.interSteps[i].numCommitments()
-	}
-	return res
-}
-
 func (s *expProofStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, expProofCommit) {
 	var commit expProofCommit
 	var todo []func([]*big.Int)
@@ -756,4 +715,45 @@ func (s *expProofStructure) isTrue(secretdata secretLookup) bool {
 		mod)
 
 	return mod.Cmp(big.NewInt(0)) == 0 && uint(div.BitLen()) <= s.bitlen
+}
+
+func (s *expProofStructure) numRangeProofs() int {
+	res := len(s.basePowRange)
+	for i, _ := range s.basePowRels {
+		res += s.basePowRels[i].numRangeProofs()
+	}
+	res += len(s.interResRange)
+	for i, _ := range s.interSteps {
+		res += s.interSteps[i].numRangeProofs()
+	}
+	return res
+}
+
+func (s *expProofStructure) numCommitments() int {
+	res := 0
+	for i, _ := range s.expBits {
+		res += s.expBits[i].numCommitments()
+	}
+	res += s.expBitEq.numCommitments()
+	for i, _ := range s.basePows {
+		res += s.basePows[i].numCommitments()
+	}
+	for i, _ := range s.basePowRange {
+		res += s.basePowRange[i].numCommitments()
+	}
+	for i, _ := range s.basePowRels {
+		res += s.basePowRels[i].numCommitments()
+	}
+	res += s.start.numCommitments()
+	res += s.startRep.numCommitments()
+	for i, _ := range s.interRess {
+		res += s.interRess[i].numCommitments()
+	}
+	for i, _ := range s.interResRange {
+		res += s.interResRange[i].numCommitments()
+	}
+	for i, _ := range s.interSteps {
+		res += s.interSteps[i].numCommitments()
+	}
+	return res
 }

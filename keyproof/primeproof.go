@@ -159,35 +159,6 @@ func newPrimeProofStructure(name string, bitlen uint) primeProofStructure {
 	return structure
 }
 
-func (s *primeProofStructure) numRangeProofs() int {
-	res := 4
-	res += s.aExp.numRangeProofs()
-	res += s.anegExp.numRangeProofs()
-	return res
-}
-
-func (s *primeProofStructure) numCommitments() int {
-	res := 0
-	res += s.halfP.numCommitments()
-	res += s.halfPRep.numCommitments()
-	res += s.prea.numCommitments()
-	res += s.preaRange.numCommitments()
-	res += s.a.numCommitments()
-	res += s.aRange.numCommitments()
-	res += s.aneg.numCommitments()
-	res += s.anegRange.numCommitments()
-	res += 1
-	res += rangeProofIters
-	res += s.aRes.numCommitments()
-	res += s.anegRes.numCommitments()
-	res += s.anegResRep.numCommitments()
-	res += s.aPlus1ResRep.numCommitments()
-	res += s.aMin1ResRep.numCommitments()
-	res += s.aExp.numCommitments()
-	res += s.anegExp.numCommitments()
-	return res
-}
-
 func (s *primeProofStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, primeProofCommit) {
 	var commit primeProofCommit
 
@@ -580,4 +551,33 @@ func (s *primeProofStructure) generateCommitmentsFromProof(g group, list []*big.
 
 func (s *primeProofStructure) isTrue(secretdata secretLookup) bool {
 	return secretdata.getSecret(s.primeName).ProbablyPrime(40)
+}
+
+func (s *primeProofStructure) numRangeProofs() int {
+	res := 4
+	res += s.aExp.numRangeProofs()
+	res += s.anegExp.numRangeProofs()
+	return res
+}
+
+func (s *primeProofStructure) numCommitments() int {
+	res := 0
+	res += s.halfP.numCommitments()
+	res += s.halfPRep.numCommitments()
+	res += s.prea.numCommitments()
+	res += s.preaRange.numCommitments()
+	res += s.a.numCommitments()
+	res += s.aRange.numCommitments()
+	res += s.aneg.numCommitments()
+	res += s.anegRange.numCommitments()
+	res += 1
+	res += rangeProofIters
+	res += s.aRes.numCommitments()
+	res += s.anegRes.numCommitments()
+	res += s.anegResRep.numCommitments()
+	res += s.aPlus1ResRep.numCommitments()
+	res += s.aMin1ResRep.numCommitments()
+	res += s.aExp.numCommitments()
+	res += s.anegExp.numCommitments()
+	return res
 }

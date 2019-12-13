@@ -52,16 +52,6 @@ func newMultiplicationProofStructure(m1, m2, mod, result string, l uint) multipl
 	return structure
 }
 
-func (s *multiplicationProofStructure) numRangeProofs() int {
-	return 1
-}
-
-func (s *multiplicationProofStructure) numCommitments() int {
-	return s.multRepresentation.numCommitments() +
-		s.modMultPedersen.numCommitments() +
-		s.modMultRange.numCommitments()
-}
-
 func (s *multiplicationProofStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, multiplicationProofCommit) {
 	var commit multiplicationProofCommit
 
@@ -157,4 +147,14 @@ func (s *multiplicationProofStructure) isTrue(secretdata secretLookup) bool {
 		mod)
 
 	return mod.Cmp(big.NewInt(0)) == 0 && uint(div.BitLen()) <= s.modMultRange.l2
+}
+
+func (s *multiplicationProofStructure) numRangeProofs() int {
+	return 1
+}
+
+func (s *multiplicationProofStructure) numCommitments() int {
+	return s.multRepresentation.numCommitments() +
+		s.modMultPedersen.numCommitments() +
+		s.modMultRange.numCommitments()
 }
