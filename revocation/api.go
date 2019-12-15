@@ -64,14 +64,13 @@ choice was made instead that the issuer is always the revocation authority.
 package revocation
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/binary"
-	"encoding/gob"
 	"encoding/json"
 	"fmt"
 
+	"github.com/fxamacker/cbor"
 	"github.com/go-errors/errors"
 	"github.com/multiformats/go-multihash"
 	"github.com/privacybydesign/gabi/big"
@@ -280,17 +279,13 @@ func (update *Update) UnmarshalJSON(bts []byte) error {
 	return nil
 }
 
-func (update *Update) GobEncode() ([]byte, error) {
-	var buf bytes.Buffer
-	if err := gob.NewEncoder(&buf).Encode(update.compress()); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+func (update *Update) MarshalCBOR() ([]byte, error) {
+	return cbor.Marshal(update.compress(), cbor.EncOptions{})
 }
 
-func (update *Update) GobDecode(data []byte) error {
+func (update *Update) UnmarshalCBOR(data []byte) error {
 	var c compressedUpdate
-	if err := gob.NewDecoder(bytes.NewBuffer(data)).Decode(&c); err != nil {
+	if err := cbor.Unmarshal(data, &c); err != nil {
 		return err
 	}
 	update.uncompress(&c)
