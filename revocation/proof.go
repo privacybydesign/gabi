@@ -31,19 +31,40 @@ with the following differences.
    in our case everything happens within QR_n.
 2. The fifth relation C_e = g^e * h^r1 is replaced by the Idemix relation
    Z = A^epsilon * S^v * Ri^mi * Re^e which is already proved elsewhere by the calling code.
-3. The bounds A and B between which the witness e is chosen does not satisfy the relation
-   B*2^(k'+k''+1) < A^2 - 1, which again would only be relevant in the presence of a known prime
-   order group. Instead we take for B the maximum size such that e still fits in an IRMA attribute
-   in 1024 parameter settings and A one bit below. This ensures that with overwhelming probability
-   no e will be chosen twice.
+3. The interval [A, B] from which the witness e is chosen does not satisfy the relation
+   B*2^(k'+k''+1) < A^2 - 1, which is unnecessary: as long as A > 2, witnesses are unforgeable,
+   by a simple extension of the unforgeability proof of Theorem 3. See below.
+In the following we follow the lead of the other zero knowledge proofs implemented elsehwere in gabi.
 4. Secrets and randomizers within the zero-knowledge proofs are taken positive, instead of from
    symmetric intervals [-A,A].
-5. like the rest of IRMA but unlike the paper, we use addition in the zero-knowledge proof responses:
-   response = randomizer + challenge*secret.
+5. We use addition in the zero-knowledge proof responses: response = randomizer + challenge*secret.
 6. We use the Fiat-Shamir heuristic.
-7. Like in the rest of IRMA but unlike page 15 we include the challenge c in the proof, and then
-   verify by hashing the Schnorr commitments reconstructed from the proof, obtaining c' which must
-   equal c.
+7. We include the challenge c in the proof, and then verify by hashing the Schnorr commitments
+   reconstructed from the proof, obtaining c' which must then equal c.
+
+We claim, prove, and implement the following:
+Let [A, B] be the interval from which the number e from the witness (u,e) is chosen, as in the paper.
+Then witnesses are unforgeable as in theorem 3, if A > 2 and B < 2^(l_n-1) where l_n
+is the bitsize of the modulus n. In particular, it is not necesary to require A^2 > B
+like theorem 3 does.
+
+Proof: let (u')^(x') = u^x where x = x_1*...*x_n, and set d = gcd(x, x'), as in the proof.
+Suppose that d is not relatively prime to phi(n) = 4*p'*q'.
+Since d is the product of a subset of the primes x_1, ..., x_n and since x_i > 2 for all of these
+primes, by the unique factorization theorem there must be a j such that x_j = p' or x_j = q'.
+Thus since p = 2p'+1 and q = 2q'+1, the algorithm that for each i checks if 2x_i+1 divides n = pq
+will succeed in factoring n.
+The remainder of the proof which handles the other case, where d is relatively prime
+to phi(n), works as is.
+The claim "d = gcd(x,x') => (d = 1 or d = x_j)" in the middle of the proof, which requires
+A^2 > B for its proof, is thus not necessary to use in the proof of theorem 3.
+
+Thus for unforgeability the size of e is not relevant. However, e should be chosen from a set so large
+that it is overhelmingly unlikely that any one prime e is chosen twice. Combining the prime counting
+function with the birthday paradox and simplifying, one finds the following: if N witnesses are chosen
+from the set of primes smaller than B, then the collision chance P approximately equals
+   P = 1 - e^(-N^2 ln(B)/B).
+At n = 10^9 we have P = 1/2^128 if B = 2^195.
 */
 
 type (
@@ -88,16 +109,14 @@ var (
 	ErrorRevoked = errors.New("revoked")
 
 	parameters = struct {
-		attributeMinSize    uint     // minimum size in bits for prime e
-		attributeMaxSize    uint     // maximum size in bits for prime e
-		challengeLength     uint     // k'  = len(SHA256) = 256
-		zkStat              uint     // k'' = 128
-		twoZk, bTwoZk, a, b *big.Int // 2^(k'+k''), B*2^(k'+k''+1), 2^attributeMinSize, 2^attributeMaxSize
+		attributeSize    uint     // maximum size in bits for prime e
+		challengeLength  uint     // k'  = len(SHA256) = 256
+		zkStat           uint     // k'' = 128
+		twoZk, bTwoZk, b *big.Int // 2^(k'+k''), B*2^(k'+k''+1), 2^attributeSize
 	}{
-		attributeMinSize: 207,
-		attributeMaxSize: 208,
-		challengeLength:  256,
-		zkStat:           128,
+		attributeSize:   195,
+		challengeLength: 256,
+		zkStat:          128,
 	}
 
 	bigOne         = big.NewInt(1)
@@ -130,9 +149,8 @@ var (
 
 func init() {
 	// Compute derivative parameters
+	parameters.b = new(big.Int).Lsh(bigOne, parameters.attributeSize)
 	parameters.twoZk = new(big.Int).Lsh(bigOne, parameters.challengeLength+parameters.zkStat)
-	parameters.a = new(big.Int).Lsh(bigOne, parameters.attributeMinSize)
-	parameters.b = new(big.Int).Lsh(bigOne, parameters.attributeMaxSize)
 	parameters.bTwoZk = new(big.Int).Mul(parameters.b, new(big.Int).Mul(parameters.twoZk, big.NewInt(2)))
 }
 
@@ -146,7 +164,7 @@ func NewProofRandomizer() *big.Int {
 
 // RandomWitness returns a new random Witness valid against the specified Accumulator.
 func RandomWitness(sk *PrivateKey, acc *Accumulator) (*Witness, error) {
-	e, err := common.RandomPrimeInRange(rand.Reader, parameters.attributeMinSize, parameters.attributeMinSize)
+	e, err := common.RandomPrimeInRange(rand.Reader, 3, parameters.attributeSize)
 	if err != nil {
 		return nil, err
 	}
