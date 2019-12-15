@@ -88,8 +88,8 @@ func NewInt(x int64) *Int  { return Convert(big.NewInt(x)) }
 func Jacobi(x, y *Int) int { return big.Jacobi(x.Go(), y.Go()) }
 
 func (i *Int) Format(s fmt.State, ch rune)        { i.Go().Format(s, ch) }
-func (i *Int) GobDecode(buf []byte) error         { return i.Go().GobDecode(buf) }
-func (i *Int) GobEncode() ([]byte, error)         { return i.Go().GobEncode() }
+func (i *Int) UnmarshalBinary(buf []byte) error   { i.Go().SetBytes(buf); return nil }
+func (i *Int) MarshalBinary() ([]byte, error)     { return i.Go().Bytes(), nil }
 func (i *Int) Bit(j int) uint                     { return i.Go().Bit(j) }
 func (i *Int) Bytes() []byte                      { return i.Go().Bytes() }
 func (i *Int) BitLen() int                        { return i.Go().BitLen() }

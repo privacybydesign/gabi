@@ -6,18 +6,16 @@
 package signed
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
-	"encoding"
 	"encoding/asn1"
-	"encoding/gob"
 	"encoding/pem"
 	"math/big"
 
+	"github.com/fxamacker/cbor"
 	"github.com/go-errors/errors"
 )
 
@@ -125,19 +123,7 @@ func MarshalSign(sk *ecdsa.PrivateKey, message interface{}) (Message, error) {
 	var err error
 
 	// marshal message to []byte
-	var bts []byte
-	if m, ok := message.(encoding.BinaryMarshaler); ok {
-		bts, err = m.MarshalBinary()
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		var buf bytes.Buffer
-		if err = gob.NewEncoder(&buf).Encode(message); err != nil {
-			return nil, err
-		}
-		bts = buf.Bytes()
-	}
+	bts, err := cbor.Marshal(message, cbor.EncOptions{})
 
 	// sign message []byte
 	signature, err := Sign(sk, bts)
@@ -146,13 +132,7 @@ func MarshalSign(sk *ecdsa.PrivateKey, message interface{}) (Message, error) {
 	}
 
 	// encode and return message-signature pair
-	pair := &tuple{bts, signature}
-
-	var buf bytes.Buffer
-	if err = gob.NewEncoder(&buf).Encode(pair); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+	return cbor.Marshal(&tuple{bts, signature}, cbor.EncOptions{})
 }
 
 // UnmarshalVerify verifies the signature a Message created by MarshalSign, and unmarshals the
@@ -163,7 +143,7 @@ func UnmarshalVerify(pk *ecdsa.PublicKey, signed Message, dst interface{}) error
 
 	// decode message-signature pair
 	var tmp tuple
-	if err = gob.NewDecoder(bytes.NewBuffer(signed)).Decode(&tmp); err != nil {
+	if err = cbor.Unmarshal(signed, &tmp); err != nil {
 		return err
 	}
 
@@ -173,11 +153,5 @@ func UnmarshalVerify(pk *ecdsa.PublicKey, signed Message, dst interface{}) error
 	}
 
 	// unmarshal message []byte into receiver
-	if u, ok := dst.(encoding.BinaryUnmarshaler); ok {
-		return u.UnmarshalBinary(tmp.Msg)
-	}
-	if err = gob.NewDecoder(bytes.NewBuffer(tmp.Msg)).Decode(dst); err != nil {
-		return err
-	}
-	return nil
+	return cbor.Unmarshal(tmp.Msg, dst)
 }
