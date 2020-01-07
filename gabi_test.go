@@ -5,8 +5,6 @@
 package gabi
 
 import (
-	"encoding/json"
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -646,6 +644,9 @@ func TestRevocation(t *testing.T) {
 	acc, err := update.SignedAccumulator.UnmarshalVerify(revpk)
 
 	witness, err := testPrivK.RevocationGenerateWitness(acc)
+	witness.Accumulator = acc
+	witness.SignedAccumulator = update.SignedAccumulator
+
 	require.NoError(t, err)
 	require.Zero(t, new(big.Int).Exp(witness.U, witness.E, testPubK.N).Cmp(witness.Accumulator.Nu))
 
@@ -669,9 +670,9 @@ func TestRevocation(t *testing.T) {
 	challenge := ProofBuilderList{b}.Challenge(context, nonce, false)
 	proofd := b.CreateProof(challenge)
 
-	bts, err := json.MarshalIndent(proofd, "", "    ")
-	require.NoError(t, err)
-	fmt.Println(string(bts))
+	// bts, err := json.MarshalIndent(proofd, "", "    ")
+	// require.NoError(t, err)
+	// fmt.Println(string(bts))
 
 	require.True(t, ProofList{proofd}.Verify([]*PublicKey{testPubK}, context, nonce, false, nil))
 }
