@@ -328,7 +328,7 @@ func (update *Update) Verify(pk *PublicKey, index uint64) (*Accumulator, *big.In
 			}
 		}
 		if uint64(i)+startIndex != event.Index {
-			return nil, nil, errors.Errorf("event %d has wrong index, found %d, expected %d", event.Index, uint64(i)+startIndex)
+			return nil, nil, errors.Errorf("event %d has wrong index, found %d, expected %d", event, event.Index, uint64(i)+startIndex)
 		}
 		if uint64(i)+startIndex <= index {
 			continue
