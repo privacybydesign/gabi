@@ -722,6 +722,56 @@ func TestRevoked(t *testing.T) {
 	require.Nil(t, b)
 }
 
+func TestFullIssueAndShowWithRevocation(t *testing.T) {
+	context, _ := common.RandomBigInt(testPubK.Params.Lh)
+	nonce1, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
+	nonce2, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
+	secret, _ := common.RandomBigInt(testPubK.Params.Lm)
+
+	// Create accumulator and witness
+	require.NoError(t, GenerateRevocationKeypair(testPrivK, testPubK))
+	issuer := NewIssuer(testPrivK, testPubK, context)
+
+	revkey, err := testPrivK.RevocationKey()
+	require.NoError(t, err)
+	update, err := revocation.NewAccumulator(revkey)
+	require.NoError(t, err)
+
+	revpk, err := testPubK.RevocationKey()
+	require.NoError(t, err)
+	acc, err := update.SignedAccumulator.UnmarshalVerify(revpk)
+
+	witness, err := testPrivK.RevocationGenerateWitness(acc)
+	witness.Accumulator = acc
+	witness.SignedAccumulator = update.SignedAccumulator
+	require.Zero(t, new(big.Int).Exp(witness.U, witness.E, testPubK.N).Cmp(witness.Accumulator.Nu))
+
+	// Issuance
+	builder := NewCredentialBuilder(testPubK, context, secret, nonce2)
+	commitMsg := builder.CommitToSecretAndProve(nonce1)
+
+	sigMsg, err := issuer.IssueSignature(commitMsg.U, testAttributes1, witness, nonce2)
+	require.NoError(t, err, "Error in IssueSignature")
+	require.True(t, sigMsg.Signature.Verify(testPubK, testAttributes1, witness.E))
+
+	cred, err := builder.ConstructCredential(sigMsg, testAttributes1)
+	require.NoError(t, err, "Error in credential construction")
+	require.NoError(t, cred.NonrevPrepareCache())
+	require.NotNil(t, cred.NonRevocationWitness)
+
+	// Showing
+	n1, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
+	disclosed := []int{1, 2}
+
+	b, err := cred.CreateDisclosureProofBuilder(disclosed, true)
+	require.NoError(t, err)
+	challenge := ProofBuilderList{b}.Challenge(context, n1, true)
+	proofd := b.CreateProof(challenge)
+
+	require.True(t, ProofList{proofd}.Verify([]*PublicKey{testPubK}, context, n1, false, nil))
+	// assert.True(t, proof.Verify(testPubK, context, n1, false), "Proof of disclosure does not verify, whereas it should.")
+}
+
 // TODO: tests to add:
 // - Reading/writing key files
 // - Tests with expiration dates?
