@@ -631,7 +631,7 @@ func TestBigAttribute(t *testing.T) {
 	assert.True(t, proof.Verify(testPubK, context, nonce1, false), "Failed to verify ProofD with large undisclosed attribute")
 }
 
-func TestRevocation(t *testing.T) {
+func TestNotRevoked(t *testing.T) {
 	require.NoError(t, GenerateRevocationKeypair(testPrivK, testPubK))
 
 	revkey, err := testPrivK.RevocationKey()
@@ -675,6 +675,51 @@ func TestRevocation(t *testing.T) {
 	// fmt.Println(string(bts))
 
 	require.True(t, ProofList{proofd}.Verify([]*PublicKey{testPubK}, context, nonce, false, nil))
+}
+
+func TestRevoked(t *testing.T) {
+	require.NoError(t, GenerateRevocationKeypair(testPrivK, testPubK))
+
+	revkey, err := testPrivK.RevocationKey()
+	require.NoError(t, err)
+	update, err := revocation.NewAccumulator(revkey)
+	require.NoError(t, err)
+
+	revpk, err := testPubK.RevocationKey()
+	require.NoError(t, err)
+	acc, err := update.SignedAccumulator.UnmarshalVerify(revpk)
+	require.NoError(t, err)
+
+	witness, err := testPrivK.RevocationGenerateWitness(acc)
+	witness.SignedAccumulator = update.SignedAccumulator
+	witness.Accumulator = acc
+	require.NoError(t, err)
+	require.Zero(t, new(big.Int).Exp(witness.U, witness.E, testPubK.N).Cmp(witness.Accumulator.Nu))
+
+	signature, err := SignMessageBlock(testPrivK, testPubK, testAttributes1, witness.E)
+	require.NoError(t, err)
+	require.True(t, signature.Verify(testPubK, testAttributes1, witness.E))
+
+	update, err = acc.Remove(revkey, witness.E, update.Events[0])
+	require.NoError(t, err)
+
+	// update Accumulator to latest update (where the witness.E is removed)
+	acc, err = update.SignedAccumulator.UnmarshalVerify(revpk)
+	require.NoError(t, err)
+	witness.SignedAccumulator = update.SignedAccumulator
+	witness.Accumulator = acc
+
+	cred := &Credential{
+		Signature:            signature,
+		Pk:                   testPubK,
+		Attributes:           testAttributes1,
+		NonRevocationWitness: witness,
+	}
+	require.Error(t, cred.NonrevPrepareCache())
+
+	b, err := cred.CreateDisclosureProofBuilder([]int{1, 2}, true)
+	require.Error(t, err)
+	require.Nil(t, b)
 }
 
 // TODO: tests to add:
