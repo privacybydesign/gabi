@@ -170,7 +170,7 @@ func (privk *PrivateKey) RevocationSupported() bool {
 
 func GenerateRevocationKeypair(privk *PrivateKey, pubk *PublicKey) error {
 	if pubk.RevocationSupported() || privk.RevocationSupported() {
-		return errors.New("revocation parameters already present")
+		return nil
 	}
 
 	key, err := signed.GenerateKey()
