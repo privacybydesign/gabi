@@ -18,13 +18,8 @@ func NewKeyshareSecret() (*big.Int, error) {
 	return big.RandInt(rand.Reader, new(big.Int).Lsh(big.NewInt(1), DefaultSystemParameters[1024].Lm-1))
 }
 
-// Return a hidden copy of the keyshare's part of the 0-attribute
-func KeyshareExponentiatedSecret(secret *big.Int, key *PublicKey) *big.Int {
-	return new(big.Int).Exp(key.R[0], secret, key.N)
-}
-
 // Generate commitments for the keyshare server for given set of keys
-func NewKeyshareCommitments(keys []*PublicKey) (*big.Int, []*big.Int, error) {
+func NewKeyshareCommitments(secret *big.Int, keys []*PublicKey) (*big.Int, []*ProofPCommitment, error) {
 	// Determine required randomizer length
 	var lRand uint = 0
 	for _, key := range keys {
@@ -42,16 +37,23 @@ func NewKeyshareCommitments(keys []*PublicKey) (*big.Int, []*big.Int, error) {
 	}
 
 	// And exponentiate it with all keys
-	var exponentiatedCommitments []*big.Int
+	var exponentiatedCommitments []*ProofPCommitment
 	for _, key := range keys {
 		exponentiatedCommitments = append(exponentiatedCommitments,
-			new(big.Int).Exp(key.R[0], commit, key.N))
+			&ProofPCommitment{
+				P:       new(big.Int).Exp(key.R[0], secret, key.N),
+				Pcommit: new(big.Int).Exp(key.R[0], commit, key.N),
+			})
 	}
 
 	return commit, exponentiatedCommitments, nil
 }
 
 // Generate keyshare response for a given challenge and commit, given a secret
-func KeyshareResponse(secret, commit, challenge *big.Int) *big.Int {
-	return new(big.Int).Add(commit, new(big.Int).Mul(challenge, secret))
+func KeyshareResponse(secret, commit, challenge *big.Int, key *PublicKey) *ProofP {
+	return &ProofP{
+		P:         new(big.Int).Exp(key.R[0], secret, key.N),
+		C:         new(big.Int).Set(challenge),
+		SResponse: new(big.Int).Add(commit, new(big.Int).Mul(challenge, secret)),
+	}
 }
