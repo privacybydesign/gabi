@@ -9,6 +9,7 @@ import (
 
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
+	"github.com/privacybydesign/gabi/revocation"
 )
 
 // Issuer holds the key material for a credential issuer.
@@ -27,13 +28,19 @@ func NewIssuer(sk *PrivateKey, pk *PublicKey, context *big.Int) *Issuer {
 // the IssueCommitmentMessage provided. Note that this function DOES NOT check
 // the proofs containted in the IssueCommitmentMessage! That needs to be done at
 // a higher level!
-func (i *Issuer) IssueSignature(U *big.Int, attributes []*big.Int, nonrevAttr, nonce2 *big.Int) (*IssueSignatureMessage, error) {
-	signature, err := i.signCommitmentAndAttributes(U, attributes, nonrevAttr)
+func (i *Issuer) IssueSignature(U *big.Int, attributes []*big.Int, witness *revocation.Witness, nonce2 *big.Int) (*IssueSignatureMessage, error) {
+	var nonRevAttr *big.Int
+	if witness != nil {
+		nonRevAttr = witness.E
+	} else {
+		nonRevAttr = nil
+	}
+	signature, err := i.signCommitmentAndAttributes(U, attributes, nonRevAttr)
 	if err != nil {
 		return nil, err
 	}
 	proof := i.proveSignature(signature, nonce2)
-	return &IssueSignatureMessage{Signature: signature, Proof: proof}, nil
+	return &IssueSignatureMessage{Signature: signature, Proof: proof, NonRevocationWitness: witness}, nil
 }
 
 // signCommitmentAndAttributes produces a (partial) signature on the commitment
