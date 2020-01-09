@@ -2,6 +2,7 @@ package revocation
 
 import (
 	"crypto/rand"
+	"time"
 
 	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
@@ -265,10 +266,17 @@ func (w *Witness) Update(pk *PublicKey, update *Update) error {
 	if err != nil {
 		return err
 	}
-
+	if len(update.Events) == 0 {
+		w.Updated = time.Now()
+		return nil
+	}
 	startIndex, endIndex := update.Events[0].Index, acc.Index
-	if endIndex <= w.Accumulator.Index || startIndex > w.Accumulator.Index+1 {
-		return nil // update is already applied or too new
+	if startIndex > w.Accumulator.Index+1 {
+		return nil
+	}
+	if endIndex <= w.Accumulator.Index {
+		w.Updated = time.Now()
+		return nil
 	}
 	var a, b big.Int
 	if new(big.Int).GCD(&a, &b, w.E, prod).Cmp(bigOne) != 0 {
@@ -290,6 +298,7 @@ func (w *Witness) Update(pk *PublicKey, update *Update) error {
 	w.U = newU
 	w.SignedAccumulator = update.SignedAccumulator
 	w.Accumulator = acc
+	w.Updated = time.Now()
 
 	return nil
 }

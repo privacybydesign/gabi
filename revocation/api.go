@@ -69,6 +69,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/fxamacker/cbor"
 	"github.com/go-errors/errors"
@@ -124,8 +125,12 @@ type (
 		E *big.Int `json:"e"`
 		// Accumulator against which the witness verifies.
 		SignedAccumulator *SignedAccumulator `json:"sacc"`
-		// Accumulator value for local computations, extracted from verified SignedAccumulator
+		// Accumulator value for local computations, extracted from verified SignedAccumulator.
 		Accumulator *Accumulator `json:"-"`
+		// Update is set to now whenever the witness is updated, or when the RA indicates
+		// there are no new updates. Thus it specifies up to what time our nonrevocation
+		// guarantees lasts.
+		Updated time.Time
 
 		randomizer *big.Int
 	}
