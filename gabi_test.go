@@ -648,7 +648,7 @@ func TestNotRevoked(t *testing.T) {
 	witness.SignedAccumulator = update.SignedAccumulator
 
 	require.NoError(t, err)
-	require.Zero(t, new(big.Int).Exp(witness.U, witness.E, testPubK.N).Cmp(witness.Accumulator.Nu))
+	require.Zero(t, new(big.Int).Exp(witness.U, witness.E, testPubK.N).Cmp(acc.Nu))
 
 	signature, err := SignMessageBlock(testPrivK, testPubK, testAttributes1, witness.E)
 	require.NoError(t, err)
@@ -723,15 +723,9 @@ func TestRevoked(t *testing.T) {
 }
 
 func TestFullIssueAndShowWithRevocation(t *testing.T) {
-	context, _ := common.RandomBigInt(testPubK.Params.Lh)
-	nonce1, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
-	nonce2, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
-	secret, _ := common.RandomBigInt(testPubK.Params.Lm)
 
 	// Create accumulator and witness
 	require.NoError(t, GenerateRevocationKeypair(testPrivK, testPubK))
-	issuer := NewIssuer(testPrivK, testPubK, context)
-
 	revkey, err := testPrivK.RevocationKey()
 	require.NoError(t, err)
 	update, err := revocation.NewAccumulator(revkey)
@@ -747,29 +741,29 @@ func TestFullIssueAndShowWithRevocation(t *testing.T) {
 	require.Zero(t, new(big.Int).Exp(witness.U, witness.E, testPubK.N).Cmp(witness.Accumulator.Nu))
 
 	// Issuance
-	builder := NewCredentialBuilder(testPubK, context, secret, nonce2)
-	commitMsg := builder.CommitToSecretAndProve(nonce1)
+	context, _ := common.RandomBigInt(testPubK.Params.Lh)
+	nonce1, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
+	nonce2, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
+	secret, _ := common.RandomBigInt(testPubK.Params.Lm)
+	b := NewCredentialBuilder(testPubK, context, secret, nonce2)
+	commitMsg := b.CommitToSecretAndProve(nonce1)
 
-	sigMsg, err := issuer.IssueSignature(commitMsg.U, testAttributes1, witness, nonce2)
+	issuer := NewIssuer(testPrivK, testPubK, context)
+	msg, err := issuer.IssueSignature(commitMsg.U, testAttributes1, witness, nonce2)
 	require.NoError(t, err, "Error in IssueSignature")
-	require.True(t, sigMsg.Signature.Verify(testPubK, testAttributes1, witness.E))
-
-	cred, err := builder.ConstructCredential(sigMsg, testAttributes1)
-	require.NoError(t, err, "Error in credential construction")
-	require.NoError(t, cred.NonrevPrepareCache())
-	require.NotNil(t, cred.NonRevocationWitness)
+	cred, err := b.ConstructCredential(msg, testAttributes1)
+	require.NoError(t, err, "Error in ConstructCredential")
 
 	// Showing
 	n1, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
 	disclosed := []int{1, 2}
 
-	b, err := cred.CreateDisclosureProofBuilder(disclosed, true)
+	pb, err := cred.CreateDisclosureProofBuilder(disclosed, true)
 	require.NoError(t, err)
-	challenge := ProofBuilderList{b}.Challenge(context, n1, true)
-	proofd := b.CreateProof(challenge)
+	challenge := ProofBuilderList{pb}.Challenge(context, n1, true)
+	proofd := pb.CreateProof(challenge).(*ProofD)
 
-	require.True(t, ProofList{proofd}.Verify([]*PublicKey{testPubK}, context, n1, false, nil))
-	// assert.True(t, proof.Verify(testPubK, context, n1, false), "Proof of disclosure does not verify, whereas it should.")
+	assert.True(t, ProofList{proofd}.Verify([]*PublicKey{testPubK}, context, n1, false, nil))
 }
 
 // TODO: tests to add:
