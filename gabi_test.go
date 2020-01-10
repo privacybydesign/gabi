@@ -650,6 +650,7 @@ func TestNotRevoked(t *testing.T) {
 	require.NoError(t, err)
 	require.Zero(t, new(big.Int).Exp(witness.U, witness.E, testPubK.N).Cmp(acc.Nu))
 
+	// Issuance
 	signature, err := SignMessageBlock(testPrivK, testPubK, testAttributes1, witness.E)
 	require.NoError(t, err)
 	require.True(t, signature.Verify(testPubK, testAttributes1, witness.E))
@@ -662,6 +663,7 @@ func TestNotRevoked(t *testing.T) {
 	}
 	require.NoError(t, cred.NonrevPrepareCache())
 
+	// showing
 	context, _ := common.RandomBigInt(testPubK.Params.Lh)
 	nonce, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
 
@@ -695,7 +697,8 @@ func TestRevoked(t *testing.T) {
 	witness.Accumulator = acc
 	require.NoError(t, err)
 	require.Zero(t, new(big.Int).Exp(witness.U, witness.E, testPubK.N).Cmp(witness.Accumulator.Nu))
-
+	
+	// Issuance
 	signature, err := SignMessageBlock(testPrivK, testPubK, testAttributes1, witness.E)
 	require.NoError(t, err)
 	require.True(t, signature.Verify(testPubK, testAttributes1, witness.E))
@@ -755,15 +758,10 @@ func TestFullIssueAndShowWithRevocation(t *testing.T) {
 	require.NoError(t, err, "Error in ConstructCredential")
 
 	// Showing
-	n1, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
-	disclosed := []int{1, 2}
-
-	pb, err := cred.CreateDisclosureProofBuilder(disclosed, true)
-	require.NoError(t, err)
-	challenge := ProofBuilderList{pb}.Challenge(context, n1, true)
-	proofd := pb.CreateProof(challenge).(*ProofD)
-
-	assert.True(t, ProofList{proofd}.Verify([]*PublicKey{testPubK}, context, n1, false, nil))
+	nonce1s, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
+	disclosedAttributes := []int{1, 3}
+	proof := cred.CreateDisclosureProof(disclosedAttributes, context, nonce1s)
+	assert.True(t, proof.Verify(testPubK, context, nonce1s, false), "Proof of disclosure did not verify, whereas it should.")
 }
 
 // TODO: tests to add:
