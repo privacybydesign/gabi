@@ -632,7 +632,9 @@ func TestBigAttribute(t *testing.T) {
 }
 
 func TestNotRevoked(t *testing.T) {
-	require.NoError(t, GenerateRevocationKeypair(testPrivK, testPubK))
+	if !testPrivK.RevocationSupported() {
+		require.NoError(t, GenerateRevocationKeypair(testPrivK, testPubK))
+	}
 
 	revkey, err := testPrivK.RevocationKey()
 	require.NoError(t, err)
@@ -644,10 +646,9 @@ func TestNotRevoked(t *testing.T) {
 	acc, err := update.SignedAccumulator.UnmarshalVerify(revpk)
 
 	witness, err := testPrivK.RevocationGenerateWitness(acc)
+	require.NoError(t, err)
 	witness.Accumulator = acc
 	witness.SignedAccumulator = update.SignedAccumulator
-
-	require.NoError(t, err)
 	require.Zero(t, new(big.Int).Exp(witness.U, witness.E, testPubK.N).Cmp(acc.Nu))
 
 	// Issuance
@@ -671,16 +672,13 @@ func TestNotRevoked(t *testing.T) {
 	require.NoError(t, err)
 	challenge := ProofBuilderList{b}.Challenge(context, nonce, false)
 	proofd := b.CreateProof(challenge)
-
-	// bts, err := json.MarshalIndent(proofd, "", "    ")
-	// require.NoError(t, err)
-	// fmt.Println(string(bts))
-
 	require.True(t, ProofList{proofd}.Verify([]*PublicKey{testPubK}, context, nonce, false, nil))
 }
 
 func TestRevoked(t *testing.T) {
-	require.NoError(t, GenerateRevocationKeypair(testPrivK, testPubK))
+	if !testPrivK.RevocationSupported() {
+		require.NoError(t, GenerateRevocationKeypair(testPrivK, testPubK))
+	}
 
 	revkey, err := testPrivK.RevocationKey()
 	require.NoError(t, err)
@@ -693,11 +691,11 @@ func TestRevoked(t *testing.T) {
 	require.NoError(t, err)
 
 	witness, err := testPrivK.RevocationGenerateWitness(acc)
+	require.NoError(t, err)
 	witness.SignedAccumulator = update.SignedAccumulator
 	witness.Accumulator = acc
-	require.NoError(t, err)
 	require.Zero(t, new(big.Int).Exp(witness.U, witness.E, testPubK.N).Cmp(witness.Accumulator.Nu))
-	
+
 	// Issuance
 	signature, err := SignMessageBlock(testPrivK, testPubK, testAttributes1, witness.E)
 	require.NoError(t, err)
@@ -706,29 +704,16 @@ func TestRevoked(t *testing.T) {
 	update, err = acc.Remove(revkey, witness.E, update.Events[0])
 	require.NoError(t, err)
 
-	// update Accumulator to latest update (where the witness.E is removed)
-	acc, err = update.SignedAccumulator.UnmarshalVerify(revpk)
-	require.NoError(t, err)
-	witness.SignedAccumulator = update.SignedAccumulator
-	witness.Accumulator = acc
-
-	cred := &Credential{
-		Signature:            signature,
-		Pk:                   testPubK,
-		Attributes:           testAttributes1,
-		NonRevocationWitness: witness,
-	}
-	require.Error(t, cred.NonrevPrepareCache())
-
-	b, err := cred.CreateDisclosureProofBuilder([]int{1, 2}, true)
-	require.Error(t, err)
-	require.Nil(t, b)
+	// Try to update Accumulator to latest update (where the witness.E is removed)
+	require.Equal(t, revocation.ErrorRevoked, witness.Update(revpk, update))
 }
 
 func TestFullIssueAndShowWithRevocation(t *testing.T) {
+	if !testPrivK.RevocationSupported() {
+		require.NoError(t, GenerateRevocationKeypair(testPrivK, testPubK))
+	}
 
 	// Create accumulator and witness
-	require.NoError(t, GenerateRevocationKeypair(testPrivK, testPubK))
 	revkey, err := testPrivK.RevocationKey()
 	require.NoError(t, err)
 	update, err := revocation.NewAccumulator(revkey)
@@ -739,6 +724,7 @@ func TestFullIssueAndShowWithRevocation(t *testing.T) {
 	acc, err := update.SignedAccumulator.UnmarshalVerify(revpk)
 
 	witness, err := testPrivK.RevocationGenerateWitness(acc)
+	require.NoError(t, err)
 	witness.Accumulator = acc
 	witness.SignedAccumulator = update.SignedAccumulator
 	require.Zero(t, new(big.Int).Exp(witness.U, witness.E, testPubK.N).Cmp(witness.Accumulator.Nu))
@@ -760,8 +746,12 @@ func TestFullIssueAndShowWithRevocation(t *testing.T) {
 	// Showing
 	nonce1s, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
 	disclosedAttributes := []int{1, 3}
-	proof := cred.CreateDisclosureProof(disclosedAttributes, context, nonce1s)
-	assert.True(t, proof.Verify(testPubK, context, nonce1s, false), "Proof of disclosure did not verify, whereas it should.")
+	builder, err := cred.CreateDisclosureProofBuilder(disclosedAttributes, false)
+	require.NoError(t, err)
+	challenge := ProofBuilderList{builder}.Challenge(context, nonce1s, false)
+	proof := builder.CreateProof(challenge)
+
+	assert.True(t, proof.(*ProofD).Verify(testPubK, context, nonce1s, false), "Proof of disclosure did not verify, whereas it should.")
 }
 
 // TODO: tests to add:

@@ -1,9 +1,7 @@
 package revocation
 
 import (
-	"fmt"
 	"testing"
-	"time"
 
 	"github.com/privacybydesign/gabi/keyproof"
 	"github.com/privacybydesign/gabi/signed"
@@ -64,9 +62,9 @@ func test(t *testing.T, grp qrGroup, p, q *big.Int, valid bool) bool {
 	privKey := PrivateKey{P: p, Q: q, N: grp.N, ECDSA: privECDSAKey}
 	require.NoError(t, err)
 
-	acc := &accumulator{Nu: common.RandomQR(grp.N)}
+	acc := &Accumulator{Nu: common.RandomQR(grp.N)}
 
-	witn, err := RandomWitness(&privKey, (*Accumulator)(acc))
+	witn, err := RandomWitness(&privKey, acc)
 	require.NoError(t, err)
 	require.NoError(t, err, "failed to generate non-revocation witness")
 	if !valid {
@@ -74,24 +72,16 @@ func test(t *testing.T, grp qrGroup, p, q *big.Int, valid bool) bool {
 	}
 
 	witn.randomizer = NewProofRandomizer()
-	witn.Accumulator = (*Accumulator)(acc)
-	bases := keyproof.NewBaseMerge(&grp, acc)
+	witn.Accumulator = acc
+	bases := keyproof.NewBaseMerge(&grp, (*accumulator)(acc))
 	require.Equal(t, valid, proofstructure.isTrue((*witness)(witn), acc.Nu, grp.N), "statement to prove ")
-
-	start := time.Now()
 
 	list, commit := proofstructure.generateCommitmentsFromSecrets(&grp, []*big.Int{}, &bases, (*witness)(witn))
 	challenge := common.HashCommit(list, false)
-	sacc, err := ((*Accumulator)(acc)).Sign(&privKey)
+	sacc, err := acc.Sign(&privKey)
 	require.NoError(t, err)
 	prf := (*ProofCommit)(&commit).BuildProof(challenge)
 	prf.SignedAccumulator = sacc
-	fmt.Println(time.Now().Sub(start))
 
-	// bts, err := json.MarshalIndent(prf, "", "    ")
-	// require.NoError(t, err, "failed to serialize prf")
-	// fmt.Println(string(bts))
-
-	defer fmt.Println(time.Now().Sub(start))
 	return (*proof)(prf).verify(&PublicKey{Group: (*QrGroup)(&grp), Counter: privKey.Counter, ECDSA: &privECDSAKey.PublicKey})
 }
