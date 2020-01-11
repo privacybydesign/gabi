@@ -32,8 +32,6 @@ func (i *Issuer) IssueSignature(U *big.Int, attributes []*big.Int, witness *revo
 	var nonRevAttr *big.Int
 	if witness != nil {
 		nonRevAttr = witness.E
-	} else {
-		nonRevAttr = nil
 	}
 	signature, err := i.signCommitmentAndAttributes(U, attributes, nonRevAttr)
 	if err != nil {

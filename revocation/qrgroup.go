@@ -40,10 +40,10 @@ func (g *qrGroup) GetBase(name string) *big.Int {
 	}
 }
 
-func (g *qrGroup) Exp(ret *big.Int, name string, exp, P *big.Int) bool {
+func (g *qrGroup) Exp(ret *big.Int, name string, exp, n *big.Int) bool {
 	switch name {
 	case "g", "h":
-		ret.Exp(g.GetBase(name), exp, P)
+		ret.Exp(g.GetBase(name), exp, n)
 		return true
 	}
 	return false
