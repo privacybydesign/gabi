@@ -344,7 +344,8 @@ func TestShowingProof(t *testing.T) {
 	context, _ := common.RandomBigInt(testPubK.Params.Lh)
 	nonce1, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
 
-	proof := cred.CreateDisclosureProof(disclosed, context, nonce1)
+	proof, err := cred.CreateDisclosureProof(disclosed, false, context, nonce1)
+	require.NoError(t, err)
 
 	assert.True(t, proof.Verify(testPubK, context, nonce1, false), "Proof of disclosure did not verify, whereas it should.")
 }
@@ -425,7 +426,8 @@ func TestFullIssuanceAndShowing(t *testing.T) {
 	n1, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
 	disclosed := []int{1, 2}
 
-	proof := cred.CreateDisclosureProof(disclosed, context, n1)
+	proof, err := cred.CreateDisclosureProof(disclosed, false, context, n1)
+	require.NoError(t, err)
 	assert.True(t, proof.Verify(testPubK, context, n1, false), "Proof of disclosure does not verify, whereas it should.")
 }
 
@@ -468,7 +470,8 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 	// Showing
 	nonce1s, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
 	disclosedAttributes := []int{1, 3}
-	proof := cred2.CreateDisclosureProof(disclosedAttributes, context, nonce1s)
+	proof, err := cred2.CreateDisclosureProof(disclosedAttributes, false, context, nonce1s)
+	require.NoError(t, err)
 	assert.True(t, proof.Verify(testPubK, context, nonce1s, false), "Proof of disclosure did not verify, whereas it should.")
 }
 
@@ -514,10 +517,10 @@ func TestGenerateKeyPair(t *testing.T) {
 	}
 
 	// Generate one key of the smallest supported sizes
-	privk, pubk, err := GenerateKeyPair(DefaultSystemParameters[1024], 6, 0, time.Now().AddDate(1, 0, 0))
-	assert.NoError(t, err, "Error generating key pair")
-	testPrivateKey(t, privk, true)
-	testPublicKey(t, pubk, privk)
+	//privk, pubk, err := GenerateKeyPair(DefaultSystemParameters[1024], 6, 0, time.Now().AddDate(1, 0, 0))
+	//assert.NoError(t, err, "Error generating key pair")
+	//testPrivateKey(t, privk, true)
+	//testPublicKey(t, pubk, privk)
 }
 
 func genRandomIssuer(t *testing.T, context *big.Int) *Issuer {
@@ -577,7 +580,8 @@ func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 	// Showing
 	nonce1s, _ := common.RandomBigInt(issuer2.Pk.Params.Lstatzk)
 	disclosedAttributes := []int{1, 3}
-	proof := cred2.CreateDisclosureProof(disclosedAttributes, context, nonce1s)
+	proof, err := cred2.CreateDisclosureProof(disclosedAttributes, false, context, nonce1s)
+	require.NoError(t, err)
 	assert.True(t, proof.Verify(issuer2.Pk, context, nonce1s, false), "Proof of disclosure did not verify, whereas it should.")
 }
 
@@ -624,10 +628,12 @@ func TestBigAttribute(t *testing.T) {
 	nonce1, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
 
 	// Don't disclose large attribute
-	proof := cred.CreateDisclosureProof([]int{1}, context, nonce1)
+	proof, err := cred.CreateDisclosureProof([]int{1}, false, context, nonce1)
+	require.NoError(t, err)
 	assert.True(t, proof.Verify(testPubK, context, nonce1, false), "Failed to verify ProofD with large undisclosed attribute")
 	// Disclose large attribute
-	proof = cred.CreateDisclosureProof([]int{2}, context, nonce1)
+	proof, err = cred.CreateDisclosureProof([]int{2}, false, context, nonce1)
+	require.NoError(t, err)
 	assert.True(t, proof.Verify(testPubK, context, nonce1, false), "Failed to verify ProofD with large undisclosed attribute")
 }
 
@@ -668,10 +674,8 @@ func TestNotRevoked(t *testing.T) {
 	context, _ := common.RandomBigInt(testPubK.Params.Lh)
 	nonce, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
 
-	b, err := cred.CreateDisclosureProofBuilder([]int{1, 2}, true)
+	proofd, err := cred.CreateDisclosureProof([]int{1, 2}, true, context, nonce)
 	require.NoError(t, err)
-	challenge := ProofBuilderList{b}.Challenge(context, nonce, false)
-	proofd := b.CreateProof(challenge)
 	require.True(t, ProofList{proofd}.Verify([]*PublicKey{testPubK}, context, nonce, false, nil))
 }
 
@@ -746,12 +750,9 @@ func TestFullIssueAndShowWithRevocation(t *testing.T) {
 	// Showing
 	nonce1s, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
 	disclosedAttributes := []int{1, 3}
-	builder, err := cred.CreateDisclosureProofBuilder(disclosedAttributes, false)
+	proofd, err := cred.CreateDisclosureProof(disclosedAttributes, true, context, nonce1s)
 	require.NoError(t, err)
-	challenge := ProofBuilderList{builder}.Challenge(context, nonce1s, false)
-	proof := builder.CreateProof(challenge)
-
-	assert.True(t, proof.(*ProofD).Verify(testPubK, context, nonce1s, false), "Proof of disclosure did not verify, whereas it should.")
+	assert.True(t, proofd.Verify(testPubK, context, nonce1s, false), "Proof of disclosure did not verify, whereas it should.")
 }
 
 // TODO: tests to add:

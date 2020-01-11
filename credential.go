@@ -95,55 +95,13 @@ func getUndisclosedAttributes(disclosedAttributes []int, numAttributes int) []in
 
 // CreateDisclosureProof creates a disclosure proof (ProofD) voor the provided
 // indices of disclosed attributes.
-func (ic *Credential) CreateDisclosureProof(disclosedAttributes []int, context, nonce1 *big.Int) *ProofD {
-	undisclosedAttributes := getUndisclosedAttributes(disclosedAttributes, len(ic.Attributes))
-
-	randSig := ic.Signature.Randomize(ic.Pk)
-
-	eCommit, _ := common.RandomBigInt(ic.Pk.Params.LeCommit)
-	vCommit, _ := common.RandomBigInt(ic.Pk.Params.LvCommit)
-
-	aCommits := make(map[int]*big.Int)
-	for _, v := range undisclosedAttributes {
-		aCommits[v], _ = common.RandomBigInt(ic.Pk.Params.LmCommit)
+func (ic *Credential) CreateDisclosureProof(disclosedAttributes []int, nonrev bool, context, nonce1 *big.Int) (*ProofD, error) {
+	builder, err := ic.CreateDisclosureProofBuilder(disclosedAttributes, false)
+	if err != nil {
+		return nil, err
 	}
-
-	// Z = A^{e_commit} * S^{v_commit}
-	//     PROD_{i \in undisclosed} ( R_i^{a_commits{i}} )
-	Ae := common.ModPow(randSig.A, eCommit, ic.Pk.N)
-	Sv := common.ModPow(ic.Pk.S, vCommit, ic.Pk.N)
-	Z := new(big.Int).Mul(Ae, Sv)
-	Z.Mod(Z, ic.Pk.N)
-
-	for _, v := range undisclosedAttributes {
-		Z.Mul(Z, common.ModPow(ic.Pk.R[v], aCommits[v], ic.Pk.N))
-		Z.Mod(Z, ic.Pk.N)
-	}
-
-	c := common.HashCommit([]*big.Int{context, randSig.A, Z, nonce1}, false)
-
-	ePrime := new(big.Int).Sub(randSig.E, new(big.Int).Lsh(big.NewInt(1), ic.Pk.Params.Le-1))
-	eResponse := new(big.Int).Mul(c, ePrime)
-	eResponse.Add(eCommit, eResponse)
-	vResponse := new(big.Int).Mul(c, randSig.V)
-	vResponse.Add(vCommit, vResponse)
-
-	aResponses := make(map[int]*big.Int)
-	for _, v := range undisclosedAttributes {
-		exp := ic.Attributes[v]
-		if exp.BitLen() > int(ic.Pk.Params.Lm) {
-			exp = common.IntHashSha256(exp.Bytes())
-		}
-		t := new(big.Int).Mul(c, exp)
-		aResponses[v] = t.Add(aCommits[v], t)
-	}
-
-	aDisclosed := make(map[int]*big.Int)
-	for _, v := range disclosedAttributes {
-		aDisclosed[v] = ic.Attributes[v]
-	}
-
-	return &ProofD{C: c, A: randSig.A, EResponse: eResponse, VResponse: vResponse, AResponses: aResponses, ADisclosed: aDisclosed}
+	challenge := ProofBuilderList{builder}.Challenge(context, nonce1, false)
+	return builder.CreateProof(challenge).(*ProofD), nil
 }
 
 // CreateDisclosureProofBuilder produces a DisclosureProofBuilder, an object to
