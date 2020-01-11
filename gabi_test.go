@@ -637,7 +637,7 @@ func TestBigAttribute(t *testing.T) {
 	assert.True(t, proof.Verify(testPubK, context, nonce1, false), "Failed to verify ProofD with large undisclosed attribute")
 }
 
-func TestNotRevoked(t *testing.T) {
+func setupRevocation(t *testing.T) (*revocation.PrivateKey, *revocation.PublicKey, *revocation.Witness, *revocation.Update, *revocation.Accumulator) {
 	if !testPrivK.RevocationSupported() {
 		require.NoError(t, GenerateRevocationKeypair(testPrivK, testPubK))
 	}
@@ -656,6 +656,12 @@ func TestNotRevoked(t *testing.T) {
 	witness.Accumulator = acc
 	witness.SignedAccumulator = update.SignedAccumulator
 	require.Zero(t, new(big.Int).Exp(witness.U, witness.E, testPubK.N).Cmp(acc.Nu))
+
+	return revkey, revpk, witness, update, acc
+}
+
+func TestNotRevoked(t *testing.T) {
+	_, _, witness, _, _ := setupRevocation(t)
 
 	// Issuance
 	signature, err := SignMessageBlock(testPrivK, testPubK, testAttributes1, witness.E)
@@ -680,25 +686,7 @@ func TestNotRevoked(t *testing.T) {
 }
 
 func TestRevoked(t *testing.T) {
-	if !testPrivK.RevocationSupported() {
-		require.NoError(t, GenerateRevocationKeypair(testPrivK, testPubK))
-	}
-
-	revkey, err := testPrivK.RevocationKey()
-	require.NoError(t, err)
-	update, err := revocation.NewAccumulator(revkey)
-	require.NoError(t, err)
-
-	revpk, err := testPubK.RevocationKey()
-	require.NoError(t, err)
-	acc, err := update.SignedAccumulator.UnmarshalVerify(revpk)
-	require.NoError(t, err)
-
-	witness, err := testPrivK.RevocationGenerateWitness(acc)
-	require.NoError(t, err)
-	witness.SignedAccumulator = update.SignedAccumulator
-	witness.Accumulator = acc
-	require.Zero(t, new(big.Int).Exp(witness.U, witness.E, testPubK.N).Cmp(witness.Accumulator.Nu))
+	revkey, revpk, witness, update, acc := setupRevocation(t)
 
 	// Issuance
 	signature, err := SignMessageBlock(testPrivK, testPubK, testAttributes1, witness.E)
@@ -713,25 +701,7 @@ func TestRevoked(t *testing.T) {
 }
 
 func TestFullIssueAndShowWithRevocation(t *testing.T) {
-	if !testPrivK.RevocationSupported() {
-		require.NoError(t, GenerateRevocationKeypair(testPrivK, testPubK))
-	}
-
-	// Create accumulator and witness
-	revkey, err := testPrivK.RevocationKey()
-	require.NoError(t, err)
-	update, err := revocation.NewAccumulator(revkey)
-	require.NoError(t, err)
-
-	revpk, err := testPubK.RevocationKey()
-	require.NoError(t, err)
-	acc, err := update.SignedAccumulator.UnmarshalVerify(revpk)
-
-	witness, err := testPrivK.RevocationGenerateWitness(acc)
-	require.NoError(t, err)
-	witness.Accumulator = acc
-	witness.SignedAccumulator = update.SignedAccumulator
-	require.Zero(t, new(big.Int).Exp(witness.U, witness.E, testPubK.N).Cmp(witness.Accumulator.Nu))
+	_, _, witness, _, _ := setupRevocation(t)
 
 	// Issuance
 	context, _ := common.RandomBigInt(testPubK.Params.Lh)
