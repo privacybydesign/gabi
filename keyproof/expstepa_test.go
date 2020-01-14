@@ -19,9 +19,9 @@ func TestExpStepAFlow(t *testing.T) {
 	prePedersens := newPedersenStructure("pre")
 	postPedersens := newPedersenStructure("post")
 
-	_, bitPedersen := bitPedersens.generateCommitmentsFromSecrets(g, nil, big.NewInt(0))
-	_, prePedersen := prePedersens.generateCommitmentsFromSecrets(g, nil, big.NewInt(5))
-	_, postPedersen := postPedersens.generateCommitmentsFromSecrets(g, nil, big.NewInt(5))
+	_, bitPedersen := bitPedersens.commitmentsFromSecrets(g, nil, big.NewInt(0))
+	_, prePedersen := prePedersens.commitmentsFromSecrets(g, nil, big.NewInt(5))
+	_, postPedersen := postPedersens.commitmentsFromSecrets(g, nil, big.NewInt(5))
 
 	bases := newBaseMerge(&g, &bitPedersen, &prePedersen, &postPedersen)
 	secrets := newSecretMerge(&bitPedersen, &prePedersen, &postPedersen)
@@ -30,7 +30,7 @@ func TestExpStepAFlow(t *testing.T) {
 
 	assert.True(t, s.isTrue(&secrets), "Statement validity rejected")
 
-	listSecrets, commit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &bases, &secrets)
+	listSecrets, commit := s.commitmentsFromSecrets(g, []*big.Int{}, &bases, &secrets)
 
 	assert.Equal(t, len(listSecrets), s.numCommitments(), "NumCommitments is off")
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
@@ -49,7 +49,7 @@ func TestExpStepAFlow(t *testing.T) {
 
 	proofBases := newBaseMerge(&g, &bitProof, &preProof, &postProof)
 
-	listProof := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &proofBases, proof)
+	listProof := s.commitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &proofBases, proof)
 
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
 	assert.Equal(t, listSecrets, listProof, "Commitment lists differ.")

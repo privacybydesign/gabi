@@ -79,7 +79,6 @@ func newBaseMerge(parts ...baseLookup) baseMerge {
 	result.parts = parts
 	if len(parts) > 16 {
 		result.lut = make(map[string]baseLookup)
-
 	}
 	for _, part := range parts {
 		partNames := part.names()

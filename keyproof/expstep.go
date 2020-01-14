@@ -34,36 +34,36 @@ type (
 )
 
 func newExpStepStructure(bitname, prename, postname, mulname, modname string, bitlen uint) expStepStructure {
-	var structure expStepStructure
-	structure.bitname = bitname
-	structure.stepa = newExpStepAStructure(bitname, prename, postname)
-	structure.stepb = newExpStepBStructure(bitname, prename, postname, mulname, modname, bitlen)
-	return structure
+	return expStepStructure{
+		bitname: bitname,
+		stepa:   newExpStepAStructure(bitname, prename, postname),
+		stepb:   newExpStepBStructure(bitname, prename, postname, mulname, modname, bitlen),
+	}
 }
 
-func (s *expStepStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, expStepCommit) {
+func (s *expStepStructure) commitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, expStepCommit) {
 	var commit expStepCommit
 
 	if secretdata.secret(s.bitname).Cmp(big.NewInt(0)) == 0 {
 		commit.isTypeA = true
 
 		// prove a
-		list, commit.acommit = s.stepa.generateCommitmentsFromSecrets(g, list, bases, secretdata)
+		list, commit.acommit = s.stepa.commitmentsFromSecrets(g, list, bases, secretdata)
 
 		// fake b
 		commit.bchallenge = common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), 256))
 		commit.bproof = s.stepb.fakeProof(g)
-		list = s.stepb.generateCommitmentsFromProof(g, list, commit.bchallenge, bases, commit.bproof)
+		list = s.stepb.commitmentsFromProof(g, list, commit.bchallenge, bases, commit.bproof)
 	} else {
 		commit.isTypeA = false
 
 		// fake a
 		commit.achallenge = common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), 256))
 		commit.aproof = s.stepa.fakeProof(g)
-		list = s.stepa.generateCommitmentsFromProof(g, list, commit.achallenge, bases, commit.aproof)
+		list = s.stepa.commitmentsFromProof(g, list, commit.achallenge, bases, commit.aproof)
 
 		// prove b
-		list, commit.bcommit = s.stepb.generateCommitmentsFromSecrets(g, list, bases, secretdata)
+		list, commit.bcommit = s.stepb.commitmentsFromSecrets(g, list, bases, secretdata)
 	}
 
 	return list, commit
@@ -116,9 +116,9 @@ func (s *expStepStructure) verifyProofStructure(challenge *big.Int, proof ExpSte
 	return s.stepa.verifyProofStructure(proof.Aproof) && s.stepb.verifyProofStructure(proof.Bproof)
 }
 
-func (s *expStepStructure) generateCommitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases baseLookup, proof ExpStepProof) []*big.Int {
-	list = s.stepa.generateCommitmentsFromProof(g, list, proof.Achallenge, bases, proof.Aproof)
-	list = s.stepb.generateCommitmentsFromProof(g, list, proof.Bchallenge, bases, proof.Bproof)
+func (s *expStepStructure) commitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases baseLookup, proof ExpStepProof) []*big.Int {
+	list = s.stepa.commitmentsFromProof(g, list, proof.Achallenge, bases, proof.Aproof)
+	list = s.stepb.commitmentsFromProof(g, list, proof.Bchallenge, bases, proof.Bproof)
 	return list
 }
 

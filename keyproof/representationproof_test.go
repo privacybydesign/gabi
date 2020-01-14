@@ -90,13 +90,13 @@ func TestRepresentationProofBasics(t *testing.T) {
 
 	bases := newBaseMerge(&g, &commit)
 
-	listSecrets := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &bases, &secret)
+	listSecrets := s.commitmentsFromSecrets(g, []*big.Int{}, &bases, &secret)
 
 	assert.Equal(t, len(listSecrets), s.numCommitments(), "NumCommitments is off")
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
 	Follower.(*TestFollower).count = 0
 
-	listProofs := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(1), &bases, &proof)
+	listProofs := s.commitmentsFromProof(g, []*big.Int{}, big.NewInt(1), &bases, &proof)
 
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
 	assert.True(t, s.isTrue(g, &bases, &secret), "Incorrect rejection of truth")
@@ -145,13 +145,13 @@ func TestRepresentationProofComplex(t *testing.T) {
 
 	bases := newBaseMerge(&g, &commit)
 
-	listSecrets := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &bases, &secret)
+	listSecrets := s.commitmentsFromSecrets(g, []*big.Int{}, &bases, &secret)
 
 	assert.Equal(t, len(listSecrets), s.numCommitments(), "NumCommitments is off")
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
 	Follower.(*TestFollower).count = 0
 
-	listProofs := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(2), &bases, &proof)
+	listProofs := s.commitmentsFromProof(g, []*big.Int{}, big.NewInt(2), &bases, &proof)
 
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
 	assert.True(t, s.isTrue(g, &bases, &secret), "Incorrect rejection of truth")

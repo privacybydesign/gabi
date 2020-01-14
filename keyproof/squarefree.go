@@ -1,7 +1,9 @@
 package keyproof
 
-import "github.com/privacybydesign/gabi/internal/common"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/internal/common"
+)
 
 type SquareFreeProof struct {
 	Responses []*big.Int
@@ -16,7 +18,6 @@ func squareFreeBuildProof(N *big.Int, phiN *big.Int, challenge *big.Int, index *
 
 	// Generate the challenges and responses
 	var proof SquareFreeProof
-	proof.Responses = []*big.Int{}
 	for i := 0; i < squareFreeIters; i++ {
 		// Generate the challenge
 		curc := common.GetHashNumber(challenge, index, i, uint(N.BitLen()))

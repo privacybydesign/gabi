@@ -25,10 +25,10 @@ func TestMultiplicationProofFlow(t *testing.T) {
 	mods := newPedersenStructure("mod")
 	results := newPedersenStructure("result")
 
-	_, m1 := m1s.generateCommitmentsFromSecrets(g, nil, big.NewInt(a))
-	_, m2 := m2s.generateCommitmentsFromSecrets(g, nil, big.NewInt(b))
-	_, mod := mods.generateCommitmentsFromSecrets(g, nil, big.NewInt(n))
-	_, result := results.generateCommitmentsFromSecrets(g, nil, big.NewInt(d))
+	_, m1 := m1s.commitmentsFromSecrets(g, nil, big.NewInt(a))
+	_, m2 := m2s.commitmentsFromSecrets(g, nil, big.NewInt(b))
+	_, mod := mods.commitmentsFromSecrets(g, nil, big.NewInt(n))
+	_, result := results.commitmentsFromSecrets(g, nil, big.NewInt(d))
 
 	bases := newBaseMerge(&g, &m1, &m2, &mod, &result)
 	secrets := newSecretMerge(&m1, &m2, &mod, &result)
@@ -36,7 +36,7 @@ func TestMultiplicationProofFlow(t *testing.T) {
 	s := newMultiplicationProofStructure("m1", "m2", "mod", "result", 3)
 	assert.True(t, s.isTrue(&secrets), "Incorrectly assessed proof setup as incorrect.")
 
-	listSecrets, commit := s.generateCommitmentsFromSecrets(g, nil, &bases, &secrets)
+	listSecrets, commit := s.commitmentsFromSecrets(g, nil, &bases, &secrets)
 
 	assert.Equal(t, len(listSecrets), s.numCommitments(), "NumCommitments is off")
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
@@ -57,7 +57,7 @@ func TestMultiplicationProofFlow(t *testing.T) {
 
 	require.True(t, s.verifyProofStructure(proof), "Proof structure marked as invalid.")
 
-	listProof := s.generateCommitmentsFromProof(g, nil, big.NewInt(12345), &basesProof, &proofdata, proof)
+	listProof := s.commitmentsFromProof(g, nil, big.NewInt(12345), &basesProof, &proofdata, proof)
 
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
 	Follower.(*TestFollower).count = 0

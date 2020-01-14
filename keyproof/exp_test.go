@@ -25,10 +25,10 @@ func TestExpProofFlow(t *testing.T) {
 	nPedersens := newPedersenStructure("n")
 	rPedersens := newPedersenStructure("r")
 
-	_, aPedersen := aPedersens.generateCommitmentsFromSecrets(g, nil, big.NewInt(a))
-	_, bPedersen := bPedersens.generateCommitmentsFromSecrets(g, nil, big.NewInt(b))
-	_, nPedersen := nPedersens.generateCommitmentsFromSecrets(g, nil, big.NewInt(n))
-	_, rPedersen := rPedersens.generateCommitmentsFromSecrets(g, nil, big.NewInt(r))
+	_, aPedersen := aPedersens.commitmentsFromSecrets(g, nil, big.NewInt(a))
+	_, bPedersen := bPedersens.commitmentsFromSecrets(g, nil, big.NewInt(b))
+	_, nPedersen := nPedersens.commitmentsFromSecrets(g, nil, big.NewInt(n))
+	_, rPedersen := rPedersens.commitmentsFromSecrets(g, nil, big.NewInt(r))
 
 	bases := newBaseMerge(&g, &aPedersen, &bPedersen, &nPedersen, &rPedersen)
 	secrets := newSecretMerge(&aPedersen, &bPedersen, &nPedersen, &rPedersen)
@@ -37,7 +37,7 @@ func TestExpProofFlow(t *testing.T) {
 
 	assert.True(t, s.isTrue(&secrets), "proof premise deemed false")
 
-	listSecrets, commit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &bases, &secrets)
+	listSecrets, commit := s.commitmentsFromSecrets(g, []*big.Int{}, &bases, &secrets)
 
 	assert.Equal(t, len(listSecrets), s.numCommitments(), "NumCommitments is off")
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
@@ -59,7 +59,7 @@ func TestExpProofFlow(t *testing.T) {
 	proofBases := newBaseMerge(&g, &aProof, &bProof, &nProof, &rProof)
 	proofs := newProofMerge(&aProof, &bProof, &nProof, &rProof)
 
-	listProof := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &proofBases, &proofs, proof)
+	listProof := s.commitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &proofBases, &proofs, proof)
 
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
 	assert.Equal(t, listSecrets, listProof, "Commitment lists differ")

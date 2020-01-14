@@ -21,11 +21,11 @@ func TestExpStepBFlow(t *testing.T) {
 	mulPedersens := newPedersenStructure("mul")
 	modPedersens := newPedersenStructure("mod")
 
-	_, bitPedersen := bitPedersens.generateCommitmentsFromSecrets(g, nil, big.NewInt(1))
-	_, prePedersen := prePedersens.generateCommitmentsFromSecrets(g, nil, big.NewInt(2))
-	_, postPedersen := postPedersens.generateCommitmentsFromSecrets(g, nil, big.NewInt(6))
-	_, mulPedersen := mulPedersens.generateCommitmentsFromSecrets(g, nil, big.NewInt(3))
-	_, modPedersen := modPedersens.generateCommitmentsFromSecrets(g, nil, big.NewInt(11))
+	_, bitPedersen := bitPedersens.commitmentsFromSecrets(g, nil, big.NewInt(1))
+	_, prePedersen := prePedersens.commitmentsFromSecrets(g, nil, big.NewInt(2))
+	_, postPedersen := postPedersens.commitmentsFromSecrets(g, nil, big.NewInt(6))
+	_, mulPedersen := mulPedersens.commitmentsFromSecrets(g, nil, big.NewInt(3))
+	_, modPedersen := modPedersens.commitmentsFromSecrets(g, nil, big.NewInt(11))
 
 	bases := newBaseMerge(&g, &bitPedersen, &prePedersen, &postPedersen, &mulPedersen, &modPedersen)
 	secrets := newSecretMerge(&bitPedersen, &prePedersen, &postPedersen, &mulPedersen, &modPedersen)
@@ -34,7 +34,7 @@ func TestExpStepBFlow(t *testing.T) {
 
 	assert.True(t, s.isTrue(&secrets), "Proof premis rejected")
 
-	listSecrets, commit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &bases, &secrets)
+	listSecrets, commit := s.commitmentsFromSecrets(g, []*big.Int{}, &bases, &secrets)
 
 	assert.Equal(t, len(listSecrets), s.numCommitments(), "NumCommitments is off")
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
@@ -57,7 +57,7 @@ func TestExpStepBFlow(t *testing.T) {
 
 	proofBases := newBaseMerge(&g, &bitProof, &preProof, &postProof, &mulProof, &modProof)
 
-	listProof := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &proofBases, proof)
+	listProof := s.commitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &proofBases, proof)
 
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
 	assert.Equal(t, listSecrets, listProof, "Commitment lists differ.")

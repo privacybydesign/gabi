@@ -111,10 +111,10 @@ func (s *ValidKeyProofStructure) BuildProof(Pprime *big.Int, Qprime *big.Int) Va
 	Q := new(big.Int).Add(new(big.Int).Lsh(Qprime, 1), big.NewInt(1))
 
 	// Build up the secrets
-	list, PprimeSecret := s.pprime.generateCommitmentsFromSecrets(g, nil, Pprime)
-	list, QprimeSecret := s.qprime.generateCommitmentsFromSecrets(g, list, Qprime)
-	list, PSecret := s.p.generateCommitmentsFromSecrets(g, list, P)
-	list, QSecret := s.q.generateCommitmentsFromSecrets(g, list, Q)
+	list, PprimeSecret := s.pprime.commitmentsFromSecrets(g, nil, Pprime)
+	list, QprimeSecret := s.qprime.commitmentsFromSecrets(g, list, Qprime)
+	list, PSecret := s.p.commitmentsFromSecrets(g, list, P)
+	list, QSecret := s.q.commitmentsFromSecrets(g, list, Q)
 
 	PQNRel := newSecret(g, "pqnrel", new(big.Int).Mod(new(big.Int).Mul(PSecret.hider.secretv, QSecret.secretv.secretv), g.order))
 
@@ -129,13 +129,13 @@ func (s *ValidKeyProofStructure) BuildProof(Pprime *big.Int, Qprime *big.Int) Va
 	var BasesValidCommit isSquareProofCommit
 	list = append(list, GroupPrime)
 	list = append(list, s.n)
-	list = s.pPprimeRel.generateCommitmentsFromSecrets(g, list, &bases, &secrets)
-	list = s.qQprimeRel.generateCommitmentsFromSecrets(g, list, &bases, &secrets)
-	list = s.pQNRel.generateCommitmentsFromSecrets(g, list, &bases, &secrets)
-	list, PprimeIsPrimeCommit = s.pprimeIsPrime.generateCommitmentsFromSecrets(g, list, &bases, &secrets)
-	list, QprimeIsPrimeCommit = s.qprimeIsPrime.generateCommitmentsFromSecrets(g, list, &bases, &secrets)
+	list = s.pPprimeRel.commitmentsFromSecrets(g, list, &bases, &secrets)
+	list = s.qQprimeRel.commitmentsFromSecrets(g, list, &bases, &secrets)
+	list = s.pQNRel.commitmentsFromSecrets(g, list, &bases, &secrets)
+	list, PprimeIsPrimeCommit = s.pprimeIsPrime.commitmentsFromSecrets(g, list, &bases, &secrets)
+	list, QprimeIsPrimeCommit = s.qprimeIsPrime.commitmentsFromSecrets(g, list, &bases, &secrets)
 	list, QSPPcommit = quasiSafePrimeProductBuildCommitments(list, Pprime, Qprime)
-	list, BasesValidCommit = s.basesValid.generateCommitmentsFromSecrets(g, list, P, Q)
+	list, BasesValidCommit = s.basesValid.commitmentsFromSecrets(g, list, P, Q)
 	Follower.StepDone()
 
 	Follower.StepStart("Generating proof", 0)
@@ -143,18 +143,19 @@ func (s *ValidKeyProofStructure) BuildProof(Pprime *big.Int, Qprime *big.Int) Va
 	challenge := common.HashCommit(list, false)
 
 	// Calculate proofs
-	var proof ValidKeyProof
-	proof.GroupPrime = GroupPrime
-	proof.PQNRel = PQNRel.buildProof(g, challenge)
-	proof.PProof = s.p.buildProof(g, challenge, PSecret)
-	proof.QProof = s.q.buildProof(g, challenge, QSecret)
-	proof.PprimeProof = s.pprime.buildProof(g, challenge, PprimeSecret)
-	proof.QprimeProof = s.qprime.buildProof(g, challenge, QprimeSecret)
-	proof.Challenge = challenge
-	proof.PprimeIsPrimeProof = s.pprimeIsPrime.buildProof(g, challenge, PprimeIsPrimeCommit, &secrets)
-	proof.QprimeIsPrimeProof = s.qprimeIsPrime.buildProof(g, challenge, QprimeIsPrimeCommit, &secrets)
-	proof.QSPPproof = quasiSafePrimeProductBuildProof(Pprime, Qprime, challenge, QSPPcommit)
-	proof.BasesValidProof = s.basesValid.buildProof(g, challenge, BasesValidCommit)
+	proof := ValidKeyProof{
+		GroupPrime:         GroupPrime,
+		PQNRel:             PQNRel.buildProof(g, challenge),
+		PProof:             s.p.buildProof(g, challenge, PSecret),
+		QProof:             s.q.buildProof(g, challenge, QSecret),
+		PprimeProof:        s.pprime.buildProof(g, challenge, PprimeSecret),
+		QprimeProof:        s.qprime.buildProof(g, challenge, QprimeSecret),
+		Challenge:          challenge,
+		PprimeIsPrimeProof: s.pprimeIsPrime.buildProof(g, challenge, PprimeIsPrimeCommit, &secrets),
+		QprimeIsPrimeProof: s.qprimeIsPrime.buildProof(g, challenge, QprimeIsPrimeCommit, &secrets),
+		QSPPproof:          quasiSafePrimeProductBuildProof(Pprime, Qprime, challenge, QSPPcommit),
+		BasesValidProof:    s.basesValid.buildProof(g, challenge, BasesValidCommit),
+	}
 	Follower.StepDone()
 
 	return proof
@@ -212,19 +213,19 @@ func (s *ValidKeyProofStructure) VerifyProof(proof ValidKeyProof) bool {
 
 	// Build up commitment list
 	var list []*big.Int
-	list = s.pprime.generateCommitmentsFromProof(g, list, proof.Challenge, proof.PprimeProof)
-	list = s.qprime.generateCommitmentsFromProof(g, list, proof.Challenge, proof.QprimeProof)
-	list = s.p.generateCommitmentsFromProof(g, list, proof.Challenge, proof.PProof)
-	list = s.q.generateCommitmentsFromProof(g, list, proof.Challenge, proof.QProof)
+	list = s.pprime.commitmentsFromProof(g, list, proof.Challenge, proof.PprimeProof)
+	list = s.qprime.commitmentsFromProof(g, list, proof.Challenge, proof.QprimeProof)
+	list = s.p.commitmentsFromProof(g, list, proof.Challenge, proof.PProof)
+	list = s.q.commitmentsFromProof(g, list, proof.Challenge, proof.QProof)
 	list = append(list, proof.GroupPrime)
 	list = append(list, s.n)
-	list = s.pPprimeRel.generateCommitmentsFromProof(g, list, proof.Challenge, &bases, &proofs)
-	list = s.qQprimeRel.generateCommitmentsFromProof(g, list, proof.Challenge, &bases, &proofs)
-	list = s.pQNRel.generateCommitmentsFromProof(g, list, proof.Challenge, &bases, &proofs)
-	list = s.pprimeIsPrime.generateCommitmentsFromProof(g, list, proof.Challenge, &bases, &proofs, proof.PprimeIsPrimeProof)
-	list = s.qprimeIsPrime.generateCommitmentsFromProof(g, list, proof.Challenge, &bases, &proofs, proof.QprimeIsPrimeProof)
+	list = s.pPprimeRel.commitmentsFromProof(g, list, proof.Challenge, &bases, &proofs)
+	list = s.qQprimeRel.commitmentsFromProof(g, list, proof.Challenge, &bases, &proofs)
+	list = s.pQNRel.commitmentsFromProof(g, list, proof.Challenge, &bases, &proofs)
+	list = s.pprimeIsPrime.commitmentsFromProof(g, list, proof.Challenge, &bases, &proofs, proof.PprimeIsPrimeProof)
+	list = s.qprimeIsPrime.commitmentsFromProof(g, list, proof.Challenge, &bases, &proofs, proof.QprimeIsPrimeProof)
 	list = quasiSafePrimeProductExtractCommitments(list, proof.QSPPproof)
-	list = s.basesValid.generateCommitmentsFromProof(g, list, proof.Challenge, proof.BasesValidProof)
+	list = s.basesValid.commitmentsFromProof(g, list, proof.Challenge, proof.BasesValidProof)
 
 	Follower.StepDone()
 

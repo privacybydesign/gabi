@@ -19,10 +19,10 @@ func TestPrimeProofFlow(t *testing.T) {
 
 	const p = 11
 	pCommits := newPedersenStructure("p")
-	_, pCommit := pCommits.generateCommitmentsFromSecrets(g, nil, big.NewInt(p))
+	_, pCommit := pCommits.commitmentsFromSecrets(g, nil, big.NewInt(p))
 	bases := newBaseMerge(&g, &pCommit)
 
-	listSecrets, commit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &bases, &pCommit)
+	listSecrets, commit := s.commitmentsFromSecrets(g, []*big.Int{}, &bases, &pCommit)
 
 	require.Equal(t, len(listSecrets), s.numCommitments(), "NumCommitments is off")
 	require.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
@@ -36,7 +36,7 @@ func TestPrimeProofFlow(t *testing.T) {
 
 	require.True(t, s.verifyProofStructure(big.NewInt(12345), proof), "Proof structure rejected.")
 
-	listProof := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &basesProof, &pProof, proof)
+	listProof := s.commitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &basesProof, &pProof, proof)
 
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
 	assert.Equal(t, listSecrets, listProof, "Commitment lists differ.")

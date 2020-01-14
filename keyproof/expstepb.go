@@ -30,10 +30,13 @@ type (
 )
 
 func newExpStepBStructure(bitname, prename, postname, mulname, modname string, bitlen uint) expStepBStructure {
-	var structure expStepBStructure
-	structure.bitname = bitname
-	structure.mulname = mulname
-	structure.myname = strings.Join([]string{bitname, prename, postname, "expb"}, "_")
+	structure := expStepBStructure{
+		bitname:    bitname,
+		mulname:    mulname,
+		myname:     strings.Join([]string{bitname, prename, postname, "expb"}, "_"),
+		mul:        newPedersenStructure(mulname),
+		prePostMul: newMultiplicationProofStructure(mulname, prename, modname, postname, bitlen),
+	}
 	structure.bitRep = representationProofStructure{
 		[]lhsContribution{
 			{bitname, big.NewInt(1)},
@@ -43,25 +46,23 @@ func newExpStepBStructure(bitname, prename, postname, mulname, modname string, b
 			{"h", strings.Join([]string{bitname, "hider"}, "_"), 1},
 		},
 	}
-	structure.mul = newPedersenStructure(mulname)
-	structure.prePostMul = newMultiplicationProofStructure(mulname, prename, modname, postname, bitlen)
 	return structure
 }
 
-func (s *expStepBStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, expStepBCommit) {
+func (s *expStepBStructure) commitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, expStepBCommit) {
 	var commit expStepBCommit
 
 	// build up commit structure
 	commit.bit = newSecret(g, strings.Join([]string{s.bitname, "hider"}, "_"), secretdata.secret(strings.Join([]string{s.bitname, "hider"}, "_")))
-	list, commit.mul = s.mul.generateCommitmentsDuplicate(g, list, secretdata.secret(s.mulname),
+	list, commit.mul = s.mul.commitmentsDuplicate(g, list, secretdata.secret(s.mulname),
 		secretdata.secret(strings.Join([]string{s.mulname, "hider"}, "_")))
 
 	// Inner secrets
 	secrets := newSecretMerge(&commit.mul, &commit.bit, secretdata)
 
 	// Generate commitment list
-	list = s.bitRep.generateCommitmentsFromSecrets(g, list, bases, &secrets)
-	list, commit.multiplicationCommit = s.prePostMul.generateCommitmentsFromSecrets(g, list, bases, &secrets)
+	list = s.bitRep.commitmentsFromSecrets(g, list, bases, &secrets)
+	list, commit.multiplicationCommit = s.prePostMul.commitmentsFromSecrets(g, list, bases, &secrets)
 
 	return list, commit
 }
@@ -71,19 +72,19 @@ func (s *expStepBStructure) buildProof(g group, challenge *big.Int, commit expSt
 	secrets := newSecretMerge(&commit.mul, &commit.bit, secretdata)
 
 	// Build proof
-	var proof ExpStepBProof
-	proof.Bit = commit.bit.buildProof(g, challenge)
-	proof.Mul = s.mul.buildProof(g, challenge, commit.mul)
-	proof.MultiplicationProof = s.prePostMul.buildProof(g, challenge, commit.multiplicationCommit, &secrets)
-	return proof
+	return ExpStepBProof{
+		Bit:                 commit.bit.buildProof(g, challenge),
+		Mul:                 s.mul.buildProof(g, challenge, commit.mul),
+		MultiplicationProof: s.prePostMul.buildProof(g, challenge, commit.multiplicationCommit, &secrets),
+	}
 }
 
 func (s *expStepBStructure) fakeProof(g group) ExpStepBProof {
-	var proof ExpStepBProof
-	proof.Bit = fakeProof(g)
-	proof.Mul = s.mul.fakeProof(g)
-	proof.MultiplicationProof = s.prePostMul.fakeProof(g)
-	return proof
+	return ExpStepBProof{
+		Bit:                 fakeProof(g),
+		Mul:                 s.mul.fakeProof(g),
+		MultiplicationProof: s.prePostMul.fakeProof(g),
+	}
 }
 
 func (s *expStepBStructure) verifyProofStructure(proof ExpStepBProof) bool {
@@ -96,16 +97,16 @@ func (s *expStepBStructure) verifyProofStructure(proof ExpStepBProof) bool {
 	return proof.Bit.verifyStructure()
 }
 
-func (s *expStepBStructure) generateCommitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases baseLookup, proof ExpStepBProof) []*big.Int {
+func (s *expStepBStructure) commitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases baseLookup, proof ExpStepBProof) []*big.Int {
 	// inner proof
 	proof.Bit.setName(strings.Join([]string{s.bitname, "hider"}, "_"))
 	proof.Mul.setName(s.mulname)
 	proofs := newProofMerge(&proof.Bit, &proof.Mul)
 
 	// Generate commitments
-	list = s.mul.generateCommitmentsFromProof(g, list, challenge, proof.Mul)
-	list = s.bitRep.generateCommitmentsFromProof(g, list, challenge, bases, &proofs)
-	list = s.prePostMul.generateCommitmentsFromProof(g, list, challenge, bases, &proofs, proof.MultiplicationProof)
+	list = s.mul.commitmentsFromProof(g, list, challenge, proof.Mul)
+	list = s.bitRep.commitmentsFromProof(g, list, challenge, bases, &proofs)
+	list = s.prePostMul.commitmentsFromProof(g, list, challenge, bases, &proofs, proof.MultiplicationProof)
 
 	return list
 }

@@ -21,7 +21,7 @@ func TestIsSquareProof(t *testing.T) {
 
 	s := newIsSquareProofStructure(big.NewInt(p*q), []*big.Int{big.NewInt(a), big.NewInt(b)})
 
-	listSecret, commit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, big.NewInt(p), big.NewInt(q))
+	listSecret, commit := s.commitmentsFromSecrets(g, []*big.Int{}, big.NewInt(p), big.NewInt(q))
 
 	assert.Equal(t, len(listSecret), s.numCommitments(), "NumCommitments is off")
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
@@ -31,7 +31,7 @@ func TestIsSquareProof(t *testing.T) {
 
 	assert.True(t, s.verifyProofStructure(proof), "Proof structure rejected")
 
-	listProof := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), proof)
+	listProof := s.commitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), proof)
 
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
 	assert.Equal(t, listSecret, listProof, "Commitment lists disagree")
@@ -47,7 +47,7 @@ func TestIsSquareProofStructure(t *testing.T) {
 	require.True(t, gok, "Failed to setup group for Range proof testing")
 
 	s := newIsSquareProofStructure(big.NewInt(p*q), []*big.Int{big.NewInt(a), big.NewInt(b)})
-	_, commit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, big.NewInt(p), big.NewInt(q))
+	_, commit := s.commitmentsFromSecrets(g, []*big.Int{}, big.NewInt(p), big.NewInt(q))
 	proof := s.buildProof(g, big.NewInt(12345), commit)
 
 	backup := proof.NProof.Commit

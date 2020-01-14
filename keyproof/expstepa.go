@@ -28,11 +28,12 @@ type (
 )
 
 func newExpStepAStructure(bitname, prename, postname string) expStepAStructure {
-	var structure expStepAStructure
-	structure.bitname = bitname
-	structure.prename = prename
-	structure.postname = postname
-	structure.myname = strings.Join([]string{bitname, prename, postname, "expa"}, "_")
+	structure := expStepAStructure{
+		bitname:  bitname,
+		prename:  prename,
+		postname: postname,
+		myname:   strings.Join([]string{bitname, prename, postname, "expa"}, "_"),
+	}
 	structure.bitRep = representationProofStructure{
 		[]lhsContribution{
 			lhsContribution{bitname, big.NewInt(1)},
@@ -53,7 +54,7 @@ func newExpStepAStructure(bitname, prename, postname string) expStepAStructure {
 	return structure
 }
 
-func (s *expStepAStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, expStepACommit) {
+func (s *expStepAStructure) commitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, expStepACommit) {
 	var commit expStepACommit
 
 	// Build commit structure
@@ -68,44 +69,39 @@ func (s *expStepAStructure) generateCommitmentsFromSecrets(g group, list []*big.
 	secrets := newSecretMerge(&commit.bit, &commit.equalityHider, secretdata)
 
 	// Generate commitments
-	list = s.bitRep.generateCommitmentsFromSecrets(g, list, bases, &secrets)
-	list = s.equalityRep.generateCommitmentsFromSecrets(g, list, bases, &secrets)
+	list = s.bitRep.commitmentsFromSecrets(g, list, bases, &secrets)
+	list = s.equalityRep.commitmentsFromSecrets(g, list, bases, &secrets)
 
 	return list, commit
 }
 
 func (s *expStepAStructure) buildProof(g group, challenge *big.Int, commit expStepACommit, secretdata secretLookup) ExpStepAProof {
-	var proof ExpStepAProof
-
-	// Build our results
-	proof.Bit = commit.bit.buildProof(g, challenge)
-	proof.EqualityHider = commit.equalityHider.buildProof(g, challenge)
-
-	return proof
+	return ExpStepAProof{
+		Bit:           commit.bit.buildProof(g, challenge),
+		EqualityHider: commit.equalityHider.buildProof(g, challenge),
+	}
 }
 
 func (s *expStepAStructure) fakeProof(g group) ExpStepAProof {
-	var proof ExpStepAProof
-
-	proof.Bit = fakeProof(g)
-	proof.EqualityHider = fakeProof(g)
-
-	return proof
+	return ExpStepAProof{
+		Bit:           fakeProof(g),
+		EqualityHider: fakeProof(g),
+	}
 }
 
 func (s *expStepAStructure) verifyProofStructure(proof ExpStepAProof) bool {
 	return proof.Bit.verifyStructure() && proof.EqualityHider.verifyStructure()
 }
 
-func (s *expStepAStructure) generateCommitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases baseLookup, proof ExpStepAProof) []*big.Int {
+func (s *expStepAStructure) commitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases baseLookup, proof ExpStepAProof) []*big.Int {
 	// inner proof data
 	proof.Bit.setName(strings.Join([]string{s.bitname, "hider"}, "_"))
 	proof.EqualityHider.setName(strings.Join([]string{s.myname, "eqhider"}, "_"))
 	proofMerge := newProofMerge(&proof.Bit, &proof.EqualityHider)
 
 	// Generate commitments
-	list = s.bitRep.generateCommitmentsFromProof(g, list, challenge, bases, &proofMerge)
-	list = s.equalityRep.generateCommitmentsFromProof(g, list, challenge, bases, &proofMerge)
+	list = s.bitRep.commitmentsFromProof(g, list, challenge, bases, &proofMerge)
+	list = s.equalityRep.commitmentsFromProof(g, list, challenge, bases, &proofMerge)
 
 	return list
 }

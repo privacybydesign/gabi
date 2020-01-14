@@ -25,10 +25,10 @@ func TestAdditionProofFlow(t *testing.T) {
 	mods := newPedersenStructure("mod")
 	results := newPedersenStructure("result")
 
-	_, a1 := a1s.generateCommitmentsFromSecrets(g, []*big.Int{}, big.NewInt(a))
-	_, a2 := a2s.generateCommitmentsFromSecrets(g, []*big.Int{}, big.NewInt(b))
-	_, mod := mods.generateCommitmentsFromSecrets(g, []*big.Int{}, big.NewInt(n))
-	_, result := results.generateCommitmentsFromSecrets(g, []*big.Int{}, big.NewInt(d))
+	_, a1 := a1s.commitmentsFromSecrets(g, []*big.Int{}, big.NewInt(a))
+	_, a2 := a2s.commitmentsFromSecrets(g, []*big.Int{}, big.NewInt(b))
+	_, mod := mods.commitmentsFromSecrets(g, []*big.Int{}, big.NewInt(n))
+	_, result := results.commitmentsFromSecrets(g, []*big.Int{}, big.NewInt(d))
 
 	bases := newBaseMerge(&g, &a1, &a2, &mod, &result)
 	secrets := newSecretMerge(&a1, &a2, &mod, &result)
@@ -36,7 +36,7 @@ func TestAdditionProofFlow(t *testing.T) {
 	s := newAdditionProofStructure("a1", "a2", "mod", "result", 3)
 	assert.True(t, s.isTrue(&secrets), "Incorrectly assessed proof setup as incorrect.")
 
-	listSecrets, commit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &bases, &secrets)
+	listSecrets, commit := s.commitmentsFromSecrets(g, []*big.Int{}, &bases, &secrets)
 
 	assert.Equal(t, len(listSecrets), s.numCommitments(), "NumCommitments is off")
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
@@ -58,7 +58,7 @@ func TestAdditionProofFlow(t *testing.T) {
 
 	assert.True(t, s.verifyProofStructure(proof), "Proof structure marked as invalid.")
 
-	listProof := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &basesProof, &proofdata, proof)
+	listProof := s.commitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &basesProof, &proofdata, proof)
 
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
 	assert.Equal(t, listSecrets, listProof, "Commitment lists differ.")

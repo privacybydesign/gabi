@@ -46,17 +46,20 @@ func newPedersenStructure(name string) pedersenStructure {
 }
 
 func newPedersenRangeProofStructure(name string, l1 uint, l2 uint) rangeProofStructure {
-	var structure rangeProofStructure
-	structure.lhs = []lhsContribution{
-		{name, big.NewInt(1)},
+	structure := rangeProofStructure{
+		representationProofStructure: representationProofStructure{
+			lhs: []lhsContribution{
+				{name, big.NewInt(1)},
+			},
+			rhs: []rhsContribution{
+				{"g", name, 1},
+				{"h", strings.Join([]string{name, "hider"}, "_"), 1},
+			},
+		},
+		rangeSecret: name,
+		l1:          l1,
+		l2:          l2,
 	}
-	structure.rhs = []rhsContribution{
-		{"g", name, 1},
-		{"h", strings.Join([]string{name, "hider"}, "_"), 1},
-	}
-	structure.rangeSecret = name
-	structure.l1 = l1
-	structure.l2 = l2
 	return structure
 }
 
@@ -68,21 +71,22 @@ func (s *pedersenStructure) numCommitments() int {
 	return s.representation.numCommitments() + 1
 }
 
-func (s *pedersenStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, value *big.Int) ([]*big.Int, pedersenCommit) {
-	var result pedersenCommit
-	result.name = s.name
-	result.secretv = newSecret(g, s.name, value)
-	result.hider = newSecret(g, strings.Join([]string{s.name, "hider"}, "_"), common.FastRandomBigInt(g.order))
-	result.g = &g
-	result.commit = new(big.Int)
+func (s *pedersenStructure) commitmentsFromSecrets(g group, list []*big.Int, value *big.Int) ([]*big.Int, pedersenCommit) {
+	result := pedersenCommit{
+		name:    s.name,
+		secretv: newSecret(g, s.name, value),
+		hider:   newSecret(g, strings.Join([]string{s.name, "hider"}, "_"), common.FastRandomBigInt(g.order)),
+		g:       &g,
+		commit:  new(big.Int),
+	}
 	result.exp(result.commit, s.name, big.NewInt(1), g.p)
 
 	bases := newBaseMerge(&result, &g)
 	list = append(list, result.commit)
-	return s.representation.generateCommitmentsFromSecrets(g, list, &bases, &result), result
+	return s.representation.commitmentsFromSecrets(g, list, &bases, &result), result
 }
 
-func (s *pedersenStructure) generateCommitmentsDuplicate(g group, list []*big.Int, value *big.Int, hider *big.Int) ([]*big.Int, pedersenCommit) {
+func (s *pedersenStructure) commitmentsDuplicate(g group, list []*big.Int, value *big.Int, hider *big.Int) ([]*big.Int, pedersenCommit) {
 	var result = pedersenCommit{
 		name:    s.name,
 		secretv: newSecret(g, s.name, value),
@@ -94,39 +98,40 @@ func (s *pedersenStructure) generateCommitmentsDuplicate(g group, list []*big.In
 
 	bases := newBaseMerge(&result, &g)
 	list = append(list, result.commit)
-	return s.representation.generateCommitmentsFromSecrets(g, list, &bases, &result), result
+	return s.representation.commitmentsFromSecrets(g, list, &bases, &result), result
 }
 
 func (s *pedersenStructure) buildProof(g group, challenge *big.Int, commit pedersenCommit) PedersenProof {
-	var proof PedersenProof
-	proof.Commit = commit.commit
-	proof.Sresult = commit.secretv.buildProof(g, challenge)
-	proof.Hresult = commit.hider.buildProof(g, challenge)
-	return proof
+	return PedersenProof{
+		Commit:  commit.commit,
+		Sresult: commit.secretv.buildProof(g, challenge),
+		Hresult: commit.hider.buildProof(g, challenge),
+	}
 }
 
 func (s *pedersenStructure) fakeProof(g group) PedersenProof {
-	var proof PedersenProof
 	var gCommit, hCommit big.Int
 	g.exp(&gCommit, "g", common.FastRandomBigInt(g.order), g.p)
 	g.exp(&hCommit, "h", common.FastRandomBigInt(g.order), g.p)
-	proof.Commit = new(big.Int)
-	proof.Commit.Mul(&gCommit, &hCommit)
-	proof.Commit.Mod(proof.Commit, g.p)
-	proof.Sresult = fakeProof(g)
-	proof.Hresult = fakeProof(g)
-	return proof
+	var Commit big.Int
+	Commit.Mul(&gCommit, &hCommit)
+	Commit.Mod(&Commit, g.p)
+	return PedersenProof{
+		Commit:  &Commit,
+		Sresult: fakeProof(g),
+		Hresult: fakeProof(g),
+	}
 }
 
 func (s *pedersenStructure) verifyProofStructure(proof PedersenProof) bool {
 	return proof.Commit != nil && proof.Hresult.verifyStructure() && proof.Sresult.verifyStructure()
 }
 
-func (s *pedersenStructure) generateCommitmentsFromProof(g group, list []*big.Int, challenge *big.Int, proof PedersenProof) []*big.Int {
+func (s *pedersenStructure) commitmentsFromProof(g group, list []*big.Int, challenge *big.Int, proof PedersenProof) []*big.Int {
 	proof.setName(s.name)
 	bases := newBaseMerge(&proof, &g)
 	list = append(list, proof.Commit)
-	return s.representation.generateCommitmentsFromProof(g, list, challenge, &bases, &proof)
+	return s.representation.commitmentsFromProof(g, list, challenge, &bases, &proof)
 }
 
 func (c *pedersenCommit) base(name string) *big.Int {
