@@ -22,8 +22,6 @@ type (
 func almostSafePrimeProductBuildCommitments(list []*big.Int, Pprime *big.Int, Qprime *big.Int) ([]*big.Int, almostSafePrimeProductCommit) {
 	// Setup proof structure
 	var commit almostSafePrimeProductCommit
-	commit.commitments = []*big.Int{}
-	commit.logs = []*big.Int{}
 
 	// Calculate N and phiN
 	N := new(big.Int).Mul(new(big.Int).Add(new(big.Int).Lsh(Pprime, 1), big.NewInt(1)), new(big.Int).Add(new(big.Int).Lsh(Qprime, 1), big.NewInt(1)))

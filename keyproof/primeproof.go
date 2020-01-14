@@ -161,11 +161,11 @@ func newPrimeProofStructure(name string, bitlen uint) primeProofStructure {
 	return structure
 }
 
-func (s *primeProofStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, primeProofCommit) {
+func (s *primeProofStructure) commitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, primeProofCommit) {
 	var commit primeProofCommit
 
 	// Build prea
-	list, commit.prea = s.prea.generateCommitmentsFromSecrets(g, list, common.FastRandomBigInt(secretdata.secret(s.primeName)))
+	list, commit.prea = s.prea.commitmentsFromSecrets(g, list, common.FastRandomBigInt(secretdata.secret(s.primeName)))
 
 	// Calculate aAdd, a, and d
 	aAdd := common.GetHashNumber(commit.prea.commit, nil, 0, s.bitlen)
@@ -182,7 +182,7 @@ func (s *primeProofStructure) generateCommitmentsFromSecrets(g group, list []*bi
 	}
 
 	// Generate a related commitments
-	list, commit.a = s.a.generateCommitmentsFromSecrets(g, list, a)
+	list, commit.a = s.a.commitmentsFromSecrets(g, list, a)
 	commit.preaMod = newSecret(g, strings.Join([]string{s.myname, "preamod"}, "_"), d)
 	commit.preaHider = newSecret(g, strings.Join([]string{s.myname, "preahider"}, "_"),
 		new(big.Int).Mod(
@@ -204,7 +204,7 @@ func (s *primeProofStructure) generateCommitmentsFromSecrets(g group, list []*bi
 	}
 
 	// And build its pedersen commitment
-	list, commit.aneg = s.aneg.generateCommitmentsFromSecrets(g, list, aneg)
+	list, commit.aneg = s.aneg.commitmentsFromSecrets(g, list, aneg)
 
 	// Generate result pedersen commits and proof data
 	aRes := new(big.Int).Exp(a, new(big.Int).Rsh(secretdata.secret(s.primeName), 1), secretdata.secret(s.primeName))
@@ -213,8 +213,8 @@ func (s *primeProofStructure) generateCommitmentsFromSecrets(g group, list []*bi
 	}
 	anegRes := new(big.Int).Exp(aneg, new(big.Int).Rsh(secretdata.secret(s.primeName), 1), secretdata.secret(s.primeName))
 	anegRes.Sub(anegRes, secretdata.secret(s.primeName))
-	list, commit.aRes = s.aRes.generateCommitmentsFromSecrets(g, list, aRes)
-	list, commit.anegRes = s.anegRes.generateCommitmentsFromSecrets(g, list, anegRes)
+	list, commit.aRes = s.aRes.commitmentsFromSecrets(g, list, aRes)
+	list, commit.anegRes = s.anegRes.commitmentsFromSecrets(g, list, anegRes)
 	commit.aInvalid = fakeProof(g)
 	commit.aInvalidChallenge = common.FastRandomBigInt(g.order)
 	if aRes.Cmp(big.NewInt(1)) == 0 {
@@ -228,7 +228,7 @@ func (s *primeProofStructure) generateCommitmentsFromSecrets(g group, list []*bi
 	}
 
 	// the half p pedersen commit
-	list, commit.halfP = s.halfP.generateCommitmentsFromSecrets(g, list,
+	list, commit.halfP = s.halfP.commitmentsFromSecrets(g, list,
 		new(big.Int).Rsh(
 			secretdata.secret(s.primeName),
 			1))
@@ -274,22 +274,22 @@ func (s *primeProofStructure) generateCommitmentsFromSecrets(g group, list []*bi
 		secretdata)
 
 	// Build all commitments
-	list = s.halfPRep.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
-	list, commit.preaRangeCommit = s.preaRange.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
-	list, commit.aRangeCommit = s.aRange.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
-	list, commit.anegRangeCommit = s.anegRange.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
-	list = agenproof.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
-	list, commit.preaModRangeCommit = agenrange.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
-	list = s.anegResRep.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
+	list = s.halfPRep.commitmentsFromSecrets(g, list, &innerBases, &secrets)
+	list, commit.preaRangeCommit = s.preaRange.commitmentsFromSecrets(g, list, &innerBases, &secrets)
+	list, commit.aRangeCommit = s.aRange.commitmentsFromSecrets(g, list, &innerBases, &secrets)
+	list, commit.anegRangeCommit = s.anegRange.commitmentsFromSecrets(g, list, &innerBases, &secrets)
+	list = agenproof.commitmentsFromSecrets(g, list, &innerBases, &secrets)
+	list, commit.preaModRangeCommit = agenrange.commitmentsFromSecrets(g, list, &innerBases, &secrets)
+	list = s.anegResRep.commitmentsFromSecrets(g, list, &innerBases, &secrets)
 	if commit.aPositive {
-		list = s.aPlus1ResRep.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
-		list = s.aMin1ResRep.generateCommitmentsFromProof(g, list, commit.aInvalidChallenge, &innerBases, &commit.aInvalid)
+		list = s.aPlus1ResRep.commitmentsFromSecrets(g, list, &innerBases, &secrets)
+		list = s.aMin1ResRep.commitmentsFromProof(g, list, commit.aInvalidChallenge, &innerBases, &commit.aInvalid)
 	} else {
-		list = s.aPlus1ResRep.generateCommitmentsFromProof(g, list, commit.aInvalidChallenge, &innerBases, &commit.aInvalid)
-		list = s.aMin1ResRep.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
+		list = s.aPlus1ResRep.commitmentsFromProof(g, list, commit.aInvalidChallenge, &innerBases, &commit.aInvalid)
+		list = s.aMin1ResRep.commitmentsFromSecrets(g, list, &innerBases, &secrets)
 	}
-	list, commit.aExpCommit = s.aExp.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
-	list, commit.anegExpCommit = s.anegExp.generateCommitmentsFromSecrets(g, list, &innerBases, &secrets)
+	list, commit.aExpCommit = s.aExp.commitmentsFromSecrets(g, list, &innerBases, &secrets)
+	list, commit.anegExpCommit = s.anegExp.commitmentsFromSecrets(g, list, &innerBases, &secrets)
 
 	return list, commit
 }
@@ -475,7 +475,7 @@ func (s *primeProofStructure) verifyProofStructure(challenge *big.Int, proof Pri
 	return true
 }
 
-func (s *primeProofStructure) generateCommitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases baseLookup, proofdata proofLookup, proof PrimeProof) []*big.Int {
+func (s *primeProofStructure) commitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases baseLookup, proofdata proofLookup, proof PrimeProof) []*big.Int {
 	// Setup
 	proof.PreaMod.setName(strings.Join([]string{s.myname, "preamod"}, "_"))
 	proof.PreaHider.setName(strings.Join([]string{s.myname, "preahider"}, "_"))
@@ -530,23 +530,23 @@ func (s *primeProofStructure) generateCommitmentsFromProof(g group, list []*big.
 		proofdata)
 
 	// Build all commitments
-	list = s.prea.generateCommitmentsFromProof(g, list, challenge, proof.PreaCommit)
-	list = s.a.generateCommitmentsFromProof(g, list, challenge, proof.ACommit)
-	list = s.aneg.generateCommitmentsFromProof(g, list, challenge, proof.AnegCommit)
-	list = s.aRes.generateCommitmentsFromProof(g, list, challenge, proof.AResCommit)
-	list = s.anegRes.generateCommitmentsFromProof(g, list, challenge, proof.AnegResCommit)
-	list = s.halfP.generateCommitmentsFromProof(g, list, challenge, proof.HalfPCommit)
-	list = s.halfPRep.generateCommitmentsFromProof(g, list, challenge, &innerBases, &proofs)
-	list = s.preaRange.generateCommitmentsFromProof(g, list, challenge, &innerBases, proof.PreaRangeProof)
-	list = s.aRange.generateCommitmentsFromProof(g, list, challenge, &innerBases, proof.ARangeProof)
-	list = s.anegRange.generateCommitmentsFromProof(g, list, challenge, &innerBases, proof.AnegRangeProof)
-	list = agenproof.generateCommitmentsFromProof(g, list, challenge, &innerBases, &proofs)
-	list = agenrange.generateCommitmentsFromProof(g, list, challenge, &innerBases, proof.PreaModRangeProof)
-	list = s.anegResRep.generateCommitmentsFromProof(g, list, challenge, &innerBases, &proofs)
-	list = s.aPlus1ResRep.generateCommitmentsFromProof(g, list, proof.APlus1Challenge, &innerBases, &proofs)
-	list = s.aMin1ResRep.generateCommitmentsFromProof(g, list, proof.AMin1Challenge, &innerBases, &proofs)
-	list = s.aExp.generateCommitmentsFromProof(g, list, challenge, &innerBases, &proofs, proof.AExpProof)
-	list = s.anegExp.generateCommitmentsFromProof(g, list, challenge, &innerBases, &proofs, proof.AnegExpProof)
+	list = s.prea.commitmentsFromProof(g, list, challenge, proof.PreaCommit)
+	list = s.a.commitmentsFromProof(g, list, challenge, proof.ACommit)
+	list = s.aneg.commitmentsFromProof(g, list, challenge, proof.AnegCommit)
+	list = s.aRes.commitmentsFromProof(g, list, challenge, proof.AResCommit)
+	list = s.anegRes.commitmentsFromProof(g, list, challenge, proof.AnegResCommit)
+	list = s.halfP.commitmentsFromProof(g, list, challenge, proof.HalfPCommit)
+	list = s.halfPRep.commitmentsFromProof(g, list, challenge, &innerBases, &proofs)
+	list = s.preaRange.commitmentsFromProof(g, list, challenge, &innerBases, proof.PreaRangeProof)
+	list = s.aRange.commitmentsFromProof(g, list, challenge, &innerBases, proof.ARangeProof)
+	list = s.anegRange.commitmentsFromProof(g, list, challenge, &innerBases, proof.AnegRangeProof)
+	list = agenproof.commitmentsFromProof(g, list, challenge, &innerBases, &proofs)
+	list = agenrange.commitmentsFromProof(g, list, challenge, &innerBases, proof.PreaModRangeProof)
+	list = s.anegResRep.commitmentsFromProof(g, list, challenge, &innerBases, &proofs)
+	list = s.aPlus1ResRep.commitmentsFromProof(g, list, proof.APlus1Challenge, &innerBases, &proofs)
+	list = s.aMin1ResRep.commitmentsFromProof(g, list, proof.AMin1Challenge, &innerBases, &proofs)
+	list = s.aExp.commitmentsFromProof(g, list, challenge, &innerBases, &proofs, proof.AExpProof)
+	list = s.anegExp.commitmentsFromProof(g, list, challenge, &innerBases, &proofs, proof.AnegExpProof)
 
 	return list
 }

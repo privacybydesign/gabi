@@ -90,13 +90,12 @@ The remainder of the package consists of more straightforward zero knowledge
 proofs used to implement an explicit primality test as specified in Camenisch
 et. al. section 5.2.
 
-The general idea is as follows: most secret variables are stored in pedersen
-commits, which are attached to the proof. We thus have for each variable v
-a value C_v = g^v*h^{v_hider}. Then, range proofs are used to show that
-variables v are within specified ranges, and representation proofs to show
-relations between various values. In this process, proofs of knowledge are
-constructed for each variable, and its associated hider. These are then used
-to verify that all representation and range relations hold.
+The general setup is as follows: The proof consists of a number of secret
+values, of which the prover proves that he both knows these secret values, as
+well as that they satisfy certain relations. These secret values are stored
+in this code in secret structs, which provide the basic tooling to make proofs
+on them. These are then used in combination with various representation and
+range proofs to show the needed relations.
 
 Each camenisch' based proof provides a similar interface in terms of types and
 functions. Each proof provides up to three types:
@@ -162,7 +161,9 @@ provided in this package. First, let us start with the basic building blocks
    aranges for its own proof data such that it can show for a single variable
    v occuring in the representationproof expression that it's value is bounded.
 From these basic building blocks, the library then constructs proofs for basic
-arithmetic operations:
+operations:
+- pedersen provides a way to create a pedersen commitment on a value v, which
+   is needed as a building block in several of the other proofs.
 - additionproof proves in zero knowledge of the values of a, b, d and m that
    a + b = d (mod m) holds.
 - multiplicationproof provides a similar proof, showing that for variables a, b

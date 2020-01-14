@@ -17,7 +17,7 @@ func TestPedersenProofFlow(t *testing.T) {
 
 	Follower.(*TestFollower).count = 0
 
-	listSecrets, commit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, big.NewInt(15))
+	listSecrets, commit := s.commitmentsFromSecrets(g, []*big.Int{}, big.NewInt(15))
 	proof := s.buildProof(g, big.NewInt(1), commit)
 
 	assert.Equal(t, len(listSecrets), s.numCommitments(), "NumCommitments is off")
@@ -28,7 +28,7 @@ func TestPedersenProofFlow(t *testing.T) {
 
 	assert.True(t, s.verifyProofStructure(proof), "Rejecting proof structure")
 
-	listProof := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(1), proof)
+	listProof := s.commitmentsFromProof(g, []*big.Int{}, big.NewInt(1), proof)
 
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
 	Follower.(*TestFollower).count = 0
@@ -70,7 +70,7 @@ func TestPedersenProofJSON(t *testing.T) {
 
 	s := newPedersenStructure("x")
 
-	listSecrets, commit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, big.NewInt(15))
+	listSecrets, commit := s.commitmentsFromSecrets(g, []*big.Int{}, big.NewInt(15))
 
 	proofBefore := s.buildProof(g, big.NewInt(12345), commit)
 	proofJSON, err := json.Marshal(&proofBefore)
@@ -81,6 +81,6 @@ func TestPedersenProofJSON(t *testing.T) {
 	assert.NoError(t, err, "Error parsing json")
 	assert.True(t, s.verifyProofStructure(proofAfter), "Invalid proof structure after JSON")
 
-	listProof := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), proofAfter)
+	listProof := s.commitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), proofAfter)
 	assert.Equal(t, listSecrets, listProof, "Commitment lists differ.")
 }

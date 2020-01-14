@@ -100,7 +100,7 @@ func TestRangeProofBasic(t *testing.T) {
 
 	assert.True(t, s.isTrue(g, &bases, &secret), "Statement incorrectly declared false")
 
-	listSecret, rpcommit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &bases, &secret)
+	listSecret, rpcommit := s.commitmentsFromSecrets(g, []*big.Int{}, &bases, &secret)
 
 	assert.Equal(t, len(listSecret), s.numCommitments(), "NumCommitments is off")
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
@@ -110,7 +110,7 @@ func TestRangeProofBasic(t *testing.T) {
 
 	assert.True(t, s.verifyProofStructure(proof), "Proof structure rejected")
 
-	listProof := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &bases, proof)
+	listProof := s.commitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &bases, proof)
 
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
 	assert.Equal(t, listSecret, listProof, "Commitment lists disagree")
@@ -153,7 +153,7 @@ func TestRangeProofComplex(t *testing.T) {
 
 	assert.True(t, s.isTrue(g, &bases, &secret), "Statement incorrectly declared false")
 
-	listSecret, rpcommit := s.generateCommitmentsFromSecrets(g, []*big.Int{}, &bases, &secret)
+	listSecret, rpcommit := s.commitmentsFromSecrets(g, []*big.Int{}, &bases, &secret)
 
 	assert.Equal(t, len(listSecret), s.numCommitments(), "NumCommitments is off")
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
@@ -163,7 +163,7 @@ func TestRangeProofComplex(t *testing.T) {
 
 	assert.True(t, s.verifyProofStructure(proof), "Proof structure rejected")
 
-	listProof := s.generateCommitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &bases, proof)
+	listProof := s.commitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &bases, proof)
 
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
 	assert.Equal(t, listSecret, listProof, "Commitment lists disagree")

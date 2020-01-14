@@ -33,12 +33,13 @@ type (
 
 // Note, m1, m2, mod and result should be names of pedersen commitments
 func newMultiplicationProofStructure(m1, m2, mod, result string, l uint) multiplicationProofStructure {
-	var structure multiplicationProofStructure
-	structure.m1 = m1
-	structure.m2 = m2
-	structure.mod = mod
-	structure.result = result
-	structure.myname = strings.Join([]string{m1, m2, mod, result, "mul"}, "_")
+	structure := multiplicationProofStructure{
+		m1:     m1,
+		m2:     m2,
+		mod:    mod,
+		result: result,
+		myname: strings.Join([]string{m1, m2, mod, result, "mul"}, "_"),
+	}
 	structure.multRepresentation = representationProofStructure{
 		[]lhsContribution{
 			{result, big.NewInt(1)},
@@ -54,11 +55,11 @@ func newMultiplicationProofStructure(m1, m2, mod, result string, l uint) multipl
 	return structure
 }
 
-func (s *multiplicationProofStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, multiplicationProofCommit) {
+func (s *multiplicationProofStructure) commitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, multiplicationProofCommit) {
 	var commit multiplicationProofCommit
 
 	// Generate the neccesary commit data for our parts of the proof
-	list, commit.modMultPedersen = s.modMultPedersen.generateCommitmentsFromSecrets(g, list, new(big.Int).Div(
+	list, commit.modMultPedersen = s.modMultPedersen.commitmentsFromSecrets(g, list, new(big.Int).Div(
 		new(big.Int).Sub(
 			new(big.Int).Mul(
 				secretdata.secret(s.m1),
@@ -81,30 +82,28 @@ func (s *multiplicationProofStructure) generateCommitmentsFromSecrets(g group, l
 	secrets := newSecretMerge(&commit.hider, &commit.modMultPedersen, secretdata)
 
 	// Generate commitments for the two main proofs (pedersen was handled above when generating its commit)
-	list = s.multRepresentation.generateCommitmentsFromSecrets(g, list, bases, &secrets)
-	list, commit.rangeCommit = s.modMultRange.generateCommitmentsFromSecrets(g, list, bases, &secrets)
+	list = s.multRepresentation.commitmentsFromSecrets(g, list, bases, &secrets)
+	list, commit.rangeCommit = s.modMultRange.commitmentsFromSecrets(g, list, bases, &secrets)
 
 	return list, commit
 }
 
 func (s *multiplicationProofStructure) buildProof(g group, challenge *big.Int, commit multiplicationProofCommit, secretdata secretLookup) MultiplicationProof {
-	var proof MultiplicationProof
-
 	// Generate the proofs
 	rangeSecrets := newSecretMerge(&commit.hider, &commit.modMultPedersen, secretdata)
-	proof.RangeProof = s.modMultRange.buildProof(g, challenge, commit.rangeCommit, &rangeSecrets)
-	proof.ModMultProof = s.modMultPedersen.buildProof(g, challenge, commit.modMultPedersen)
-	proof.Hider = commit.hider.buildProof(g, challenge)
-
-	return proof
+	return MultiplicationProof{
+		RangeProof:   s.modMultRange.buildProof(g, challenge, commit.rangeCommit, &rangeSecrets),
+		ModMultProof: s.modMultPedersen.buildProof(g, challenge, commit.modMultPedersen),
+		Hider:        commit.hider.buildProof(g, challenge),
+	}
 }
 
 func (s *multiplicationProofStructure) fakeProof(g group) MultiplicationProof {
-	var proof MultiplicationProof
-	proof.RangeProof = s.modMultRange.fakeProof(g)
-	proof.ModMultProof = s.modMultPedersen.fakeProof(g)
-	proof.Hider = fakeProof(g)
-	return proof
+	return MultiplicationProof{
+		RangeProof:   s.modMultRange.fakeProof(g),
+		ModMultProof: s.modMultPedersen.fakeProof(g),
+		Hider:        fakeProof(g),
+	}
 }
 
 func (s *multiplicationProofStructure) verifyProofStructure(proof MultiplicationProof) bool {
@@ -120,7 +119,7 @@ func (s *multiplicationProofStructure) verifyProofStructure(proof Multiplication
 	return true
 }
 
-func (s *multiplicationProofStructure) generateCommitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases baseLookup, proofdata proofLookup, proof MultiplicationProof) []*big.Int {
+func (s *multiplicationProofStructure) commitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases baseLookup, proofdata proofLookup, proof MultiplicationProof) []*big.Int {
 	// Build inner proof lookup
 	proof.ModMultProof.setName(strings.Join([]string{s.myname, "mod"}, "_"))
 	proof.Hider.setName(strings.Join([]string{s.myname, "hider"}, "_"))
@@ -128,9 +127,9 @@ func (s *multiplicationProofStructure) generateCommitmentsFromProof(g group, lis
 	innerBases := newBaseMerge(&proof.ModMultProof, bases)
 
 	// And regenerate the commitments
-	list = s.modMultPedersen.generateCommitmentsFromProof(g, list, challenge, proof.ModMultProof)
-	list = s.multRepresentation.generateCommitmentsFromProof(g, list, challenge, &innerBases, &proofs)
-	list = s.modMultRange.generateCommitmentsFromProof(g, list, challenge, &innerBases, proof.RangeProof)
+	list = s.modMultPedersen.commitmentsFromProof(g, list, challenge, proof.ModMultProof)
+	list = s.multRepresentation.commitmentsFromProof(g, list, challenge, &innerBases, &proofs)
+	list = s.modMultRange.commitmentsFromProof(g, list, challenge, &innerBases, proof.RangeProof)
 
 	return list
 }

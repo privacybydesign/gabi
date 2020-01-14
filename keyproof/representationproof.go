@@ -22,7 +22,7 @@ type (
 	}
 )
 
-func (s *representationProofStructure) generateCommitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) []*big.Int {
+func (s *representationProofStructure) commitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) []*big.Int {
 	commitment := big.NewInt(1)
 	var exp, contribution big.Int
 
@@ -40,7 +40,7 @@ func (s *representationProofStructure) generateCommitmentsFromSecrets(g group, l
 	return append(list, commitment)
 }
 
-func (s *representationProofStructure) generateCommitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases baseLookup, proofdata proofLookup) []*big.Int {
+func (s *representationProofStructure) commitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases baseLookup, proofdata proofLookup) []*big.Int {
 	var base, tmp, lhs big.Int
 	lhs.SetUint64(1)
 	for _, curLhs := range s.lhs {

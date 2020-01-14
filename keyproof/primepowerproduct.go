@@ -1,7 +1,9 @@
 package keyproof
 
-import "github.com/privacybydesign/gabi/internal/common"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/internal/common"
+)
 
 type PrimePowerProductProof struct {
 	Responses []*big.Int
@@ -18,7 +20,6 @@ func primePowerProductBuildProof(P *big.Int, Q *big.Int, challenge *big.Int, ind
 
 	// Generate the challenges and responses
 	var proof PrimePowerProductProof
-	proof.Responses = []*big.Int{}
 	for i := 0; i < primePowerProductIters; i++ {
 		// Generate the challenge
 		curc := common.GetHashNumber(challenge, index, i, uint(N.BitLen()))
