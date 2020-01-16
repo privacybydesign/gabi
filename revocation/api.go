@@ -85,6 +85,7 @@ type (
 	Accumulator struct {
 		Nu        *big.Int
 		Index     uint64
+		Time      int64
 		EventHash Hash
 	}
 
@@ -171,6 +172,7 @@ func NewAccumulator(sk *PrivateKey) (*Update, error) {
 	acc := &Accumulator{
 		Nu:        common.RandomQR(sk.N),
 		Index:     AccumulatorStartIndex,
+		Time:      time.Now().Unix(),
 		EventHash: initialEvent.hash(),
 	}
 	sig, err := acc.Sign(sk)
@@ -202,8 +204,9 @@ func (acc *Accumulator) Remove(sk *PrivateKey, e *big.Int, parent *Event) (*Upda
 	}
 
 	newAcc := Accumulator{
-		Index: acc.Index + 1,
 		Nu:    new(big.Int).Exp(acc.Nu, eInverse, sk.N),
+		Index: acc.Index + 1,
+		Time:  time.Now().Unix(),
 	}
 	event := &Event{
 		Index:      newAcc.Index,
