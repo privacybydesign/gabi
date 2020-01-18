@@ -240,17 +240,17 @@ func (s *SignedAccumulator) UnmarshalVerify(pk *PublicKey) (*Accumulator, error)
 
 type compressedUpdate struct {
 	SignedAccumulator *SignedAccumulator `json:"sacc"`
-	Index             uint64             `json:"i"`
-	ParentHash        Hash               `json:"hash"`
-	E                 []*big.Int         `json:"e"`
+	Index             uint64             `json:"i,omitempty"`
+	ParentHash        Hash               `json:"hash,omitempty"`
+	E                 []*big.Int         `json:"e,omitempty"`
 }
 
 func (update *Update) compress() *compressedUpdate {
-	c := compressedUpdate{
-		SignedAccumulator: update.SignedAccumulator,
-		Index:             update.Events[0].Index,
-		ParentHash:        update.Events[0].ParentHash,
-		E:                 make([]*big.Int, len(update.Events)),
+	c := compressedUpdate{SignedAccumulator: update.SignedAccumulator}
+	if len(update.Events) > 0 {
+		c.Index = update.Events[0].Index
+		c.ParentHash = update.Events[0].ParentHash
+		c.E = make([]*big.Int, len(update.Events))
 	}
 	for i := range update.Events {
 		c.E[i] = update.Events[i].E
@@ -260,7 +260,9 @@ func (update *Update) compress() *compressedUpdate {
 
 func (update *Update) uncompress(c *compressedUpdate) {
 	update.SignedAccumulator = c.SignedAccumulator
-	update.Events = make([]*Event, len(c.E))
+	if len(c.E) != 0 {
+		update.Events = make([]*Event, len(c.E))
+	}
 	for i := range update.Events {
 		update.Events[i] = &Event{
 			E:     c.E[i],
@@ -305,23 +307,21 @@ func (update *Update) UnmarshalCBOR(data []byte) error {
 // - the accumulator includes the hash of the last item in the hash chain
 // - the hash chain is valid (each chain item has the correct hash of its parent).
 func (update *Update) Verify(pk *PublicKey, index uint64) (*Accumulator, *big.Int, error) {
-	count := len(update.Events)
-	if count == 0 {
-		return nil, nil, errors.New("no accumulator update specified")
-	}
-
 	acc, err := update.SignedAccumulator.UnmarshalVerify(pk)
 	if err != nil {
 		return nil, nil, err
+	}
+	prod := new(big.Int).SetInt64(1)
+	count := len(update.Events)
+	if count == 0 {
+		return acc, prod, nil
 	}
 
 	if err = update.Events[count-1].hashEquals(acc.EventHash); err != nil {
 		return nil, nil, errors.WrapPrefix(err, "update chain has wrong hash", 0)
 	}
-
 	// Verify the hashes of the chain, computing the product of all revoked attributes along the way
 	startIndex := update.Events[0].Index
-	prod := new(big.Int).SetInt64(1)
 	for i, event := range update.Events {
 		if i != 0 {
 			if err = update.Events[i-1].hashEquals(event.ParentHash); err != nil {
