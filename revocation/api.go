@@ -91,8 +91,9 @@ type (
 
 	// SignedAccumulator is an Accumulator signed with the issuer's ECDSA key, along with the key index.
 	SignedAccumulator struct {
-		Data      signed.Message `json:"data"`
-		PKCounter uint           `json:"pk"`
+		Data        signed.Message `json:"data"`
+		PKCounter   uint           `json:"pk"`
+		Accumulator *Accumulator   `json:"-"` // Accumulator contained in this instance, set by UnmarshalVerify()
 	}
 
 	// Event contains the data clients need to update to the Accumulator of the specified index,
@@ -191,7 +192,7 @@ func (acc *Accumulator) Sign(sk *PrivateKey) (*SignedAccumulator, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &SignedAccumulator{Data: sig, PKCounter: sk.Counter}, nil
+	return &SignedAccumulator{Data: sig, PKCounter: sk.Counter, Accumulator: acc}, nil
 }
 
 // Remove generates a new accumulator with the specified e removed from it; signs it;
@@ -235,6 +236,7 @@ func (s *SignedAccumulator) UnmarshalVerify(pk *PublicKey) (*Accumulator, error)
 	if err := signed.UnmarshalVerify(pk.ECDSA, s.Data, msg); err != nil {
 		return nil, err
 	}
+	s.Accumulator = msg
 	return msg, nil
 }
 
