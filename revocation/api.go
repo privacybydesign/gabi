@@ -197,14 +197,14 @@ func (acc *Accumulator) Sign(sk *PrivateKey) (*SignedAccumulator, error) {
 
 // Remove generates a new accumulator with the specified e removed from it; signs it;
 // and returns an Update message for clients to update their witness.
-func (acc *Accumulator) Remove(sk *PrivateKey, e *big.Int, parent *Event) (*Update, error) {
+func (acc *Accumulator) Remove(sk *PrivateKey, e *big.Int, parent *Event) (*Accumulator, *Event, error) {
 	eInverse, ok := common.ModInverse(e, new(big.Int).Mul(sk.P, sk.Q))
 	if !ok {
 		// since N = P*Q and P, Q prime, e has no inverse if and only if e equals either P or Q
-		return nil, errors.New("revocation attribute has no inverse")
+		return nil, nil, errors.New("revocation attribute has no inverse")
 	}
 
-	newAcc := Accumulator{
+	newAcc := &Accumulator{
 		Nu:    new(big.Int).Exp(acc.Nu, eInverse, sk.N),
 		Index: acc.Index + 1,
 		Time:  time.Now().Unix(),
@@ -215,15 +215,7 @@ func (acc *Accumulator) Remove(sk *PrivateKey, e *big.Int, parent *Event) (*Upda
 		ParentHash: parent.hash(),
 	}
 	newAcc.EventHash = event.hash()
-	sig, err := newAcc.Sign(sk)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Update{
-		SignedAccumulator: sig,
-		Events:            []*Event{event},
-	}, nil
+	return newAcc, event, nil
 }
 
 // UnmarshalVerify verifies the signature and unmarshals the accumulator
@@ -245,6 +237,20 @@ type compressedUpdate struct {
 	Index             uint64             `json:"i,omitempty"`
 	ParentHash        Hash               `json:"hash,omitempty"`
 	E                 []*big.Int         `json:"e,omitempty"`
+}
+
+func NewUpdate(sk *PrivateKey, acc *Accumulator, events []*Event) (*Update, error) {
+	sacc, err := acc.Sign(sk)
+	if err != nil {
+		return nil, err
+	}
+	if _, err = revocationVerifyChain(0, acc, events); err != nil {
+		return nil, err // ensure we don't return an invalid Update
+	}
+	return &Update{
+		SignedAccumulator: sacc,
+		Events:            events,
+	}, nil
 }
 
 func (update *Update) compress() *compressedUpdate {
@@ -304,6 +310,39 @@ func (update *Update) UnmarshalCBOR(data []byte) error {
 	return nil
 }
 
+func revocationVerifyChain(index uint64, acc *Accumulator, events []*Event) (*big.Int, error) {
+	var err error
+	prod := new(big.Int).SetInt64(1)
+	count := len(events)
+	if count == 0 {
+		return prod, nil
+	}
+
+	if err = events[count-1].hashEquals(acc.EventHash); err != nil {
+		return nil, errors.WrapPrefix(err, "update chain has wrong hash", 0)
+	}
+	// Verify the hashes of the chain, computing the product of all revoked attributes along the way
+	startIndex := events[0].Index
+	for i, event := range events {
+		if i != 0 {
+			if err = events[i-1].hashEquals(event.ParentHash); err != nil {
+				return nil, errors.WrapPrefix(
+					err, fmt.Sprintf("event chain element %d has wrong parent hash", i), 0,
+				)
+			}
+		}
+		if uint64(i)+startIndex != event.Index {
+			return nil, errors.Errorf("event %+v has wrong index, found %d, expected %d", event, event.Index, uint64(i)+startIndex)
+		}
+		if uint64(i)+startIndex <= index {
+			continue
+		}
+		prod.Mul(prod, event.E)
+	}
+
+	return prod, nil
+}
+
 // Verify that the specified update message is a validly signed partial chain:
 // - the accumulator is validly signed
 // - the accumulator includes the hash of the last item in the hash chain
@@ -313,35 +352,8 @@ func (update *Update) Verify(pk *PublicKey, index uint64) (*Accumulator, *big.In
 	if err != nil {
 		return nil, nil, err
 	}
-	prod := new(big.Int).SetInt64(1)
-	count := len(update.Events)
-	if count == 0 {
-		return acc, prod, nil
-	}
-
-	if err = update.Events[count-1].hashEquals(acc.EventHash); err != nil {
-		return nil, nil, errors.WrapPrefix(err, "update chain has wrong hash", 0)
-	}
-	// Verify the hashes of the chain, computing the product of all revoked attributes along the way
-	startIndex := update.Events[0].Index
-	for i, event := range update.Events {
-		if i != 0 {
-			if err = update.Events[i-1].hashEquals(event.ParentHash); err != nil {
-				return nil, nil, errors.WrapPrefix(
-					err, fmt.Sprintf("event chain element %d has wrong parent hash", i), 0,
-				)
-			}
-		}
-		if uint64(i)+startIndex != event.Index {
-			return nil, nil, errors.Errorf("event %+v has wrong index, found %d, expected %d", event, event.Index, uint64(i)+startIndex)
-		}
-		if uint64(i)+startIndex <= index {
-			continue
-		}
-		prod.Mul(prod, event.E)
-	}
-
-	return acc, prod, nil
+	prod, err := revocationVerifyChain(index, acc, update.Events)
+	return acc, prod, err
 }
 
 // whitelist of hash algorithms that we currently accept consisting of just SHA256
