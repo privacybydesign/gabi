@@ -653,7 +653,6 @@ func setupRevocation(t *testing.T) (*revocation.PrivateKey, *revocation.PublicKe
 
 	witness, err := testPrivK.RevocationGenerateWitness(acc)
 	require.NoError(t, err)
-	witness.Accumulator = acc
 	witness.SignedAccumulator = update.SignedAccumulator
 	require.Zero(t, new(big.Int).Exp(witness.U, witness.E, testPubK.N).Cmp(acc.Nu))
 

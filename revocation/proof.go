@@ -178,11 +178,11 @@ func NewProofCommit(grp *QrGroup, witn *Witness, randomizer *big.Int) ([]*big.In
 	if randomizer == nil {
 		witn.randomizer = NewProofRandomizer()
 	}
-	if !proofstructure.isTrue((*witness)(witn), witn.Accumulator.Nu, grp.N) {
+	if !proofstructure.isTrue((*witness)(witn), witn.SignedAccumulator.Accumulator.Nu, grp.N) {
 		return nil, nil, errors.New("non-revocation relation does not hold")
 	}
 
-	bases := keyproof.NewBaseMerge((*qrGroup)(grp), &accumulator{Nu: witn.Accumulator.Nu})
+	bases := keyproof.NewBaseMerge((*qrGroup)(grp), &accumulator{Nu: witn.SignedAccumulator.Accumulator.Nu})
 	list, commit := proofstructure.generateCommitmentsFromSecrets((*qrGroup)(grp), []*big.Int{}, &bases, (*witness)(witn))
 	commit.sacc = witn.SignedAccumulator
 	return list, (*ProofCommit)(&commit), nil
@@ -246,7 +246,7 @@ func (c *ProofCommit) BuildProof(challenge *big.Int) *Proof {
 func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
 	c.cu = new(big.Int).Exp(c.g.H, c.secrets["epsilon"], c.g.N)
 	c.cu.Mul(c.cu, witness.U)
-	c.nu = witness.Accumulator.Nu
+	c.nu = witness.SignedAccumulator.Accumulator.Nu
 	c.sacc = witness.SignedAccumulator
 
 	commit := (*proofCommit)(c)
@@ -254,7 +254,7 @@ func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
 	l := proofstructure.nu.generateCommitmentsFromSecrets(c.g, []*big.Int{}, &b, commit)
 
 	commitments[1] = c.cu
-	commitments[2] = witness.Accumulator.Nu
+	commitments[2] = witness.SignedAccumulator.Accumulator.Nu
 	commitments[4] = l[0]
 }
 
@@ -262,7 +262,7 @@ func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
 // after which the witness can be used to prove nonrevocation against the latest Accumulator
 // (contained in the update message).
 func (w *Witness) Update(pk *PublicKey, update *Update) error {
-	acc, prod, err := update.Verify(pk, w.Accumulator.Index)
+	acc, prod, err := update.Verify(pk, w.SignedAccumulator.Accumulator.Index)
 	if err != nil {
 		return err
 	}
@@ -271,10 +271,10 @@ func (w *Witness) Update(pk *PublicKey, update *Update) error {
 		return nil
 	}
 	startIndex, endIndex := update.Events[0].Index, acc.Index
-	if startIndex > w.Accumulator.Index+1 {
+	if startIndex > w.SignedAccumulator.Accumulator.Index+1 {
 		return nil
 	}
-	if endIndex <= w.Accumulator.Index {
+	if endIndex <= w.SignedAccumulator.Accumulator.Index {
 		w.Updated = time.Now()
 		return nil
 	}
@@ -297,7 +297,6 @@ func (w *Witness) Update(pk *PublicKey, update *Update) error {
 	// Update witness state only now after all possible errors have not occured
 	w.U = newU
 	w.SignedAccumulator = update.SignedAccumulator
-	w.Accumulator = acc
 	w.Updated = time.Now()
 
 	return nil
@@ -305,12 +304,11 @@ func (w *Witness) Update(pk *PublicKey, update *Update) error {
 
 // Verify the witness against its SignedAccumulator.
 func (w *Witness) Verify(pk *PublicKey) error {
-	acc, err := w.SignedAccumulator.UnmarshalVerify(pk)
+	_, err := w.SignedAccumulator.UnmarshalVerify(pk)
 	if err != nil {
 		return err
 	}
-	w.Accumulator = acc
-	if !verify(w.U, w.E, w.Accumulator, pk.Group) {
+	if !verify(w.U, w.E, w.SignedAccumulator.Accumulator, pk.Group) {
 		return errors.New("invalid witness")
 	}
 	return nil

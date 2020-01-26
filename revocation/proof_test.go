@@ -72,7 +72,6 @@ func test(t *testing.T, grp qrGroup, p, q *big.Int, valid bool) bool {
 	}
 
 	witn.randomizer = NewProofRandomizer()
-	witn.Accumulator = acc
 	bases := keyproof.NewBaseMerge(&grp, (*accumulator)(acc))
 	require.Equal(t, valid, proofstructure.isTrue((*witness)(witn), acc.Nu, grp.N), "statement to prove ")
 
