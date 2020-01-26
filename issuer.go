@@ -29,11 +29,11 @@ func NewIssuer(sk *PrivateKey, pk *PublicKey, context *big.Int) *Issuer {
 // the proofs containted in the IssueCommitmentMessage! That needs to be done at
 // a higher level!
 func (i *Issuer) IssueSignature(U *big.Int, attributes []*big.Int, witness *revocation.Witness, nonce2 *big.Int) (*IssueSignatureMessage, error) {
-	var nonRevAttr *big.Int
+	var revocationAttr *big.Int
 	if witness != nil {
-		nonRevAttr = witness.E
+		revocationAttr = witness.E
 	}
-	signature, err := i.signCommitmentAndAttributes(U, attributes, nonRevAttr)
+	signature, err := i.signCommitmentAndAttributes(U, attributes, revocationAttr)
 	if err != nil {
 		return nil, err
 	}
@@ -45,9 +45,9 @@ func (i *Issuer) IssueSignature(U *big.Int, attributes []*big.Int, witness *revo
 // and the attributes. The signature by itself does not verify because the
 // commitment contains a blinding factor that needs to be taken into account
 // when verifying the signature.
-func (i *Issuer) signCommitmentAndAttributes(U *big.Int, attributes []*big.Int, nonrevAttr *big.Int) (*CLSignature, error) {
+func (i *Issuer) signCommitmentAndAttributes(U *big.Int, attributes []*big.Int, revocationAttr *big.Int) (*CLSignature, error) {
 	// Skip the first generator
-	return signMessageBlockAndCommitment(i.Sk, i.Pk, U, append([]*big.Int{big.NewInt(0)}, attributes...), nonrevAttr)
+	return signMessageBlockAndCommitment(i.Sk, i.Pk, U, append([]*big.Int{big.NewInt(0)}, attributes...), revocationAttr)
 }
 
 // randomElementMultiplicativeGroup returns a random element in the

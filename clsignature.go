@@ -17,13 +17,13 @@ import (
 //   R[1]^{exps[1]}*...*R[k]^{exps[k]} (mod N)
 // with R and N coming from the public key. The exponents are hashed if their length
 // exceeds the maximum message length from the public key.
-func RepresentToPublicKey(pk *PublicKey, exps []*big.Int, nonrevAttr *big.Int) (*big.Int, error) {
+func RepresentToPublicKey(pk *PublicKey, exps []*big.Int, revocationAttr *big.Int) (*big.Int, error) {
 	R := common.RepresentToBases(pk.R, exps, pk.N, pk.Params.Lm)
-	if nonrevAttr != nil {
+	if revocationAttr != nil {
 		if !pk.RevocationSupported() {
 			return nil, errors.New("revocation not supported by this public key")
 		}
-		R.Mul(R, common.ModPow(pk.T, nonrevAttr, pk.N)).Mod(R, pk.N)
+		R.Mul(R, common.ModPow(pk.T, revocationAttr, pk.N)).Mod(R, pk.N)
 	}
 	return R, nil
 }
@@ -38,9 +38,9 @@ type CLSignature struct {
 
 // SignMessageBlock signs a message block (ms) and a commitment (U) using the
 // Camenisch-Lysyanskaya signature scheme as used in the IdeMix system.
-func signMessageBlockAndCommitment(sk *PrivateKey, pk *PublicKey, U *big.Int, ms []*big.Int, nonrevAttr *big.Int) (
+func signMessageBlockAndCommitment(sk *PrivateKey, pk *PublicKey, U *big.Int, ms []*big.Int, revocationAttr *big.Int) (
 	*CLSignature, error) {
-	R, err := RepresentToPublicKey(pk, ms, nonrevAttr)
+	R, err := RepresentToPublicKey(pk, ms, revocationAttr)
 	if err != nil {
 		return nil, err
 	}
@@ -75,13 +75,13 @@ func signMessageBlockAndCommitment(sk *PrivateKey, pk *PublicKey, U *big.Int, ms
 
 // SignMessageBlock signs a message block (ms) using the Camenisch-Lysyanskaya
 // signature scheme as used in the IdeMix system.
-func SignMessageBlock(sk *PrivateKey, pk *PublicKey, ms []*big.Int, nonrevAttr *big.Int) (*CLSignature, error) {
-	return signMessageBlockAndCommitment(sk, pk, big.NewInt(1), ms, nonrevAttr)
+func SignMessageBlock(sk *PrivateKey, pk *PublicKey, ms []*big.Int, revocationAttr *big.Int) (*CLSignature, error) {
+	return signMessageBlockAndCommitment(sk, pk, big.NewInt(1), ms, revocationAttr)
 }
 
 // Verify checks whether the signature is correct while being given a public key
 // and the messages.
-func (s *CLSignature) Verify(pk *PublicKey, ms []*big.Int, nonrevAttr *big.Int) bool {
+func (s *CLSignature) Verify(pk *PublicKey, ms []*big.Int, revocationAttr *big.Int) bool {
 	// First check that e is in the range [2^{l_e - 1}, 2^{l_e - 1} + 2^{l_e_prime - 1}]
 	start := new(big.Int).Lsh(big.NewInt(1), pk.Params.Le-1)
 	end := new(big.Int).Lsh(big.NewInt(1), pk.Params.LePrime-1)
@@ -92,7 +92,7 @@ func (s *CLSignature) Verify(pk *PublicKey, ms []*big.Int, nonrevAttr *big.Int) 
 
 	// Q = A^e * R * S^v
 	Ae := new(big.Int).Exp(s.A, s.E, pk.N)
-	R, err := RepresentToPublicKey(pk, ms, nonrevAttr)
+	R, err := RepresentToPublicKey(pk, ms, revocationAttr)
 	if err != nil {
 		return false
 	}

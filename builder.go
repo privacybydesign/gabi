@@ -137,9 +137,9 @@ func (b *CredentialBuilder) ConstructCredential(msg *IssueSignatureMessage, attr
 	exponents[0] = b.secret
 	copy(exponents[1:], attributes)
 
-	var nonrevAttr *big.Int
+	var revocationAttr *big.Int
 	if msg.NonRevocationWitness != nil {
-		nonrevAttr = msg.NonRevocationWitness.E
+		revocationAttr = msg.NonRevocationWitness.E
 		rpk, err := b.pk.RevocationKey()
 		if err != nil {
 			return nil, err
@@ -148,7 +148,7 @@ func (b *CredentialBuilder) ConstructCredential(msg *IssueSignatureMessage, attr
 			return nil, err
 		}
 	}
-	if !signature.Verify(b.pk, exponents, nonrevAttr) {
+	if !signature.Verify(b.pk, exponents, revocationAttr) {
 		return nil, ErrIncorrectAttributeSignature
 	}
 	return &Credential{

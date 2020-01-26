@@ -33,8 +33,9 @@ type DisclosureProofBuilder struct {
 	pk                    *PublicKey
 	attributes            []*big.Int
 
-	nonrevAttr, nonrevRandomizer *big.Int
-	nonrevBuilder                *NonRevocationProofBuilder
+	revocationAttr   *big.Int
+	nonrevRandomizer *big.Int
+	nonrevBuilder    *NonRevocationProofBuilder
 }
 
 type NonRevocationProofBuilder struct {
@@ -141,7 +142,7 @@ func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int, no
 		} else {
 			d.nonrevRandomizer = revocation.NewProofRandomizer()
 		}
-		d.nonrevAttr = ic.NonRevocationWitness.E
+		d.revocationAttr = ic.NonRevocationWitness.E
 	}
 
 	return d, nil
@@ -236,7 +237,7 @@ func (d *DisclosureProofBuilder) Commit(randomizers map[string]*big.Int) []*big.
 		d.z.Mul(d.z, common.ModPow(d.pk.R[v], d.attrRandomizers[v], d.pk.N))
 		d.z.Mod(d.z, d.pk.N)
 	}
-	if d.nonrevAttr != nil {
+	if d.revocationAttr != nil {
 		d.z.Mul(d.z, common.ModPow(d.pk.T, d.nonrevRandomizer, d.pk.N)).Mod(d.z, d.pk.N)
 	}
 
@@ -277,8 +278,8 @@ func (d *DisclosureProofBuilder) CreateProof(challenge *big.Int) Proof {
 
 	var nonrevProof *revocation.Proof
 	var nrResponse *big.Int
-	if d.nonrevAttr != nil && d.nonrevRandomizer != nil {
-		nrResponse = new(big.Int).Add(d.nonrevRandomizer, new(big.Int).Mul(challenge, d.nonrevAttr))
+	if d.revocationAttr != nil && d.nonrevRandomizer != nil {
+		nrResponse = new(big.Int).Add(d.nonrevRandomizer, new(big.Int).Mul(challenge, d.revocationAttr))
 	}
 	if d.nonrevBuilder != nil {
 		nonrevProof = d.nonrevBuilder.CreateProof(challenge)
