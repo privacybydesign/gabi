@@ -693,7 +693,9 @@ func TestRevoked(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, signature.Verify(testPubK, testAttributes1, witness.E))
 
-	update, err = acc.Remove(revkey, witness.E, update.Events[0])
+	acc, event, err := acc.Remove(revkey, witness.E, update.Events[0])
+	require.NoError(t, err)
+	update, err = revocation.NewUpdate(revkey, acc, []*revocation.Event{event})
 	require.NoError(t, err)
 
 	// Try to update Accumulator to latest update (where the witness.E is removed)
