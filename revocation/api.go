@@ -219,6 +219,9 @@ func (acc *Accumulator) Remove(sk *PrivateKey, e *big.Int, parent *Event) (*Accu
 // UnmarshalVerify verifies the signature and unmarshals the accumulator
 // (c.f. Accumulator.Sign()).
 func (s *SignedAccumulator) UnmarshalVerify(pk *PublicKey) (*Accumulator, error) {
+	if s.Accumulator != nil {
+		return s.Accumulator, nil
+	}
 	msg := &Accumulator{}
 	if pk.Counter != s.PKCounter {
 		return nil, errors.New("wrong public key")
@@ -227,7 +230,7 @@ func (s *SignedAccumulator) UnmarshalVerify(pk *PublicKey) (*Accumulator, error)
 		return nil, err
 	}
 	s.Accumulator = msg
-	return msg, nil
+	return s.Accumulator, nil
 }
 
 type compressedUpdate struct {
