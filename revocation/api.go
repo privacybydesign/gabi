@@ -69,6 +69,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/fxamacker/cbor"
@@ -105,6 +106,16 @@ type (
 		ParentHash Hash     `json"parenthash"`
 	}
 
+	EventList struct {
+		Events []*Event
+		// ComputeProduct enables computation of the product of all revocation integers
+		// present in Events during unmarshaling.
+		ComputeProduct bool `json:"-"`
+		product        *big.Int
+		verified       bool
+		validationErr  error
+	}
+
 	// Update contains all information for clients to update their witness to the latest accumulator:
 	// the accumulator itself and a set of revocation attributes.
 	// Its hash structure makes this message into a chain with the SignedAccumulator on top:
@@ -114,6 +125,7 @@ type (
 	Update struct {
 		SignedAccumulator *SignedAccumulator
 		Events            []*Event
+		product           *big.Int
 	}
 
 	// Hash represents a SHA256 hash and has marshaling methods to/from JSON.
@@ -233,19 +245,12 @@ func (s *SignedAccumulator) UnmarshalVerify(pk *PublicKey) (*Accumulator, error)
 	return s.Accumulator, nil
 }
 
-type compressedUpdate struct {
-	SignedAccumulator *SignedAccumulator `json:"sacc"`
-	Index             uint64             `json:"i,omitempty"`
-	ParentHash        Hash               `json:"hash,omitempty"`
-	E                 []*big.Int         `json:"e,omitempty"`
-}
-
 func NewUpdate(sk *PrivateKey, acc *Accumulator, events []*Event) (*Update, error) {
 	sacc, err := acc.Sign(sk)
 	if err != nil {
 		return nil, err
 	}
-	if _, err = revocationVerifyChain(0, acc, events); err != nil {
+	if err = NewEventList(events...).Verify(acc); err != nil {
 		return nil, err // ensure we don't return an invalid Update
 	}
 	return &Update{
@@ -254,35 +259,21 @@ func NewUpdate(sk *PrivateKey, acc *Accumulator, events []*Event) (*Update, erro
 	}, nil
 }
 
+type compressedUpdate struct {
+	SignedAccumulator *SignedAccumulator `json:"sacc"`
+	E                 EventList          `json:"e,omitempty"`
+}
+
 func (update *Update) compress() *compressedUpdate {
-	c := compressedUpdate{SignedAccumulator: update.SignedAccumulator}
-	if len(update.Events) > 0 {
-		c.Index = update.Events[0].Index
-		c.ParentHash = update.Events[0].ParentHash
-		c.E = make([]*big.Int, len(update.Events))
+	return &compressedUpdate{
+		SignedAccumulator: update.SignedAccumulator,
+		E:                 *NewEventList(update.Events...),
 	}
-	for i := range update.Events {
-		c.E[i] = update.Events[i].E
-	}
-	return &c
 }
 
 func (update *Update) uncompress(c *compressedUpdate) {
 	update.SignedAccumulator = c.SignedAccumulator
-	if len(c.E) != 0 {
-		update.Events = make([]*Event, len(c.E))
-	}
-	for i := range update.Events {
-		update.Events[i] = &Event{
-			E:     c.E[i],
-			Index: uint64(i) + c.Index,
-		}
-		if i == 0 {
-			update.Events[i].ParentHash = c.ParentHash
-		} else {
-			update.Events[i].ParentHash = update.Events[i-1].hash()
-		}
-	}
+	update.Events = c.E.Events
 }
 
 func (update *Update) MarshalJSON() ([]byte, error) {
@@ -311,50 +302,62 @@ func (update *Update) UnmarshalCBOR(data []byte) error {
 	return nil
 }
 
-func revocationVerifyChain(index uint64, acc *Accumulator, events []*Event) (*big.Int, error) {
-	var err error
-	prod := new(big.Int).SetInt64(1)
-	count := len(events)
-	if count == 0 {
-		return prod, nil
-	}
-
-	if err = events[count-1].hashEquals(acc.EventHash); err != nil {
-		return nil, errors.WrapPrefix(err, "update chain has wrong hash", 0)
-	}
-	// Verify the hashes of the chain, computing the product of all revoked attributes along the way
-	startIndex := events[0].Index
-	for i, event := range events {
-		if i != 0 {
-			if err = events[i-1].hashEquals(event.ParentHash); err != nil {
-				return nil, errors.WrapPrefix(
-					err, fmt.Sprintf("event chain element %d has wrong parent hash", i), 0,
-				)
-			}
-		}
-		if uint64(i)+startIndex != event.Index {
-			return nil, errors.Errorf("event %+v has wrong index, found %d, expected %d", event, event.Index, uint64(i)+startIndex)
-		}
-		if uint64(i)+startIndex <= index {
-			continue
-		}
-		prod.Mul(prod, event.E)
-	}
-
-	return prod, nil
-}
-
 // Verify that the specified update message is a validly signed partial chain:
 // - the accumulator is validly signed
 // - the accumulator includes the hash of the last item in the hash chain
 // - the hash chain is valid (each chain item has the correct hash of its parent).
-func (update *Update) Verify(pk *PublicKey, index uint64) (*Accumulator, *big.Int, error) {
+func (update *Update) Verify(pk *PublicKey) (*Accumulator, error) {
 	acc, err := update.SignedAccumulator.UnmarshalVerify(pk)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	prod, err := revocationVerifyChain(index, acc, update.Events)
-	return acc, prod, err
+	return acc, NewEventList(update.Events...).Verify(acc)
+}
+
+func (update *Update) Product() *big.Int {
+	if update.product != nil {
+		return update.product
+	}
+	update.product = big.NewInt(1)
+	for _, event := range update.Events {
+		update.product.Mul(update.product, event.E)
+	}
+	return update.product
+}
+
+func (update *Update) Prepend(eventlist *EventList) error {
+	count := len(eventlist.Events)
+	if count == 0 {
+		return nil
+	}
+	ours := update.Events[0].Index
+	last := eventlist.Events[count-1].Index
+	if last < ours-1 {
+		return errors.New("missing events")
+	}
+	min := int(1 + last - ours)
+	if min > len(update.Events) {
+		return errors.New("events too new")
+	}
+
+	n := &Update{
+		SignedAccumulator: update.SignedAccumulator,
+		Events:            update.Events[min:],
+	}
+	n.product = n.Product()
+	n.Events = append(eventlist.Events, n.Events...)
+	if eventlist.product != nil {
+		n.product.Mul(n.product, eventlist.product)
+	} else {
+		n.product = nil
+	}
+	if err := NewEventList(n.Events...).Verify(n.SignedAccumulator.Accumulator); err != nil {
+		return err
+	}
+
+	// update our instance only after no error has occured
+	*update = *n
+	return nil
 }
 
 // whitelist of hash algorithms that we currently accept consisting of just SHA256
@@ -367,7 +370,138 @@ func checkHashAlg(code uint64) error {
 	}
 }
 
-// Hash returns the SHA256 hash of the Event.
+func NewEventList(events ...*Event) *EventList {
+	return &EventList{Events: events}
+}
+
+func FlattenEventLists(eventslist []*EventList) (*EventList, error) {
+	sort.Slice(eventslist, func(i, j int) bool {
+		return eventslist[i].Events[0].Index < eventslist[j].Events[0].Index
+	})
+	var events []*Event
+	prod := big.NewInt(1)
+	for _, e := range eventslist {
+		prod.Mul(prod, e.product)
+		events = append(events, e.Events...)
+	}
+	return &EventList{Events: events, product: prod, verified: true}, nil
+}
+
+type compressedEventList struct {
+	Index      uint64     `json:"i"`
+	ParentHash Hash       `json:"hash"`
+	E          []*big.Int `json:"e"`
+}
+
+func (el *EventList) compress() *compressedEventList {
+	c := compressedEventList{}
+	if len(el.Events) == 0 {
+		return &c
+	}
+	c.Index = el.Events[0].Index
+	c.ParentHash = el.Events[0].ParentHash
+	c.E = make([]*big.Int, len(el.Events))
+	for i := range el.Events {
+		c.E[i] = el.Events[i].E
+	}
+	return &c
+}
+
+func (el *EventList) uncompress(c *compressedEventList) {
+	if len(c.E) != 0 {
+		el.Events = make([]*Event, len(c.E))
+	}
+	if el.ComputeProduct {
+		el.product = big.NewInt(1)
+	}
+	for i := range el.Events {
+		e := c.E[i]
+		el.Events[i] = &Event{
+			E:     e,
+			Index: uint64(i) + c.Index,
+		}
+		if i == 0 {
+			el.Events[i].ParentHash = c.ParentHash
+		} else {
+			el.Events[i].ParentHash = el.Events[i-1].hash()
+		}
+		if el.ComputeProduct {
+			el.product.Mul(el.product, e)
+		}
+	}
+	// The indices and hashes of events that come from a compressed event are always valid
+	// since we just computed them ourselves
+	el.verified = true
+}
+
+func (el *EventList) MarshalJSON() ([]byte, error) {
+	return json.Marshal(el.compress())
+}
+
+func (el *EventList) UnmarshalJSON(bts []byte) error {
+	var c compressedEventList
+	err := json.Unmarshal(bts, &c)
+	if err != nil {
+		return err
+	}
+	el.uncompress(&c)
+	return nil
+}
+
+func (el *EventList) MarshalCBOR() ([]byte, error) {
+	return cbor.Marshal(el.compress(), cbor.EncOptions{})
+}
+
+func (el *EventList) UnmarshalCBOR(bts []byte) error {
+	var c compressedEventList
+	err := cbor.Unmarshal(bts, &c)
+	if err != nil {
+		return err
+	}
+	el.uncompress(&c)
+	return nil
+}
+
+func (el *EventList) Verify(acc *Accumulator) error {
+	var err error
+	events := el.Events
+	count := len(events)
+
+	// early returns
+	if count == 0 {
+		return nil
+	}
+	if el.verified {
+		if el.validationErr != nil {
+			return el.validationErr
+		}
+		return nil
+	}
+	if err = events[count-1].hashEquals(acc.EventHash); err != nil {
+		return errors.WrapPrefix(err, "update chain has wrong hash", 0)
+	}
+
+	// Verify the hashes of the chain, computing the product of all revoked attributes along the way
+	startIndex := events[0].Index
+	for i, event := range events {
+		if i != 0 {
+			if err = events[i-1].hashEquals(event.ParentHash); err != nil {
+				el.validationErr = errors.WrapPrefix(
+					err, fmt.Sprintf("event chain element %d has wrong parent hash", i), 0,
+				)
+				return el.validationErr
+			}
+		}
+		if uint64(i)+startIndex != event.Index {
+			el.validationErr = errors.Errorf("event %+v has wrong index, found %d, expected %d", event, event.Index, uint64(i)+startIndex)
+			return el.validationErr
+		}
+	}
+
+	el.verified = true
+	return nil
+}
+
 func (event *Event) hash() Hash {
 	hash, err := event.hashUsingAlg(HashAlgorithm)
 	if err != nil {

@@ -262,7 +262,7 @@ func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
 // after which the witness can be used to prove nonrevocation against the latest Accumulator
 // (contained in the update message).
 func (w *Witness) Update(pk *PublicKey, update *Update) error {
-	acc, prod, err := update.Verify(pk, w.SignedAccumulator.Accumulator.Index)
+	acc, err := update.Verify(pk)
 	if err != nil {
 		return err
 	}
@@ -279,7 +279,7 @@ func (w *Witness) Update(pk *PublicKey, update *Update) error {
 		return nil
 	}
 	var a, b big.Int
-	if new(big.Int).GCD(&a, &b, w.E, prod).Cmp(bigOne) != 0 {
+	if new(big.Int).GCD(&a, &b, w.E, update.Product()).Cmp(bigOne) != 0 {
 		return ErrorRevoked
 	}
 
