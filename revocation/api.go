@@ -162,7 +162,7 @@ func NewAccumulator(sk *PrivateKey) (*Update, error) {
 	emptyhash, err := multihash.Encode(empty[:], HashAlgorithm)
 	initialEvent := &Event{
 		Index:      AccumulatorStartIndex,
-		E:          big.NewInt(0),
+		E:          big.NewInt(1),
 		ParentHash: emptyhash,
 	}
 	if err != nil {
