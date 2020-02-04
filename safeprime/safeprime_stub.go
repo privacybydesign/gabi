@@ -6,7 +6,7 @@ import (
 	"github.com/privacybydesign/gabi/big"
 )
 
-func Generate(int) (*big.Int, error) {
+func Generate(int, chan struct{}) (*big.Int, error) {
 	panic("Safe prime generation is disabled")
 }
 
