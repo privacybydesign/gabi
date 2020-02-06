@@ -78,6 +78,7 @@ import (
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
 	"github.com/privacybydesign/gabi/signed"
+	"github.com/sirupsen/logrus"
 )
 
 type (
@@ -168,6 +169,8 @@ const (
 
 	HashAlgorithm = multihash.SHA2_256
 )
+
+var Logger *logrus.Logger
 
 func NewAccumulator(sk *PrivateKey) (*Update, error) {
 	empty := [32]byte{}

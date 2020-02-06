@@ -174,6 +174,8 @@ func RandomWitness(sk *PrivateKey, acc *Accumulator) (*Witness, error) {
 
 // NewProofCommit performs the first move in the Schnorr zero-knowledge protocol: committing to randomizers.
 func NewProofCommit(grp *QrGroup, witn *Witness, randomizer *big.Int) ([]*big.Int, *ProofCommit, error) {
+	Logger.Tracef("revocation.NewProofCommit()")
+	defer Logger.Tracef("revocation.NewProofCommit() done")
 	witn.randomizer = randomizer
 	if randomizer == nil {
 		witn.randomizer = NewProofRandomizer()
@@ -225,6 +227,8 @@ func (p *Proof) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.I
 }
 
 func (c *ProofCommit) BuildProof(challenge *big.Int) *Proof {
+	Logger.Tracef("revocation.ProofCommit.BuildProof()")
+	defer Logger.Tracef("revocation.ProofCommit.BuildProof() done")
 	responses := make(map[string]*big.Int, 5)
 	for _, name := range secretNames {
 		responses[name] = new(big.Int).Add(
@@ -244,6 +248,8 @@ func (c *ProofCommit) BuildProof(challenge *big.Int) *Proof {
 }
 
 func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
+	Logger.Tracef("revocation.ProofCommit.Update()")
+	defer Logger.Tracef("revocation.ProofCommit.Update() done")
 	c.cu = new(big.Int).Exp(c.g.H, c.secrets["epsilon"], c.g.N)
 	c.cu.Mul(c.cu, witness.U)
 	c.nu = witness.SignedAccumulator.Accumulator.Nu
@@ -262,6 +268,8 @@ func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
 // after which the witness can be used to prove nonrevocation against the latest Accumulator
 // (contained in the update message).
 func (w *Witness) Update(pk *PublicKey, update *Update) error {
+	Logger.Tracef("revocation.Witness.Update()")
+	defer Logger.Tracef("revocation.Witness.Update() done")
 	acc, err := update.Verify(pk)
 	if err != nil {
 		return err
