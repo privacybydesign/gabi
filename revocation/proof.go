@@ -266,16 +266,17 @@ func (w *Witness) Update(pk *PublicKey, update *Update) error {
 	if err != nil {
 		return err
 	}
+	if acc.Index == w.SignedAccumulator.Accumulator.Index {
+		*w.SignedAccumulator = *update.SignedAccumulator
+		w.Updated = time.Unix(acc.Time, 0)
+		return nil
+	}
 	if len(update.Events) == 0 {
-		w.Updated = time.Now()
 		return nil
 	}
 	startIndex, endIndex := update.Events[0].Index, acc.Index
-	if startIndex > w.SignedAccumulator.Accumulator.Index+1 {
-		return nil
-	}
-	if endIndex <= w.SignedAccumulator.Accumulator.Index {
-		w.Updated = time.Now()
+	if startIndex > w.SignedAccumulator.Accumulator.Index+1 ||
+		endIndex <= w.SignedAccumulator.Accumulator.Index {
 		return nil
 	}
 	var a, b big.Int
@@ -297,7 +298,7 @@ func (w *Witness) Update(pk *PublicKey, update *Update) error {
 	// Update witness state only now after all possible errors have not occured
 	w.U = newU
 	w.SignedAccumulator = update.SignedAccumulator
-	w.Updated = time.Now()
+	w.Updated = time.Unix(acc.Time, 0)
 
 	return nil
 }

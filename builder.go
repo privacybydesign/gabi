@@ -6,6 +6,7 @@ package gabi
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/go-errors/errors"
 
@@ -147,6 +148,7 @@ func (b *CredentialBuilder) ConstructCredential(msg *IssueSignatureMessage, attr
 		if err = msg.NonRevocationWitness.Verify(rpk); err != nil {
 			return nil, err
 		}
+		msg.NonRevocationWitness.Updated = time.Unix(msg.NonRevocationWitness.SignedAccumulator.Accumulator.Time, 0)
 	}
 	if !signature.Verify(b.pk, exponents, revocationAttr) {
 		return nil, ErrIncorrectAttributeSignature
