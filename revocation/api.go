@@ -165,8 +165,6 @@ type (
 )
 
 const (
-	AccumulatorStartIndex uint64 = 1
-
 	HashAlgorithm = multihash.SHA2_256
 )
 
@@ -176,7 +174,7 @@ func NewAccumulator(sk *PrivateKey) (*Update, error) {
 	empty := [32]byte{}
 	emptyhash, err := multihash.Encode(empty[:], HashAlgorithm)
 	initialEvent := &Event{
-		Index:      AccumulatorStartIndex,
+		Index:      0,
 		E:          big.NewInt(1),
 		ParentHash: emptyhash,
 	}
@@ -184,8 +182,8 @@ func NewAccumulator(sk *PrivateKey) (*Update, error) {
 		return nil, err
 	}
 	acc := &Accumulator{
+		Index:     0,
 		Nu:        common.RandomQR(sk.N),
-		Index:     AccumulatorStartIndex,
 		Time:      time.Now().Unix(),
 		EventHash: initialEvent.hash(),
 	}
