@@ -41,10 +41,10 @@ func newExpStepStructure(bitname, prename, postname, mulname, modname string, bi
 	}
 }
 
-func (s *expStepStructure) commitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, expStepCommit) {
+func (s *expStepStructure) commitmentsFromSecrets(g group, list []*big.Int, bases BaseLookup, secretdata SecretLookup) ([]*big.Int, expStepCommit) {
 	var commit expStepCommit
 
-	if secretdata.secret(s.bitname).Cmp(big.NewInt(0)) == 0 {
+	if secretdata.Secret(s.bitname).Cmp(big.NewInt(0)) == 0 {
 		commit.isTypeA = true
 
 		// prove a
@@ -69,7 +69,7 @@ func (s *expStepStructure) commitmentsFromSecrets(g group, list []*big.Int, base
 	return list, commit
 }
 
-func (s *expStepStructure) buildProof(g group, challenge *big.Int, commit expStepCommit, secretdata secretLookup) ExpStepProof {
+func (s *expStepStructure) buildProof(g group, challenge *big.Int, commit expStepCommit, secretdata SecretLookup) ExpStepProof {
 	var proof ExpStepProof
 
 	if commit.isTypeA {
@@ -116,13 +116,13 @@ func (s *expStepStructure) verifyProofStructure(challenge *big.Int, proof ExpSte
 	return s.stepa.verifyProofStructure(proof.Aproof) && s.stepb.verifyProofStructure(proof.Bproof)
 }
 
-func (s *expStepStructure) commitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases baseLookup, proof ExpStepProof) []*big.Int {
+func (s *expStepStructure) commitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases BaseLookup, proof ExpStepProof) []*big.Int {
 	list = s.stepa.commitmentsFromProof(g, list, proof.Achallenge, bases, proof.Aproof)
 	list = s.stepb.commitmentsFromProof(g, list, proof.Bchallenge, bases, proof.Bproof)
 	return list
 }
 
-func (s *expStepStructure) isTrue(secretdata secretLookup) bool {
+func (s *expStepStructure) isTrue(secretdata SecretLookup) bool {
 	return s.stepa.isTrue(secretdata) || s.stepb.isTrue(secretdata)
 }
 

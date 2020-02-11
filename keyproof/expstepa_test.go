@@ -23,8 +23,8 @@ func TestExpStepAFlow(t *testing.T) {
 	_, prePedersen := prePedersens.commitmentsFromSecrets(g, nil, big.NewInt(5))
 	_, postPedersen := postPedersens.commitmentsFromSecrets(g, nil, big.NewInt(5))
 
-	bases := newBaseMerge(&g, &bitPedersen, &prePedersen, &postPedersen)
-	secrets := newSecretMerge(&bitPedersen, &prePedersen, &postPedersen)
+	bases := NewBaseMerge(&g, &bitPedersen, &prePedersen, &postPedersen)
+	secrets := NewSecretMerge(&bitPedersen, &prePedersen, &postPedersen)
 
 	s := newExpStepAStructure("bit", "pre", "post")
 
@@ -47,7 +47,7 @@ func TestExpStepAFlow(t *testing.T) {
 	postProof := postPedersens.buildProof(g, big.NewInt(12345), postPedersen)
 	postProof.setName("post")
 
-	proofBases := newBaseMerge(&g, &bitProof, &preProof, &postProof)
+	proofBases := NewBaseMerge(&g, &bitProof, &preProof, &postProof)
 
 	listProof := s.commitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &proofBases, proof)
 

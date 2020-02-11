@@ -12,9 +12,9 @@ type (
 		q          pedersenStructure
 		pprime     pedersenStructure
 		qprime     pedersenStructure
-		pPprimeRel representationProofStructure
-		qQprimeRel representationProofStructure
-		pQNRel     representationProofStructure
+		pPprimeRel RepresentationProofStructure
+		qQprimeRel RepresentationProofStructure
+		pQNRel     RepresentationProofStructure
 
 		pprimeIsPrime primeProofStructure
 		qprimeIsPrime primeProofStructure
@@ -49,35 +49,35 @@ func NewValidKeyProofStructure(N *big.Int, Z *big.Int, S *big.Int, Bases []*big.
 	structure.pprime = newPedersenStructure("pprime")
 	structure.qprime = newPedersenStructure("qprime")
 
-	structure.pPprimeRel = representationProofStructure{
-		[]lhsContribution{
+	structure.pPprimeRel = RepresentationProofStructure{
+		[]LhsContribution{
 			{"p", big.NewInt(1)},
 			{"pprime", big.NewInt(-2)},
 			{"g", big.NewInt(-1)},
 		},
-		[]rhsContribution{
+		[]RhsContribution{
 			{"h", "p_hider", 1},
 			{"h", "pprime_hider", -2},
 		},
 	}
 
-	structure.qQprimeRel = representationProofStructure{
-		[]lhsContribution{
+	structure.qQprimeRel = RepresentationProofStructure{
+		[]LhsContribution{
 			{"q", big.NewInt(1)},
 			{"qprime", big.NewInt(-2)},
 			{"g", big.NewInt(-1)},
 		},
-		[]rhsContribution{
+		[]RhsContribution{
 			{"h", "q_hider", 1},
 			{"h", "qprime_hider", -2},
 		},
 	}
 
-	structure.pQNRel = representationProofStructure{
-		[]lhsContribution{
+	structure.pQNRel = RepresentationProofStructure{
+		[]LhsContribution{
 			{"g", new(big.Int).Set(N)},
 		},
-		[]rhsContribution{
+		[]RhsContribution{
 			{"p", "q", 1},
 			{"h", "pqnrel", -1},
 		},
@@ -119,8 +119,8 @@ func (s *ValidKeyProofStructure) BuildProof(Pprime *big.Int, Qprime *big.Int) Va
 	PQNRel := newSecret(g, "pqnrel", new(big.Int).Mod(new(big.Int).Mul(PSecret.hider.secretv, QSecret.secretv.secretv), g.order))
 
 	// Build up bases and secrets structures
-	bases := newBaseMerge(&g, &PSecret, &QSecret, &PprimeSecret, &QprimeSecret)
-	secrets := newSecretMerge(&PSecret, &QSecret, &PprimeSecret, &QprimeSecret, &PQNRel)
+	bases := NewBaseMerge(&g, &PSecret, &QSecret, &PprimeSecret, &QprimeSecret)
+	secrets := NewSecretMerge(&PSecret, &QSecret, &PprimeSecret, &QprimeSecret, &PQNRel)
 
 	// Build up commitment list
 	var PprimeIsPrimeCommit primeProofCommit
@@ -208,8 +208,8 @@ func (s *ValidKeyProofStructure) VerifyProof(proof ValidKeyProof) bool {
 	proof.PQNRel.setName("pqnrel")
 
 	// Build up bases and secrets
-	bases := newBaseMerge(&g, &proof.PProof, &proof.QProof, &proof.PprimeProof, &proof.QprimeProof)
-	proofs := newProofMerge(&proof.PProof, &proof.QProof, &proof.PprimeProof, &proof.QprimeProof, &proof.PQNRel)
+	bases := NewBaseMerge(&g, &proof.PProof, &proof.QProof, &proof.PprimeProof, &proof.QprimeProof)
+	proofs := NewProofMerge(&proof.PProof, &proof.QProof, &proof.PprimeProof, &proof.QprimeProof, &proof.PQNRel)
 
 	// Build up commitment list
 	var list []*big.Int

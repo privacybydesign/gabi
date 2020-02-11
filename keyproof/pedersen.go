@@ -10,7 +10,7 @@ import (
 type (
 	pedersenStructure struct {
 		name           string
-		representation representationProofStructure
+		representation RepresentationProofStructure
 	}
 
 	pedersenCommit struct {
@@ -33,11 +33,11 @@ type (
 func newPedersenStructure(name string) pedersenStructure {
 	return pedersenStructure{
 		name,
-		representationProofStructure{
-			[]lhsContribution{
+		RepresentationProofStructure{
+			[]LhsContribution{
 				{name, big.NewInt(1)},
 			},
-			[]rhsContribution{
+			[]RhsContribution{
 				{"g", name, 1},
 				{"h", strings.Join([]string{name, "hider"}, "_"), 1},
 			},
@@ -47,11 +47,11 @@ func newPedersenStructure(name string) pedersenStructure {
 
 func newPedersenRangeProofStructure(name string, l1 uint, l2 uint) rangeProofStructure {
 	structure := rangeProofStructure{
-		representationProofStructure: representationProofStructure{
-			lhs: []lhsContribution{
+		RepresentationProofStructure: RepresentationProofStructure{
+			Lhs: []LhsContribution{
 				{name, big.NewInt(1)},
 			},
-			rhs: []rhsContribution{
+			Rhs: []RhsContribution{
 				{"g", name, 1},
 				{"h", strings.Join([]string{name, "hider"}, "_"), 1},
 			},
@@ -79,9 +79,9 @@ func (s *pedersenStructure) commitmentsFromSecrets(g group, list []*big.Int, val
 		g:       &g,
 		commit:  new(big.Int),
 	}
-	result.exp(result.commit, s.name, big.NewInt(1), g.p)
+	result.Exp(result.commit, s.name, big.NewInt(1), g.p)
 
-	bases := newBaseMerge(&result, &g)
+	bases := NewBaseMerge(&result, &g)
 	list = append(list, result.commit)
 	return s.representation.commitmentsFromSecrets(g, list, &bases, &result), result
 }
@@ -94,9 +94,9 @@ func (s *pedersenStructure) commitmentsDuplicate(g group, list []*big.Int, value
 		g:       &g,
 		commit:  new(big.Int),
 	}
-	result.exp(result.commit, s.name, big.NewInt(1), g.p)
+	result.Exp(result.commit, s.name, big.NewInt(1), g.p)
 
-	bases := newBaseMerge(&result, &g)
+	bases := NewBaseMerge(&result, &g)
 	list = append(list, result.commit)
 	return s.representation.commitmentsFromSecrets(g, list, &bases, &result), result
 }
@@ -111,8 +111,8 @@ func (s *pedersenStructure) buildProof(g group, challenge *big.Int, commit peder
 
 func (s *pedersenStructure) fakeProof(g group) PedersenProof {
 	var gCommit, hCommit big.Int
-	g.exp(&gCommit, "g", common.FastRandomBigInt(g.order), g.p)
-	g.exp(&hCommit, "h", common.FastRandomBigInt(g.order), g.p)
+	g.Exp(&gCommit, "g", common.FastRandomBigInt(g.order), g.p)
+	g.Exp(&hCommit, "h", common.FastRandomBigInt(g.order), g.p)
 	var Commit big.Int
 	Commit.Mul(&gCommit, &hCommit)
 	Commit.Mod(&Commit, g.p)
@@ -129,12 +129,12 @@ func (s *pedersenStructure) verifyProofStructure(proof PedersenProof) bool {
 
 func (s *pedersenStructure) commitmentsFromProof(g group, list []*big.Int, challenge *big.Int, proof PedersenProof) []*big.Int {
 	proof.setName(s.name)
-	bases := newBaseMerge(&proof, &g)
+	bases := NewBaseMerge(&proof, &g)
 	list = append(list, proof.Commit)
 	return s.representation.commitmentsFromProof(g, list, challenge, &bases, &proof)
 }
 
-func (c *pedersenCommit) base(name string) *big.Int {
+func (c *pedersenCommit) Base(name string) *big.Int {
 	if name == c.name {
 		return c.commit
 	} else {
@@ -142,7 +142,7 @@ func (c *pedersenCommit) base(name string) *big.Int {
 	}
 }
 
-func (c *pedersenCommit) exp(ret *big.Int, name string, exp, P *big.Int) bool {
+func (c *pedersenCommit) Exp(ret *big.Int, name string, exp, P *big.Int) bool {
 	if name != c.name {
 		return false
 	}
@@ -153,29 +153,29 @@ func (c *pedersenCommit) exp(ret *big.Int, name string, exp, P *big.Int) bool {
 	c.g.orderMod.Mod(&exp1, &tmp)
 	tmp.Mul(c.hider.secretv, exp)
 	c.g.orderMod.Mod(&exp2, &tmp)
-	c.g.exp(&ret1, "g", &exp1, c.g.p)
-	c.g.exp(&ret2, "h", &exp2, c.g.p)
+	c.g.Exp(&ret1, "g", &exp1, c.g.p)
+	c.g.Exp(&ret2, "h", &exp2, c.g.p)
 	tmp.Mul(&ret1, &ret2)
 	c.g.pMod.Mod(ret, &tmp)
 	return true
 }
 
-func (c *pedersenCommit) names() []string {
+func (c *pedersenCommit) Names() []string {
 	return []string{c.name}
 }
 
-func (c *pedersenCommit) secret(name string) *big.Int {
-	result := c.secretv.secret(name)
+func (c *pedersenCommit) Secret(name string) *big.Int {
+	result := c.secretv.Secret(name)
 	if result == nil {
-		result = c.hider.secret(name)
+		result = c.hider.Secret(name)
 	}
 	return result
 }
 
-func (c *pedersenCommit) randomizer(name string) *big.Int {
-	result := c.secretv.randomizer(name)
+func (c *pedersenCommit) Randomizer(name string) *big.Int {
+	result := c.secretv.Randomizer(name)
 	if result == nil {
-		result = c.hider.randomizer(name)
+		result = c.hider.Randomizer(name)
 	}
 	return result
 }
@@ -186,15 +186,15 @@ func (p *PedersenProof) setName(name string) {
 	p.Hresult.setName(strings.Join([]string{name, "hider"}, "_"))
 }
 
-func (p *PedersenProof) base(name string) *big.Int {
+func (p *PedersenProof) Base(name string) *big.Int {
 	if p.name == name {
 		return p.Commit
 	}
 	return nil
 }
 
-func (p *PedersenProof) exp(ret *big.Int, name string, exp, P *big.Int) bool {
-	base := p.base(name)
+func (p *PedersenProof) Exp(ret *big.Int, name string, exp, P *big.Int) bool {
+	base := p.Base(name)
 	if base == nil {
 		return false
 	}
@@ -202,14 +202,14 @@ func (p *PedersenProof) exp(ret *big.Int, name string, exp, P *big.Int) bool {
 	return true
 }
 
-func (p *PedersenProof) names() []string {
+func (p *PedersenProof) Names() []string {
 	return []string{p.name}
 }
 
-func (p *PedersenProof) result(name string) *big.Int {
-	result := p.Sresult.result(name)
+func (p *PedersenProof) ProofResult(name string) *big.Int {
+	result := p.Sresult.ProofResult(name)
 	if result == nil {
-		result = p.Hresult.result(name)
+		result = p.Hresult.ProofResult(name)
 	}
 	return result
 }
