@@ -5,12 +5,18 @@ import (
 
 	"github.com/privacybydesign/gabi/keyproof"
 	"github.com/privacybydesign/gabi/signed"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
 	"github.com/privacybydesign/gabi/safeprime"
 )
+
+func init() {
+	Logger = logrus.StandardLogger()
+	Logger.SetLevel(logrus.FatalLevel)
+}
 
 func generateGroup() (qrGroup, *big.Int, *big.Int, error) {
 	p, err := safeprime.Generate(32, nil)

@@ -29,7 +29,7 @@ func NewQrGroup(modulus *big.Int) QrGroup {
 	return g
 }
 
-func (g *qrGroup) GetBase(name string) *big.Int {
+func (g *qrGroup) Base(name string) *big.Int {
 	switch name {
 	case "g":
 		return g.G
@@ -43,13 +43,13 @@ func (g *qrGroup) GetBase(name string) *big.Int {
 func (g *qrGroup) Exp(ret *big.Int, name string, exp, n *big.Int) bool {
 	switch name {
 	case "g", "h":
-		ret.Exp(g.GetBase(name), exp, n)
+		ret.Exp(g.Base(name), exp, n)
 		return true
 	}
 	return false
 }
 
-func (g *qrGroup) GetNames() []string {
+func (g *qrGroup) Names() []string {
 	return []string{"g", "h"}
 }
 
@@ -58,7 +58,7 @@ func (s *qrRepresentationProofStructure) generateCommitmentsFromSecrets(g *qrGro
 	var exp, contribution big.Int
 
 	for _, curRhs := range s.Rhs {
-		exp.Mul(big.NewInt(curRhs.Power), secretdata.GetRandomizer(curRhs.Secret))
+		exp.Mul(big.NewInt(curRhs.Power), secretdata.Randomizer(curRhs.Secret))
 		bases.Exp(&contribution, curRhs.Base, &exp, g.N)
 		commitment.Mul(commitment, &contribution).Mod(commitment, g.N)
 	}
@@ -77,7 +77,7 @@ func (s *qrRepresentationProofStructure) generateCommitmentsFromProof(g *qrGroup
 	commitment := new(big.Int).Exp(&lhs, challenge, g.N)
 	var exp, contribution big.Int
 	for _, curRhs := range s.Rhs {
-		exp.Mul(big.NewInt(curRhs.Power), proofdata.GetResult(curRhs.Secret))
+		exp.Mul(big.NewInt(curRhs.Power), proofdata.ProofResult(curRhs.Secret))
 		bases.Exp(&contribution, curRhs.Base, &exp, g.N)
 		commitment.Mul(commitment, &contribution).Mod(commitment, g.N)
 	}

@@ -212,7 +212,7 @@ func (p *Proof) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.I
 	if !proofstructure.verifyProofStructure((*proof)(p)) {
 		return false
 	}
-	if (*proof)(p).GetResult("alpha").Cmp(parameters.bTwoZk) > 0 {
+	if (*proof)(p).ProofResult("alpha").Cmp(parameters.bTwoZk) > 0 {
 		return false
 	}
 	acc, err := p.SignedAccumulator.UnmarshalVerify(pk)
@@ -232,10 +232,10 @@ func (c *ProofCommit) BuildProof(challenge *big.Int) *Proof {
 	responses := make(map[string]*big.Int, 5)
 	for _, name := range secretNames {
 		responses[name] = new(big.Int).Add(
-			(*proofCommit)(c).GetRandomizer(name),
+			(*proofCommit)(c).Randomizer(name),
 			new(big.Int).Mul(
 				challenge,
-				(*proofCommit)(c).GetSecret(name)),
+				(*proofCommit)(c).Secret(name)),
 		)
 	}
 
@@ -326,11 +326,11 @@ func (w *Witness) Verify(pk *PublicKey) error {
 // Zero-knowledge proof methods
 
 func (c *proofCommit) Exp(ret *big.Int, name string, exp, n *big.Int) bool {
-	ret.Exp(c.GetBase(name), exp, n)
+	ret.Exp(c.Base(name), exp, n)
 	return true
 }
 
-func (c *proofCommit) GetBase(name string) *big.Int {
+func (c *proofCommit) Base(name string) *big.Int {
 	switch name {
 	case "cu":
 		return c.cu
@@ -345,19 +345,19 @@ func (c *proofCommit) GetBase(name string) *big.Int {
 	}
 }
 
-func (c *proofCommit) GetNames() []string {
+func (c *proofCommit) Names() []string {
 	return []string{"cu", "cr", "nu", "one"}
 }
 
-func (c *proofCommit) GetSecret(name string) *big.Int {
+func (c *proofCommit) Secret(name string) *big.Int {
 	return c.secrets[name]
 }
 
-func (c *proofCommit) GetRandomizer(name string) *big.Int {
+func (c *proofCommit) Randomizer(name string) *big.Int {
 	return c.randomizers[name]
 }
 
-func (p *proof) GetResult(name string) *big.Int {
+func (p *proof) ProofResult(name string) *big.Int {
 	return p.Responses[name]
 }
 
@@ -374,20 +374,20 @@ func (s *proofStructure) generateCommitmentsFromSecrets(g *qrGroup, list []*big.
 		randomizers: make(map[string]*big.Int, 5),
 		cu:          new(big.Int),
 		cr:          new(big.Int),
-		nu:          bases.GetBase("nu"),
+		nu:          bases.Base("nu"),
 	}
 
 	r2 := common.FastRandomBigInt(g.nDiv4)
 	r3 := common.FastRandomBigInt(g.nDiv4)
 
-	alpha := secretdata.GetSecret("alpha")
+	alpha := secretdata.Secret("alpha")
 	commit.secrets["alpha"] = alpha
 	commit.secrets["beta"] = new(big.Int).Mul(alpha, r2)
 	commit.secrets["delta"] = new(big.Int).Mul(alpha, r3)
 	commit.secrets["epsilon"] = r2
 	commit.secrets["zeta"] = r3
 
-	commit.randomizers["alpha"] = secretdata.GetRandomizer("alpha")
+	commit.randomizers["alpha"] = secretdata.Randomizer("alpha")
 	commit.randomizers["beta"] = common.FastRandomBigInt(g.nbDiv4twoZk)
 	commit.randomizers["delta"] = common.FastRandomBigInt(g.nbDiv4twoZk)
 	commit.randomizers["epsilon"] = common.FastRandomBigInt(g.nDiv4twoZk)
@@ -401,7 +401,7 @@ func (s *proofStructure) generateCommitmentsFromSecrets(g *qrGroup, list []*big.
 	commit.cr.Mul(commit.cr, &tmp).Mod(commit.cr, g.N)
 	// Set C_u = u * h^r2
 	bases.Exp(&tmp, "h", r2, g.N)
-	commit.cu.Mul(secretdata.GetSecret("u"), &tmp).Mod(commit.cu, g.N)
+	commit.cu.Mul(secretdata.Secret("u"), &tmp).Mod(commit.cu, g.N)
 
 	list = append(list, commit.cr, commit.cu, commit.nu)
 
@@ -437,11 +437,11 @@ func (s *proofStructure) verifyProofStructure(p *proof) bool {
 
 func (s *proofStructure) isTrue(secretdata keyproof.SecretLookup, nu, n *big.Int) bool {
 	return new(big.Int).
-		Exp(secretdata.GetSecret("u"), secretdata.GetSecret("alpha"), n).
+		Exp(secretdata.Secret("u"), secretdata.Secret("alpha"), n).
 		Cmp(nu) == 0
 }
 
-func (b accumulator) GetBase(name string) *big.Int {
+func (b accumulator) Base(name string) *big.Int {
 	if name == "nu" {
 		return b.Nu
 	}
@@ -456,11 +456,11 @@ func (b accumulator) Exp(ret *big.Int, name string, exp, n *big.Int) bool {
 	return false
 }
 
-func (b accumulator) GetNames() []string {
+func (b accumulator) Names() []string {
 	return []string{"nu"}
 }
 
-func (w *witness) GetSecret(name string) *big.Int {
+func (w *witness) Secret(name string) *big.Int {
 	switch name {
 	case "alpha":
 		return w.E
@@ -471,7 +471,7 @@ func (w *witness) GetSecret(name string) *big.Int {
 	return nil
 }
 
-func (w *witness) GetRandomizer(name string) *big.Int {
+func (w *witness) Randomizer(name string) *big.Int {
 	if name == "alpha" {
 		return w.randomizer
 	}
