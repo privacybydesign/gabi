@@ -44,7 +44,7 @@ func fakeProof(g group) Proof {
 	}
 }
 
-func (s *secret) secret(name string) *big.Int {
+func (s *secret) Secret(name string) *big.Int {
 	if name == s.name {
 		return s.secretv
 	} else {
@@ -52,7 +52,7 @@ func (s *secret) secret(name string) *big.Int {
 	}
 }
 
-func (s *secret) randomizer(name string) *big.Int {
+func (s *secret) Randomizer(name string) *big.Int {
 	if name == s.name {
 		return s.randomizerv
 	} else {
@@ -60,7 +60,7 @@ func (s *secret) randomizer(name string) *big.Int {
 	}
 }
 
-func (p *Proof) result(name string) *big.Int {
+func (p *Proof) ProofResult(name string) *big.Int {
 	if name == p.name {
 		return p.Result
 	} else {

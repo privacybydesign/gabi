@@ -30,8 +30,8 @@ func TestMultiplicationProofFlow(t *testing.T) {
 	_, mod := mods.commitmentsFromSecrets(g, nil, big.NewInt(n))
 	_, result := results.commitmentsFromSecrets(g, nil, big.NewInt(d))
 
-	bases := newBaseMerge(&g, &m1, &m2, &mod, &result)
-	secrets := newSecretMerge(&m1, &m2, &mod, &result)
+	bases := NewBaseMerge(&g, &m1, &m2, &mod, &result)
+	secrets := NewSecretMerge(&m1, &m2, &mod, &result)
 
 	s := newMultiplicationProofStructure("m1", "m2", "mod", "result", 3)
 	assert.True(t, s.isTrue(&secrets), "Incorrectly assessed proof setup as incorrect.")
@@ -52,8 +52,8 @@ func TestMultiplicationProofFlow(t *testing.T) {
 	resultproof := results.buildProof(g, big.NewInt(12345), result)
 	resultproof.setName("result")
 
-	basesProof := newBaseMerge(&g, &m1proof, &m2proof, &modproof, &resultproof)
-	proofdata := newProofMerge(&m1proof, &m2proof, &modproof, &resultproof)
+	basesProof := NewBaseMerge(&g, &m1proof, &m2proof, &modproof, &resultproof)
+	proofdata := NewProofMerge(&m1proof, &m2proof, &modproof, &resultproof)
 
 	require.True(t, s.verifyProofStructure(proof), "Proof structure marked as invalid.")
 

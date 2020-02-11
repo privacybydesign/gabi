@@ -27,8 +27,8 @@ func TestExpStepFlowA(t *testing.T) {
 	_, mulPedersen := mulPedersens.commitmentsFromSecrets(g, nil, big.NewInt(3))
 	_, modPedersen := modPedersens.commitmentsFromSecrets(g, nil, big.NewInt(11))
 
-	bases := newBaseMerge(&g, &bitPedersen, &prePedersen, &postPedersen, &mulPedersen, &modPedersen)
-	secrets := newSecretMerge(&bitPedersen, &prePedersen, &postPedersen, &mulPedersen, &modPedersen)
+	bases := NewBaseMerge(&g, &bitPedersen, &prePedersen, &postPedersen, &mulPedersen, &modPedersen)
+	secrets := NewSecretMerge(&bitPedersen, &prePedersen, &postPedersen, &mulPedersen, &modPedersen)
 
 	s := newExpStepStructure("bit", "pre", "post", "mul", "mod", 4)
 
@@ -55,7 +55,7 @@ func TestExpStepFlowA(t *testing.T) {
 	modProof := modPedersens.buildProof(g, big.NewInt(12345), modPedersen)
 	modProof.setName("mod")
 
-	proofBases := newBaseMerge(&g, &bitProof, &preProof, &postProof, &mulProof, &modProof)
+	proofBases := NewBaseMerge(&g, &bitProof, &preProof, &postProof, &mulProof, &modProof)
 
 	listProof := s.commitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &proofBases, proof)
 
@@ -79,8 +79,8 @@ func TestExpStepFlowB(t *testing.T) {
 	_, mulPedersen := mulPedersens.commitmentsFromSecrets(g, nil, big.NewInt(3))
 	_, modPedersen := modPedersens.commitmentsFromSecrets(g, nil, big.NewInt(11))
 
-	bases := newBaseMerge(&g, &bitPedersen, &prePedersen, &postPedersen, &mulPedersen, &modPedersen)
-	secrets := newSecretMerge(&bitPedersen, &prePedersen, &postPedersen, &mulPedersen, &modPedersen)
+	bases := NewBaseMerge(&g, &bitPedersen, &prePedersen, &postPedersen, &mulPedersen, &modPedersen)
+	secrets := NewSecretMerge(&bitPedersen, &prePedersen, &postPedersen, &mulPedersen, &modPedersen)
 
 	s := newExpStepStructure("bit", "pre", "post", "mul", "mod", 4)
 
@@ -102,7 +102,7 @@ func TestExpStepFlowB(t *testing.T) {
 	modProof := modPedersens.buildProof(g, big.NewInt(12345), modPedersen)
 	modProof.setName("mod")
 
-	proofBases := newBaseMerge(&g, &bitProof, &preProof, &postProof, &mulProof, &modProof)
+	proofBases := NewBaseMerge(&g, &bitProof, &preProof, &postProof, &mulProof, &modProof)
 
 	listProof := s.commitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &proofBases, proof)
 

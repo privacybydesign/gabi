@@ -13,7 +13,7 @@ type (
 		mod               string
 		result            string
 		myname            string
-		addRepresentation representationProofStructure
+		addRepresentation RepresentationProofStructure
 		addRange          rangeProofStructure
 	}
 
@@ -38,13 +38,13 @@ func newAdditionProofStructure(a1, a2, mod, result string, l uint) additionProof
 		result: result,
 		myname: strings.Join([]string{a1, a2, mod, result, "add"}, "_"),
 	}
-	structure.addRepresentation = representationProofStructure{
-		[]lhsContribution{
+	structure.addRepresentation = RepresentationProofStructure{
+		[]LhsContribution{
 			{result, big.NewInt(1)},
 			{a1, big.NewInt(-1)},
 			{a2, big.NewInt(-1)},
 		},
-		[]rhsContribution{
+		[]RhsContribution{
 			{mod, strings.Join([]string{structure.myname, "mod"}, "_"), 1},
 			{"h", strings.Join([]string{structure.myname, "hider"}, "_"), 1},
 		},
@@ -58,33 +58,33 @@ func newAdditionProofStructure(a1, a2, mod, result string, l uint) additionProof
 	return structure
 }
 
-func (s *additionProofStructure) commitmentsFromSecrets(g group, list []*big.Int, bases baseLookup, secretdata secretLookup) ([]*big.Int, additionProofCommit) {
+func (s *additionProofStructure) commitmentsFromSecrets(g group, list []*big.Int, bases BaseLookup, secretdata SecretLookup) ([]*big.Int, additionProofCommit) {
 	var commit additionProofCommit
 
 	// Generate needed commit data
 	commit.modAdd = newSecret(g, strings.Join([]string{s.myname, "mod"}, "_"),
 		new(big.Int).Div(
 			new(big.Int).Sub(
-				secretdata.secret(s.result),
+				secretdata.Secret(s.result),
 				new(big.Int).Add(
-					secretdata.secret(s.a1),
-					secretdata.secret(s.a2))),
-			secretdata.secret(s.mod)))
+					secretdata.Secret(s.a1),
+					secretdata.Secret(s.a2))),
+			secretdata.Secret(s.mod)))
 	commit.hider = newSecret(g, strings.Join([]string{s.myname, "hider"}, "_"),
 		new(big.Int).Mod(
 			new(big.Int).Sub(
-				secretdata.secret(strings.Join([]string{s.result, "hider"}, "_")),
+				secretdata.Secret(strings.Join([]string{s.result, "hider"}, "_")),
 				new(big.Int).Add(
 					new(big.Int).Add(
-						secretdata.secret(strings.Join([]string{s.a1, "hider"}, "_")),
-						secretdata.secret(strings.Join([]string{s.a2, "hider"}, "_"))),
+						secretdata.Secret(strings.Join([]string{s.a1, "hider"}, "_")),
+						secretdata.Secret(strings.Join([]string{s.a2, "hider"}, "_"))),
 					new(big.Int).Mul(
-						secretdata.secret(strings.Join([]string{s.mod, "hider"}, "_")),
+						secretdata.Secret(strings.Join([]string{s.mod, "hider"}, "_")),
 						commit.modAdd.secretv))),
 			g.order))
 
 	// build inner secrets
-	secrets := newSecretMerge(&commit.hider, &commit.modAdd, secretdata)
+	secrets := NewSecretMerge(&commit.hider, &commit.modAdd, secretdata)
 
 	// and build commits
 	list = s.addRepresentation.commitmentsFromSecrets(g, list, bases, &secrets)
@@ -93,8 +93,8 @@ func (s *additionProofStructure) commitmentsFromSecrets(g group, list []*big.Int
 	return list, commit
 }
 
-func (s *additionProofStructure) buildProof(g group, challenge *big.Int, commit additionProofCommit, secretdata secretLookup) AdditionProof {
-	rangeSecrets := newSecretMerge(&commit.hider, &commit.modAdd, secretdata)
+func (s *additionProofStructure) buildProof(g group, challenge *big.Int, commit additionProofCommit, secretdata SecretLookup) AdditionProof {
+	rangeSecrets := NewSecretMerge(&commit.hider, &commit.modAdd, secretdata)
 	return AdditionProof{
 		RangeProof:  s.addRange.buildProof(g, challenge, commit.rangeCommit, &rangeSecrets),
 		ModAddProof: commit.modAdd.buildProof(g, challenge),
@@ -120,11 +120,11 @@ func (s *additionProofStructure) verifyProofStructure(proof AdditionProof) bool 
 	return true
 }
 
-func (s *additionProofStructure) commitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases baseLookup, proofdata proofLookup, proof AdditionProof) []*big.Int {
+func (s *additionProofStructure) commitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases BaseLookup, proofdata ProofLookup, proof AdditionProof) []*big.Int {
 	// build inner proof lookup
 	proof.ModAddProof.setName(strings.Join([]string{s.myname, "mod"}, "_"))
 	proof.HiderProof.setName(strings.Join([]string{s.myname, "hider"}, "_"))
-	proofs := newProofMerge(&proof.HiderProof, &proof.ModAddProof, proofdata)
+	proofs := NewProofMerge(&proof.HiderProof, &proof.ModAddProof, proofdata)
 
 	// build commitments
 	list = s.addRepresentation.commitmentsFromProof(g, list, challenge, bases, &proofs)
@@ -133,17 +133,17 @@ func (s *additionProofStructure) commitmentsFromProof(g group, list []*big.Int, 
 	return list
 }
 
-func (s *additionProofStructure) isTrue(secretdata secretLookup) bool {
+func (s *additionProofStructure) isTrue(secretdata SecretLookup) bool {
 	div := new(big.Int)
 	mod := new(big.Int)
 
 	div.DivMod(
 		new(big.Int).Sub(
-			secretdata.secret(s.result),
+			secretdata.Secret(s.result),
 			new(big.Int).Add(
-				secretdata.secret(s.a1),
-				secretdata.secret(s.a2))),
-		secretdata.secret(s.mod),
+				secretdata.Secret(s.a1),
+				secretdata.Secret(s.a2))),
+		secretdata.Secret(s.mod),
 		mod)
 
 	return mod.Cmp(big.NewInt(0)) == 0 && uint(div.BitLen()) <= s.addRange.l2

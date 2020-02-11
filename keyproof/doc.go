@@ -136,7 +136,7 @@ Finally, each proof has a number of utility functions:
 
 To make it possible to chain these proofs together, and to hand off needed
 values between complicated subproofs, this library contains structures to aid
-in lookup of such values. These are baseLookup, secretLookup and proofLookup.
+in lookup of such values. These are BaseLookup, SecretLookup and ProofLookup.
 Any proof that needs to provides bases, secrets or proofdata to other
 subproofs construct these. They provide lookup functions that can provide
 bases, secrets, hiders and proof results given the name of the relevant

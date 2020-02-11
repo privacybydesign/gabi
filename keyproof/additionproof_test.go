@@ -30,8 +30,8 @@ func TestAdditionProofFlow(t *testing.T) {
 	_, mod := mods.commitmentsFromSecrets(g, []*big.Int{}, big.NewInt(n))
 	_, result := results.commitmentsFromSecrets(g, []*big.Int{}, big.NewInt(d))
 
-	bases := newBaseMerge(&g, &a1, &a2, &mod, &result)
-	secrets := newSecretMerge(&a1, &a2, &mod, &result)
+	bases := NewBaseMerge(&g, &a1, &a2, &mod, &result)
+	secrets := NewSecretMerge(&a1, &a2, &mod, &result)
 
 	s := newAdditionProofStructure("a1", "a2", "mod", "result", 3)
 	assert.True(t, s.isTrue(&secrets), "Incorrectly assessed proof setup as incorrect.")
@@ -53,8 +53,8 @@ func TestAdditionProofFlow(t *testing.T) {
 	resultproof := results.buildProof(g, big.NewInt(12345), result)
 	resultproof.setName("result")
 
-	basesProof := newBaseMerge(&g, &a1proof, &a2proof, &modproof, &resultproof)
-	proofdata := newProofMerge(&a1proof, &a2proof, &modproof, &resultproof)
+	basesProof := NewBaseMerge(&g, &a1proof, &a2proof, &modproof, &resultproof)
+	proofdata := NewProofMerge(&a1proof, &a2proof, &modproof, &resultproof)
 
 	assert.True(t, s.verifyProofStructure(proof), "Proof structure marked as invalid.")
 

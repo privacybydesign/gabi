@@ -20,7 +20,7 @@ func TestPrimeProofFlow(t *testing.T) {
 	const p = 11
 	pCommits := newPedersenStructure("p")
 	_, pCommit := pCommits.commitmentsFromSecrets(g, nil, big.NewInt(p))
-	bases := newBaseMerge(&g, &pCommit)
+	bases := NewBaseMerge(&g, &pCommit)
 
 	listSecrets, commit := s.commitmentsFromSecrets(g, []*big.Int{}, &bases, &pCommit)
 
@@ -32,7 +32,7 @@ func TestPrimeProofFlow(t *testing.T) {
 	pProof := pCommits.buildProof(g, big.NewInt(12345), pCommit)
 	pProof.setName("p")
 
-	basesProof := newBaseMerge(&g, &pProof)
+	basesProof := NewBaseMerge(&g, &pProof)
 
 	require.True(t, s.verifyProofStructure(big.NewInt(12345), proof), "Proof structure rejected.")
 

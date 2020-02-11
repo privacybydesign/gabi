@@ -8,37 +8,37 @@ import (
 )
 
 type (
-	baseLookup interface {
-		base(name string) *big.Int
-		exp(ret *big.Int, name string, exp, P *big.Int) bool
-		names() []string
+	BaseLookup interface {
+		Base(name string) *big.Int
+		Exp(ret *big.Int, name string, exp, P *big.Int) bool
+		Names() []string
 	}
 
-	secretLookup interface {
-		secret(name string) *big.Int
-		randomizer(name string) *big.Int
+	SecretLookup interface {
+		Secret(name string) *big.Int
+		Randomizer(name string) *big.Int
 	}
 
-	proofLookup interface {
-		result(name string) *big.Int
+	ProofLookup interface {
+		ProofResult(name string) *big.Int
 	}
 
-	baseMerge struct {
-		parts  []baseLookup
+	BaseMerge struct {
+		parts  []BaseLookup
 		inames []string
-		lut    map[string]baseLookup
+		lut    map[string]BaseLookup
 	}
 
-	secretMerge struct {
-		parts []secretLookup
+	SecretMerge struct {
+		parts []SecretLookup
 	}
 
-	proofMerge struct {
-		parts []proofLookup
+	ProofMerge struct {
+		parts []ProofLookup
 	}
 )
 
-func (g *group) exp(ret *big.Int, name string, exp, P *big.Int) bool {
+func (g *group) Exp(ret *big.Int, name string, exp, P *big.Int) bool {
 	var table *exptable.Table
 	if name == "g" {
 		table = &g.gTable
@@ -60,11 +60,11 @@ func (g *group) exp(ret *big.Int, name string, exp, P *big.Int) bool {
 	return true
 }
 
-func (g *group) names() []string {
+func (g *group) Names() []string {
 	return []string{"g", "h"}
 }
 
-func (g *group) base(name string) *big.Int {
+func (g *group) Base(name string) *big.Int {
 	if name == "g" {
 		return g.g
 	}
@@ -74,14 +74,14 @@ func (g *group) base(name string) *big.Int {
 	return nil
 }
 
-func newBaseMerge(parts ...baseLookup) baseMerge {
-	var result baseMerge
+func NewBaseMerge(parts ...BaseLookup) BaseMerge {
+	var result BaseMerge
 	result.parts = parts
 	if len(parts) > 16 {
-		result.lut = make(map[string]baseLookup)
+		result.lut = make(map[string]BaseLookup)
 	}
 	for _, part := range parts {
-		partNames := part.names()
+		partNames := part.Names()
 		if result.lut != nil {
 			for _, name := range partNames {
 				result.lut[name] = part
@@ -92,19 +92,19 @@ func newBaseMerge(parts ...baseLookup) baseMerge {
 	return result
 }
 
-func (b *baseMerge) names() []string {
+func (b *BaseMerge) Names() []string {
 	return b.inames
 }
-func (b *baseMerge) base(name string) *big.Int {
+func (b *BaseMerge) Base(name string) *big.Int {
 	if b.lut != nil {
 		part, ok := b.lut[name]
 		if !ok {
 			return nil
 		}
-		return part.base(name)
+		return part.Base(name)
 	}
 	for _, part := range b.parts {
-		res := part.base(name)
+		res := part.Base(name)
 		if res != nil {
 			return res
 		}
@@ -112,16 +112,16 @@ func (b *baseMerge) base(name string) *big.Int {
 	return nil
 }
 
-func (b *baseMerge) exp(ret *big.Int, name string, exp, P *big.Int) bool {
+func (b *BaseMerge) Exp(ret *big.Int, name string, exp, P *big.Int) bool {
 	if b.lut != nil {
 		part, ok := b.lut[name]
 		if !ok {
 			return false
 		}
-		return part.exp(ret, name, exp, P)
+		return part.Exp(ret, name, exp, P)
 	}
 	for _, part := range b.parts {
-		ok := part.exp(ret, name, exp, P)
+		ok := part.Exp(ret, name, exp, P)
 		if ok {
 			return true
 		}
@@ -129,15 +129,15 @@ func (b *baseMerge) exp(ret *big.Int, name string, exp, P *big.Int) bool {
 	return false
 }
 
-func newSecretMerge(parts ...secretLookup) secretMerge {
-	var result secretMerge
+func NewSecretMerge(parts ...SecretLookup) SecretMerge {
+	var result SecretMerge
 	result.parts = parts
 	return result
 }
 
-func (s *secretMerge) secret(name string) *big.Int {
+func (s *SecretMerge) Secret(name string) *big.Int {
 	for _, part := range s.parts {
-		res := part.secret(name)
+		res := part.Secret(name)
 		if res != nil {
 			return res
 		}
@@ -145,9 +145,9 @@ func (s *secretMerge) secret(name string) *big.Int {
 	return nil
 }
 
-func (s *secretMerge) randomizer(name string) *big.Int {
+func (s *SecretMerge) Randomizer(name string) *big.Int {
 	for _, part := range s.parts {
-		res := part.randomizer(name)
+		res := part.Randomizer(name)
 		if res != nil {
 			return res
 		}
@@ -155,15 +155,15 @@ func (s *secretMerge) randomizer(name string) *big.Int {
 	return nil
 }
 
-func newProofMerge(parts ...proofLookup) proofMerge {
-	var result proofMerge
+func NewProofMerge(parts ...ProofLookup) ProofMerge {
+	var result ProofMerge
 	result.parts = parts
 	return result
 }
 
-func (p *proofMerge) result(name string) *big.Int {
+func (p *ProofMerge) ProofResult(name string) *big.Int {
 	for _, part := range p.parts {
-		res := part.result(name)
+		res := part.ProofResult(name)
 		if res != nil {
 			return res
 		}
