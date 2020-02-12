@@ -290,7 +290,7 @@ func (w *Witness) Update(pk *PublicKey, update *Update) error {
 		return errors.New("update too new")
 	}
 	var a, b big.Int
-	if new(big.Int).GCD(&a, &b, w.E, update.Product()).Cmp(bigOne) != 0 {
+	if new(big.Int).GCD(&a, &b, w.E, update.Product(w.SignedAccumulator.Accumulator.Index+1)).Cmp(bigOne) != 0 {
 		return ErrorRevoked
 	}
 

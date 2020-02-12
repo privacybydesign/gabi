@@ -206,8 +206,7 @@ func (acc *Accumulator) Sign(sk *PrivateKey) (*SignedAccumulator, error) {
 	return &SignedAccumulator{Data: sig, PKCounter: sk.Counter, Accumulator: acc}, nil
 }
 
-// Remove generates a new accumulator with the specified e removed from it; signs it;
-// and returns an Update message for clients to update their witness.
+// Remove generates a new accumulator with the specified e removed from it.
 func (acc *Accumulator) Remove(sk *PrivateKey, e *big.Int, parent *Event) (*Accumulator, *Event, error) {
 	eInverse, ok := common.ModInverse(e, new(big.Int).Mul(sk.P, sk.Q))
 	if !ok {
@@ -315,12 +314,15 @@ func (update *Update) Verify(pk *PublicKey) (*Accumulator, error) {
 	return acc, NewEventList(update.Events...).Verify(acc)
 }
 
-func (update *Update) Product() *big.Int {
+func (update *Update) Product(from uint64) *big.Int {
 	if update.product != nil {
 		return update.product
 	}
 	update.product = big.NewInt(1)
-	for _, event := range update.Events {
+	if len(update.Events) == 0 {
+		return update.product
+	}
+	for _, event := range update.Events[from-update.Events[0].Index:] {
 		update.product.Mul(update.product, event.E)
 	}
 	return update.product
@@ -345,7 +347,7 @@ func (update *Update) Prepend(eventlist *EventList) error {
 		SignedAccumulator: update.SignedAccumulator,
 		Events:            update.Events[min:],
 	}
-	n.product = n.Product()
+	n.product = n.Product(n.Events[0].Index)
 	n.Events = append(eventlist.Events, n.Events...)
 	if eventlist.product != nil {
 		n.product.Mul(n.product, eventlist.product)
