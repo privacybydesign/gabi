@@ -185,7 +185,7 @@ func NewProofCommit(grp *QrGroup, witn *Witness, randomizer *big.Int) ([]*big.In
 	}
 
 	bases := keyproof.NewBaseMerge((*qrGroup)(grp), &accumulator{Nu: witn.SignedAccumulator.Accumulator.Nu})
-	list, commit := proofstructure.generateCommitmentsFromSecrets((*qrGroup)(grp), []*big.Int{}, &bases, (*witness)(witn))
+	list, commit := proofstructure.commitmentsFromSecrets((*qrGroup)(grp), []*big.Int{}, &bases, (*witness)(witn))
 	commit.sacc = witn.SignedAccumulator
 	return list, (*ProofCommit)(&commit), nil
 }
@@ -204,7 +204,7 @@ func (p *Proof) SetExpected(pk *PublicKey, challenge, response *big.Int) error {
 }
 
 func (p *Proof) ChallengeContributions(grp *QrGroup) []*big.Int {
-	return proofstructure.generateCommitmentsFromProof((*qrGroup)(grp), []*big.Int{},
+	return proofstructure.commitmentsFromProof((*qrGroup)(grp), []*big.Int{},
 		p.Challenge, (*qrGroup)(grp), (*proof)(p), (*proof)(p))
 }
 
@@ -257,7 +257,7 @@ func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
 
 	commit := (*proofCommit)(c)
 	b := keyproof.NewBaseMerge(c.g, commit)
-	l := proofstructure.nu.generateCommitmentsFromSecrets(c.g, []*big.Int{}, &b, commit)
+	l := proofstructure.nu.commitmentsFromSecrets(c.g, []*big.Int{}, &b, commit)
 
 	commitments[1] = c.cu
 	commitments[2] = witness.SignedAccumulator.Accumulator.Nu
@@ -365,11 +365,11 @@ func (p *proof) ProofResult(name string) *big.Int {
 
 func (p *proof) verify(pk *PublicKey) bool {
 	grp := (*qrGroup)(pk.Group)
-	commitments := proofstructure.generateCommitmentsFromProof(grp, []*big.Int{}, p.Challenge, grp, p, p)
+	commitments := proofstructure.commitmentsFromProof(grp, []*big.Int{}, p.Challenge, grp, p, p)
 	return (*Proof)(p).VerifyWithChallenge(pk, common.HashCommit(commitments, false))
 }
 
-func (s *proofStructure) generateCommitmentsFromSecrets(g *qrGroup, list []*big.Int, bases keyproof.BaseLookup, secretdata keyproof.SecretLookup) ([]*big.Int, proofCommit) {
+func (s *proofStructure) commitmentsFromSecrets(g *qrGroup, list []*big.Int, bases keyproof.BaseLookup, secretdata keyproof.SecretLookup) ([]*big.Int, proofCommit) {
 	commit := proofCommit{
 		g:           g,
 		secrets:     make(map[string]*big.Int, 5),
@@ -408,22 +408,22 @@ func (s *proofStructure) generateCommitmentsFromSecrets(g *qrGroup, list []*big.
 	list = append(list, commit.cr, commit.cu, commit.nu)
 
 	b := keyproof.NewBaseMerge(bases, &commit)
-	list = s.cr.generateCommitmentsFromSecrets(g, list, &b, &commit)
-	list = s.nu.generateCommitmentsFromSecrets(g, list, &b, &commit)
-	list = s.one.generateCommitmentsFromSecrets(g, list, &b, &commit)
+	list = s.cr.commitmentsFromSecrets(g, list, &b, &commit)
+	list = s.nu.commitmentsFromSecrets(g, list, &b, &commit)
+	list = s.one.commitmentsFromSecrets(g, list, &b, &commit)
 
 	return list, commit
 }
 
-func (s *proofStructure) generateCommitmentsFromProof(g *qrGroup, list []*big.Int, challenge *big.Int, bases keyproof.BaseLookup, proofdata keyproof.ProofLookup, proof *proof) []*big.Int {
+func (s *proofStructure) commitmentsFromProof(g *qrGroup, list []*big.Int, challenge *big.Int, bases keyproof.BaseLookup, proofdata keyproof.ProofLookup, proof *proof) []*big.Int {
 	proofs := keyproof.NewProofMerge(proof, proofdata)
 
 	b := keyproof.NewBaseMerge(g, &proofCommit{cr: proof.Cr, cu: proof.Cu, nu: proof.Nu})
 
 	list = append(list, proof.Cr, proof.Cu, proof.Nu)
-	list = s.cr.generateCommitmentsFromProof(g, list, challenge, &b, &proofs)
-	list = s.nu.generateCommitmentsFromProof(g, list, challenge, &b, &proofs)
-	list = s.one.generateCommitmentsFromProof(g, list, challenge, &b, &proofs)
+	list = s.cr.commitmentsFromProof(g, list, challenge, &b, &proofs)
+	list = s.nu.commitmentsFromProof(g, list, challenge, &b, &proofs)
+	list = s.one.commitmentsFromProof(g, list, challenge, &b, &proofs)
 
 	return list
 }

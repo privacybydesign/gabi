@@ -105,7 +105,7 @@ func testProof(t *testing.T, grp qrGroup, p, q *big.Int, valid bool) bool {
 	bases := keyproof.NewBaseMerge(&grp, (*accumulator)(acc))
 	require.Equal(t, valid, proofstructure.isTrue((*witness)(witn), acc.Nu, grp.N), "statement to prove ")
 
-	list, commit := proofstructure.generateCommitmentsFromSecrets(&grp, []*big.Int{}, &bases, (*witness)(witn))
+	list, commit := proofstructure.commitmentsFromSecrets(&grp, []*big.Int{}, &bases, (*witness)(witn))
 	challenge := common.HashCommit(list, false)
 	sacc, err := acc.Sign(&privKey)
 	require.NoError(t, err)

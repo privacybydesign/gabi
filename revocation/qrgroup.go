@@ -53,7 +53,7 @@ func (g *qrGroup) Names() []string {
 	return []string{"g", "h"}
 }
 
-func (s *qrRepresentationProofStructure) generateCommitmentsFromSecrets(g *qrGroup, list []*big.Int, bases keyproof.BaseLookup, secretdata keyproof.SecretLookup) []*big.Int {
+func (s *qrRepresentationProofStructure) commitmentsFromSecrets(g *qrGroup, list []*big.Int, bases keyproof.BaseLookup, secretdata keyproof.SecretLookup) []*big.Int {
 	commitment := big.NewInt(1)
 	var exp, contribution big.Int
 
@@ -66,7 +66,7 @@ func (s *qrRepresentationProofStructure) generateCommitmentsFromSecrets(g *qrGro
 	return append(list, commitment)
 }
 
-func (s *qrRepresentationProofStructure) generateCommitmentsFromProof(g *qrGroup, list []*big.Int, challenge *big.Int, bases keyproof.BaseLookup, proofdata keyproof.ProofLookup) []*big.Int {
+func (s *qrRepresentationProofStructure) commitmentsFromProof(g *qrGroup, list []*big.Int, challenge *big.Int, bases keyproof.BaseLookup, proofdata keyproof.ProofLookup) []*big.Int {
 	var tmp, lhs big.Int
 	lhs.SetUint64(1)
 	for _, curLhs := range s.Lhs {
