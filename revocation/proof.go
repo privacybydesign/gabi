@@ -283,9 +283,11 @@ func (w *Witness) Update(pk *PublicKey, update *Update) error {
 		return nil
 	}
 	startIndex, endIndex := update.Events[0].Index, acc.Index
-	if startIndex > w.SignedAccumulator.Accumulator.Index+1 ||
-		endIndex <= w.SignedAccumulator.Accumulator.Index {
+	if endIndex <= w.SignedAccumulator.Accumulator.Index {
 		return nil
+	}
+	if startIndex > w.SignedAccumulator.Accumulator.Index+1 {
+		return errors.New("update too new")
 	}
 	var a, b big.Int
 	if new(big.Int).GCD(&a, &b, w.E, update.Product()).Cmp(bigOne) != 0 {
