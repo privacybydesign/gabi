@@ -261,19 +261,27 @@ func NewUpdate(sk *PrivateKey, acc *Accumulator, events []*Event) (*Update, erro
 
 type compressedUpdate struct {
 	SignedAccumulator *SignedAccumulator `json:"sacc"`
-	E                 EventList          `json:"e,omitempty"`
+	E                 *EventList         `json:"e,omitempty"`
 }
 
 func (update *Update) compress() *compressedUpdate {
+	var el *EventList
+	if len(update.Events) > 0 {
+		el = NewEventList(update.Events...)
+	}
 	return &compressedUpdate{
 		SignedAccumulator: update.SignedAccumulator,
-		E:                 *NewEventList(update.Events...),
+		E:                 el,
 	}
 }
 
 func (update *Update) uncompress(c *compressedUpdate) {
 	update.SignedAccumulator = c.SignedAccumulator
-	update.Events = c.E.Events
+	if c.E != nil {
+		update.Events = c.E.Events
+	} else {
+		update.Events = []*Event{}
+	}
 }
 
 func (update *Update) MarshalJSON() ([]byte, error) {
