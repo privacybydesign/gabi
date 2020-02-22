@@ -38,7 +38,7 @@ type PrivateKey struct {
 	Q          *big.Int `xml:"Elements>q"`
 	PPrime     *big.Int `xml:"Elements>pPrime"`
 	QPrime     *big.Int `xml:"Elements>qPrime"`
-	ECDSA      string
+	ECDSA      string   `xml:",omitempty"`
 
 	revocationKey *revocation.PrivateKey
 }
@@ -294,7 +294,7 @@ type PublicKey struct {
 	EpochLength EpochLength       `xml:"Features"`
 	Params      *SystemParameters `xml:"-"`
 	Issuer      string            `xml:"-"`
-	ECDSA       string
+	ECDSA       string            `xml:",omitempty"`
 
 	revocationKey *revocation.PublicKey
 }
