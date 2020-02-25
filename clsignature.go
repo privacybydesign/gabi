@@ -42,7 +42,6 @@ func signMessageBlockAndCommitment(sk *PrivateKey, pk *PublicKey, U *big.Int, ms
 	v := new(big.Int).Add(twoLv, vTilde)
 
 	// Q = inv( S^v * R * U) * Z
-
 	numerator := new(big.Int).Exp(pk.S, v, pk.N)
 	numerator.Mul(numerator, R).Mul(numerator, U).Mod(numerator, pk.N)
 

@@ -62,23 +62,32 @@ type IssueSignatureMessage struct {
 	Proof                *ProofS             `json:"proof"`
 	Signature            *CLSignature        `json:"signature"`
 	NonRevocationWitness *revocation.Witness `json:"nonrev,omitempty"`
+	MDoublePrimes        map[int]*big.Int    `json:"mdoubleprimes"` // Issuers shares of random blind attributes
 }
 
-// commitmentToSecret produces a commitment to the provided secret
-func commitmentToSecret(pk *PublicKey, secret *big.Int) (vPrime, U *big.Int) {
-	vPrime, _ = common.RandomBigInt(pk.Params.LvPrime)
-	// U = S^{vPrime} * R_0^{s}
-	Sv := new(big.Int).Exp(pk.S, vPrime, pk.N)
-	R0s := new(big.Int).Exp(pk.R[0], secret, pk.N)
-	U = new(big.Int).Mul(Sv, R0s)
+func userCommitment(pk *PublicKey, vPrime *big.Int, secret *big.Int, msg map[int]*big.Int) (U *big.Int) {
+	// U = S^{vPrime} * R0^{secret} * Ri^{mi}
+	U = new(big.Int).Exp(pk.S, vPrime, pk.N)
+	U.Mul(U, new(big.Int).Exp(pk.R[0], secret, pk.N))
+	for i, mi := range msg {
+		U.Mul(U, new(big.Int).Exp(pk.R[i], mi, pk.N))
+	}
 	U.Mod(U, pk.N)
 	return
 }
 
 // NewCredentialBuilder creates a new credential builder. The resulting credential builder
 // is already committed to the provided secret.
-func NewCredentialBuilder(pk *PublicKey, context, secret *big.Int, nonce2 *big.Int) *CredentialBuilder {
-	vPrime, U := commitmentToSecret(pk, secret)
+// arg blind: list of indices of random blind attributes (exlcuding the secret key)
+func NewCredentialBuilder(pk *PublicKey, context, secret *big.Int, nonce2 *big.Int, blind []int) *CredentialBuilder {
+	vPrime, _ := common.RandomBigInt(pk.Params.LvPrime)
+	mPrimes := make(map[int]*big.Int, len(blind))
+	for _, i := range blind {
+		mPrimes[i+1], _ = common.RandomBigInt(pk.Params.Lm - 1)
+	}
+
+	// Commit to secret and blind attributes
+	U := userCommitment(pk, vPrime, secret, mPrimes)
 
 	return &CredentialBuilder{
 		pk:      pk,
@@ -88,6 +97,7 @@ func NewCredentialBuilder(pk *PublicKey, context, secret *big.Int, nonce2 *big.I
 		u:       U,
 		uCommit: big.NewInt(1),
 		nonce2:  nonce2,
+		mPrimes: mPrimes,
 	}
 }
 
@@ -133,10 +143,11 @@ func (b *CredentialBuilder) ConstructCredential(msg *IssueSignatureMessage, attr
 		signature.KeyshareP = b.proofPcomm.P
 	}
 
-	// Verify signature
-	exponents := make([]*big.Int, len(attributes)+1)
-	exponents[0] = b.secret
-	copy(exponents[1:], attributes)
+	// For all attributes that are sums of shares between user/issuer, compute this sum
+	ms := append([]*big.Int{b.secret}, attributes...)
+	for i, miPrime := range b.mPrimes {
+		ms[i] = new(big.Int).Add(msg.MDoublePrimes[i], miPrime) // mi = mi' + mi", for i \in randomblind
+	}
 
 	if msg.NonRevocationWitness != nil {
 		rpk, err := b.pk.RevocationKey()
@@ -148,14 +159,14 @@ func (b *CredentialBuilder) ConstructCredential(msg *IssueSignatureMessage, attr
 		}
 		msg.NonRevocationWitness.Updated = time.Unix(msg.NonRevocationWitness.SignedAccumulator.Accumulator.Time, 0)
 	}
-	if !signature.Verify(b.pk, exponents) {
+	if !signature.Verify(b.pk, ms) {
 		return nil, ErrIncorrectAttributeSignature
 	}
 
 	cred := &Credential{
 		Pk:                   b.pk,
 		Signature:            signature,
-		Attributes:           exponents,
+		Attributes:           ms,
 		NonRevocationWitness: msg.NonRevocationWitness,
 	}
 	if msg.NonRevocationWitness != nil {
@@ -169,21 +180,39 @@ func (b *CredentialBuilder) ConstructCredential(msg *IssueSignatureMessage, attr
 func (b *CredentialBuilder) proveCommitment(U, nonce1 *big.Int) *ProofU {
 	sCommit, _ := common.RandomBigInt(b.pk.Params.LsCommit)
 	vPrimeCommit, _ := common.RandomBigInt(b.pk.Params.LvPrimeCommit)
+	mPrimesCommit := make(map[int]*big.Int)
+	for i, _ := range b.mPrimes {
+		mPrimesCommit[i], _ = common.RandomBigInt(b.pk.Params.LmCommit)
+	}
 
-	// Ucommit = S^{vPrimeCommit} * R_0^{sCommit}
+	// Ucommit = S^{vPrimeCommit} * R_0^{sCommit} * R_i^{miPrimeCommit}
 	Sv := new(big.Int).Exp(b.pk.S, vPrimeCommit, b.pk.N)
 	R0s := new(big.Int).Exp(b.pk.R[0], sCommit, b.pk.N)
 	Ucommit := new(big.Int).Mul(Sv, R0s)
+	for i, _ := range b.mPrimes {
+		Ucommit.Mul(Ucommit, new(big.Int).Exp(b.pk.R[i], mPrimesCommit[i], b.pk.N))
+	}
 	Ucommit.Mod(Ucommit, b.pk.N)
 
 	c := common.HashCommit([]*big.Int{b.context, U, Ucommit, nonce1}, false)
+
 	sResponse := new(big.Int).Mul(c, b.secret)
 	sResponse.Add(sResponse, sCommit)
 
 	vPrimeResponse := new(big.Int).Mul(c, b.vPrime)
 	vPrimeResponse.Add(vPrimeResponse, vPrimeCommit)
 
-	return &ProofU{U: U, C: c, VPrimeResponse: vPrimeResponse, SResponse: sResponse}
+	mPrimeResponses := make(map[int]*big.Int)
+	for i, miPrime := range b.mPrimes {
+		mPrimeResponse := new(big.Int).Mul(c, miPrime)
+		mPrimeResponses[i] = mPrimeResponse.Add(mPrimeResponse, mPrimesCommit[i])
+	}
+
+	return &ProofU{U: U, C: c,
+		VPrimeResponse:  vPrimeResponse,
+		SResponse:       sResponse,
+		MPrimeResponses: mPrimeResponses,
+	}
 }
 
 // CredentialBuilder is a temporary object to hold some state for the protocol
@@ -201,6 +230,9 @@ type CredentialBuilder struct {
 	pk         *PublicKey
 	context    *big.Int
 	proofPcomm *ProofPCommitment
+
+	mPrimes       map[int]*big.Int // Map of users shares of random blind attributes
+	mPrimesCommit map[int]*big.Int
 }
 
 func (b *CredentialBuilder) MergeProofPCommitment(commitment *ProofPCommitment) {
@@ -222,10 +254,19 @@ func (b *CredentialBuilder) Commit(randomizers map[string]*big.Int) []*big.Int {
 	// vPrimeCommit
 	b.vPrimeCommit, _ = common.RandomBigInt(b.pk.Params.LvPrimeCommit)
 
+	b.mPrimesCommit = make(map[int]*big.Int)
+	for i, _ := range b.mPrimes {
+		b.mPrimesCommit[i], _ = common.RandomBigInt(b.pk.Params.LmCommit)
+	}
 	// U_commit = U_commit * S^{v_prime_commit} * R_0^{s_commit}
 	sv := new(big.Int).Exp(b.pk.S, b.vPrimeCommit, b.pk.N)
 	r0s := new(big.Int).Exp(b.pk.R[0], b.skRandomizer, b.pk.N)
 	b.uCommit.Mul(b.uCommit, sv).Mul(b.uCommit, r0s).Mod(b.uCommit, b.pk.N)
+
+	for i, _ := range b.mPrimes {
+		b.uCommit.Mul(b.uCommit, new(big.Int).Exp(b.pk.R[i], b.mPrimesCommit[i], b.pk.N))
+	}
+	b.uCommit.Mod(b.uCommit, b.pk.N)
 
 	ucomm := new(big.Int).Set(b.u)
 	if b.proofPcomm != nil {
@@ -239,5 +280,14 @@ func (b *CredentialBuilder) CreateProof(challenge *big.Int) Proof {
 	sResponse := new(big.Int).Add(b.skRandomizer, new(big.Int).Mul(challenge, b.secret))
 	vPrimeResponse := new(big.Int).Add(b.vPrimeCommit, new(big.Int).Mul(challenge, b.vPrime))
 
-	return &ProofU{U: b.u, C: challenge, VPrimeResponse: vPrimeResponse, SResponse: sResponse}
+	mPrimeResponses := make(map[int]*big.Int)
+	for i, miPrime := range b.mPrimes {
+		mPrimeResponse := new(big.Int).Mul(challenge, miPrime)
+		mPrimeResponses[i] = mPrimeResponse.Add(mPrimeResponse, b.mPrimesCommit[i])
+	}
+
+	return &ProofU{U: b.u, C: challenge,
+		VPrimeResponse:  vPrimeResponse,
+		SResponse:       sResponse,
+		MPrimeResponses: mPrimeResponses}
 }

@@ -28,22 +28,34 @@ func NewIssuer(sk *PrivateKey, pk *PublicKey, context *big.Int) *Issuer {
 // the IssueCommitmentMessage provided. Note that this function DOES NOT check
 // the proofs containted in the IssueCommitmentMessage! That needs to be done at
 // a higher level!
-func (i *Issuer) IssueSignature(U *big.Int, attributes []*big.Int, witness *revocation.Witness, nonce2 *big.Int) (*IssueSignatureMessage, error) {
-	signature, err := i.signCommitmentAndAttributes(U, attributes)
+func (i *Issuer) IssueSignature(U *big.Int, attributes []*big.Int, witness *revocation.Witness, nonce2 *big.Int, blind []int) (*IssueSignatureMessage, error) {
+	signature, mDoublePrimes, err := i.signCommitmentAndAttributes(U, attributes, blind)
 	if err != nil {
 		return nil, err
 	}
 	proof := i.proveSignature(signature, nonce2)
-	return &IssueSignatureMessage{Signature: signature, Proof: proof, NonRevocationWitness: witness}, nil
+	return &IssueSignatureMessage{Signature: signature, Proof: proof, NonRevocationWitness: witness, MDoublePrimes: mDoublePrimes}, nil
 }
 
 // signCommitmentAndAttributes produces a (partial) signature on the commitment
-// and the attributes. The signature by itself does not verify because the
-// commitment contains a blinding factor that needs to be taken into account
-// when verifying the signature.
-func (i *Issuer) signCommitmentAndAttributes(U *big.Int, attributes []*big.Int) (*CLSignature, error) {
-	// Skip the first generator
-	return signMessageBlockAndCommitment(i.Sk, i.Pk, U, append([]*big.Int{big.NewInt(0)}, attributes...))
+// and the attributes (some of might are unknown to the issuer). The signature by
+// itself does not verify for the same reason as mentioned above.
+// Arg blind is a list of indices representing the random blind attributes.
+func (i *Issuer) signCommitmentAndAttributes(U *big.Int, attributes []*big.Int, blind []int) (*CLSignature, map[int]*big.Int, error) {
+	mDoublePrimes := make(map[int]*big.Int)
+	for _, j := range blind {
+		r, _ := common.RandomBigInt(i.Pk.Params.Lm - 1)
+		mDoublePrimes[j+1] = r
+		attributes[j] = r
+	}
+	ms := append([]*big.Int{big.NewInt(0)}, attributes...)
+
+	cl, err := signMessageBlockAndCommitment(i.Sk, i.Pk, U, ms)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return cl, mDoublePrimes, nil
 }
 
 // randomElementMultiplicativeGroup returns a random element in the
