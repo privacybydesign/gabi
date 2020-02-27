@@ -109,15 +109,15 @@ type (
 var (
 	ErrorRevoked = errors.New("revoked")
 
-	parameters = struct {
-		attributeSize    uint     // maximum size in bits for prime e
-		challengeLength  uint     // k'  = len(SHA256) = 256
-		zkStat           uint     // k'' = 128
-		twoZk, bTwoZk, b *big.Int // 2^(k'+k''), B*2^(k'+k''+1), 2^attributeSize
+	Parameters = struct {
+		AttributeSize    uint     // maximum size in bits for prime e
+		ChallengeLength  uint     // k'  = len(SHA256) = 256
+		ZkStat           uint     // k'' = 128
+		twoZk, bTwoZk, b *big.Int // 2^(k'+k''), B*2^(k'+k''+1), 2^AttributeSize
 	}{
-		attributeSize:   195,
-		challengeLength: 256,
-		zkStat:          128,
+		AttributeSize:   195,
+		ChallengeLength: 256,
+		ZkStat:          128,
 	}
 
 	bigOne         = big.NewInt(1)
@@ -150,9 +150,9 @@ var (
 
 func init() {
 	// Compute derivative parameters
-	parameters.b = new(big.Int).Lsh(bigOne, parameters.attributeSize)
-	parameters.twoZk = new(big.Int).Lsh(bigOne, parameters.challengeLength+parameters.zkStat)
-	parameters.bTwoZk = new(big.Int).Mul(parameters.b, new(big.Int).Mul(parameters.twoZk, big.NewInt(2)))
+	Parameters.b = new(big.Int).Lsh(bigOne, Parameters.AttributeSize)
+	Parameters.twoZk = new(big.Int).Lsh(bigOne, Parameters.ChallengeLength+Parameters.ZkStat)
+	Parameters.bTwoZk = new(big.Int).Mul(Parameters.b, new(big.Int).Mul(Parameters.twoZk, big.NewInt(2)))
 }
 
 // API
@@ -160,12 +160,12 @@ func init() {
 // NewProofRandomizer returns a bigint suitable for use as the randomizer in a nonrevocation
 // zero knowledge proof.
 func NewProofRandomizer() *big.Int {
-	return common.FastRandomBigInt(new(big.Int).Mul(parameters.b, parameters.twoZk))
+	return common.FastRandomBigInt(new(big.Int).Mul(Parameters.b, Parameters.twoZk))
 }
 
 // RandomWitness returns a new random Witness valid against the specified Accumulator.
 func RandomWitness(sk *PrivateKey, acc *Accumulator) (*Witness, error) {
-	e, err := common.RandomPrimeInRange(rand.Reader, 3, parameters.attributeSize)
+	e, err := common.RandomPrimeInRange(rand.Reader, 3, Parameters.AttributeSize)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +212,7 @@ func (p *Proof) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.I
 	if !proofstructure.verifyProofStructure((*proof)(p)) {
 		return false
 	}
-	if (*proof)(p).ProofResult("alpha").Cmp(parameters.bTwoZk) > 0 {
+	if (*proof)(p).ProofResult("alpha").Cmp(Parameters.bTwoZk) > 0 {
 		return false
 	}
 	acc, err := p.SignedAccumulator.UnmarshalVerify(pk)

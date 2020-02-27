@@ -140,7 +140,7 @@ func TestAccumulatorRemove(t *testing.T) {
 	acc := update.SignedAccumulator.Accumulator
 	require.NotNil(t, acc)
 
-	e, err := common.RandomPrimeInRange(rand.Reader, 3, parameters.attributeSize)
+	e, err := common.RandomPrimeInRange(rand.Reader, 3, Parameters.AttributeSize)
 	require.NoError(t, err)
 	parentevent := update.Events[len(update.Events)-1]
 	newAcc, event, err := acc.Remove(sk, e, parentevent)
@@ -153,7 +153,7 @@ func TestAccumulatorRemove(t *testing.T) {
 }
 
 func revoke(t *testing.T, acc *Accumulator, parent *Event, sk *PrivateKey) (*Accumulator, *Event) {
-	e, err := common.RandomPrimeInRange(rand.Reader, 3, parameters.attributeSize)
+	e, err := common.RandomPrimeInRange(rand.Reader, 3, Parameters.AttributeSize)
 	require.NoError(t, err)
 	acc, event, err := acc.Remove(sk, e, parent)
 	require.NoError(t, err)

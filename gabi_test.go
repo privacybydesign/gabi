@@ -124,7 +124,7 @@ func setupParameters() error {
 	}
 
 	testPrivK = NewPrivateKey(p, q, "", 0, time.Now().AddDate(1, 0, 0))
-	testPubK = NewPublicKey(n, Z, S, nil, nil, nil, R, "", 0, time.Now().AddDate(1, 0, 0))
+	testPubK = NewPublicKey(n, Z, S, nil, nil, R, "", 0, time.Now().AddDate(1, 0, 0))
 
 	var err error
 	testPrivK1, err = NewPrivateKeyFromXML(xmlPrivKey1)
@@ -198,24 +198,24 @@ func TestTestKeys(t *testing.T) {
 
 func TestCLSignature(t *testing.T) {
 	m := []*big.Int{big.NewInt(1), big.NewInt(2), big.NewInt(3)}
-	sig, err := SignMessageBlock(testPrivK, testPubK, m, nil)
+	sig, err := SignMessageBlock(testPrivK, testPubK, m)
 
 	assert.NoError(t, err)
-	assert.True(t, sig.Verify(testPubK, m, nil), "CLSignature did not verify, whereas it should.")
+	assert.True(t, sig.Verify(testPubK, m), "CLSignature did not verify, whereas it should.")
 	m[0] = big.NewInt(1337)
-	assert.True(t, !sig.Verify(testPubK, m, nil), "CLSignature verifies, whereas it should not.")
+	assert.True(t, !sig.Verify(testPubK, m), "CLSignature verifies, whereas it should not.")
 }
 
 func TestClSignatureRandomize(t *testing.T) {
 	m := []*big.Int{big.NewInt(1), big.NewInt(2), big.NewInt(3)}
-	sig, err := SignMessageBlock(testPrivK, testPubK, m, nil)
+	sig, err := SignMessageBlock(testPrivK, testPubK, m)
 	assert.NoError(t, err)
 
-	assert.True(t, sig.Verify(testPubK, m, nil), "CLSignature did not verify, whereas it should.")
+	assert.True(t, sig.Verify(testPubK, m), "CLSignature did not verify, whereas it should.")
 
 	for i := 0; i < 10; i++ {
 		sigRandomized := sig.Randomize(testPubK)
-		assert.True(t, sigRandomized.Verify(testPubK, m, nil), "Randomized CLSignature did not verify, whereas it should.")
+		assert.True(t, sigRandomized.Verify(testPubK, m), "Randomized CLSignature did not verify, whereas it should.")
 	}
 }
 
@@ -273,7 +273,7 @@ func TestProofS(t *testing.T) {
 	nonce, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
 
 	issuer := NewIssuer(testPrivK, testPubK, context)
-	sig, err := issuer.signCommitmentAndAttributes(U, testAttributes1, nil)
+	sig, err := issuer.signCommitmentAndAttributes(U, testAttributes1)
 	assert.NoError(t, err)
 
 	proof := issuer.proveSignature(sig, nonce)
@@ -331,12 +331,12 @@ func TestFullIssuance(t *testing.T) {
 	issuer := NewIssuer(testPrivK, testPubK, context)
 	msg, err := issuer.IssueSignature(commitMsg.U, testAttributes1, nil, nonce2)
 	assert.NoError(t, err, "Error in IssueSignature")
-	_, err = b.ConstructCredential(msg, testAttributes1)
+	_, err = b.ConstructCredential(msg, testAttributes1, -1)
 	assert.NoError(t, err, "Error in IssueSignature")
 }
 
 func TestShowingProof(t *testing.T) {
-	signature, err := SignMessageBlock(testPrivK, testPubK, testAttributes1, nil)
+	signature, err := SignMessageBlock(testPrivK, testPubK, testAttributes1)
 	assert.NoError(t, err, "Error producing CL signature.")
 	cred := &Credential{Pk: testPubK, Attributes: testAttributes1, Signature: signature}
 	disclosed := []int{1, 2}
@@ -419,7 +419,7 @@ func TestFullIssuanceAndShowing(t *testing.T) {
 	sigMsg, err := issuer.IssueSignature(commitMsg.U, testAttributes1, nil, nonce2)
 	assert.NoError(t, err, "Error in IssueSignature")
 
-	cred, err := builder.ConstructCredential(sigMsg, testAttributes1)
+	cred, err := builder.ConstructCredential(sigMsg, testAttributes1, -1)
 	assert.NoError(t, err, "Error in credential construction")
 
 	// Showing
@@ -445,7 +445,7 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 	ism, err := issuer1.IssueSignature(commitMsg.U, testAttributes1, nil, nonce2)
 	assert.NoError(t, err, "Error creating Issue Signature")
 
-	cred1, err := cb1.ConstructCredential(ism, testAttributes1)
+	cred1, err := cb1.ConstructCredential(ism, testAttributes1, -1)
 	assert.NoError(t, err, "Error creating credential")
 
 	// Then create another credential based on the same credential with a partial
@@ -464,7 +464,7 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 
 	msg, err := issuer2.IssueSignature(commitMsg2.U, testAttributes1, nil, nonce2)
 	assert.NoError(t, err, "Error creating Issue Signature")
-	cred2, err := cb2.ConstructCredential(msg, testAttributes1)
+	cred2, err := cb2.ConstructCredential(msg, testAttributes1, -1)
 	assert.NoError(t, err, "Error creating credential")
 
 	// Showing
@@ -542,7 +542,7 @@ func createCredential(t *testing.T, context, secret *big.Int, issuer *Issuer) *C
 	ism, err := issuer.IssueSignature(commitMsg.U, testAttributes1, nil, nonce2)
 	assert.NoError(t, err, "Error creating Issue Signature")
 
-	cred, err := cb.ConstructCredential(ism, testAttributes1)
+	cred, err := cb.ConstructCredential(ism, testAttributes1, -1)
 	assert.NoError(t, err, "Error creating credential")
 	return cred
 }
@@ -574,7 +574,7 @@ func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 
 	msg, err := issuer2.IssueSignature(commitMsg.U, testAttributes2, nil, nonce2)
 	assert.NoError(t, err, "Error creating Issue Signature")
-	cred2, err := cb2.ConstructCredential(msg, testAttributes2)
+	cred2, err := cb2.ConstructCredential(msg, testAttributes2, -1)
 	assert.NoError(t, err, "Error creating credential")
 
 	// Showing
@@ -619,10 +619,10 @@ func TestBigAttribute(t *testing.T) {
 		new(big.Int).SetBytes([]byte("two")),
 		new(big.Int).SetBytes([]byte("This is a very long attribute: its size of 132 bytes exceeds the maximum message length of all currently supported public key sizes.")),
 	}
-	signature, err := SignMessageBlock(testPrivK, testPubK, attrs, nil)
+	signature, err := SignMessageBlock(testPrivK, testPubK, attrs)
 	assert.NoError(t, err, "Error producing CL signature.")
 	cred := &Credential{Pk: testPubK, Attributes: attrs, Signature: signature}
-	assert.True(t, signature.Verify(testPubK, attrs, nil), "Failed to create CL signature over large attribute")
+	assert.True(t, signature.Verify(testPubK, attrs), "Failed to create CL signature over large attribute")
 
 	context, _ := common.RandomBigInt(testPubK.Params.Lh)
 	nonce1, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
@@ -659,18 +659,23 @@ func setupRevocation(t *testing.T) (*revocation.PrivateKey, *revocation.PublicKe
 	return revkey, revpk, witness, update, acc
 }
 
+func revocationAttrs(w *revocation.Witness) []*big.Int {
+	return append(testAttributes1, w.E)
+}
+
 func TestNotRevoked(t *testing.T) {
 	_, _, witness, _, _ := setupRevocation(t)
 
 	// Issuance
-	signature, err := SignMessageBlock(testPrivK, testPubK, testAttributes1, witness.E)
+	attrs := revocationAttrs(witness)
+	signature, err := SignMessageBlock(testPrivK, testPubK, attrs)
 	require.NoError(t, err)
-	require.True(t, signature.Verify(testPubK, testAttributes1, witness.E))
+	require.True(t, signature.Verify(testPubK, attrs))
 
 	cred := &Credential{
 		Signature:            signature,
 		Pk:                   testPubK,
-		Attributes:           testAttributes1,
+		Attributes:           attrs,
 		NonRevocationWitness: witness,
 	}
 	require.NoError(t, cred.NonrevPrepareCache())
@@ -681,6 +686,7 @@ func TestNotRevoked(t *testing.T) {
 
 	proofd, err := cred.CreateDisclosureProof([]int{1, 2}, true, context, nonce)
 	require.NoError(t, err)
+	require.NotNil(t, proofd.NonRevocationProof)
 	require.True(t, ProofList{proofd}.Verify([]*PublicKey{testPubK}, context, nonce, false, nil))
 }
 
@@ -688,9 +694,10 @@ func TestRevoked(t *testing.T) {
 	revkey, revpk, witness, update, acc := setupRevocation(t)
 
 	// Issuance
-	signature, err := SignMessageBlock(testPrivK, testPubK, testAttributes1, witness.E)
+	attrs := revocationAttrs(witness)
+	signature, err := SignMessageBlock(testPrivK, testPubK, attrs)
 	require.NoError(t, err)
-	require.True(t, signature.Verify(testPubK, testAttributes1, witness.E))
+	require.True(t, signature.Verify(testPubK, attrs))
 
 	acc, event, err := acc.Remove(revkey, witness.E, update.Events[0])
 	require.NoError(t, err)
@@ -713,9 +720,10 @@ func TestFullIssueAndShowWithRevocation(t *testing.T) {
 	commitMsg := b.CommitToSecretAndProve(nonce1)
 
 	issuer := NewIssuer(testPrivK, testPubK, context)
-	msg, err := issuer.IssueSignature(commitMsg.U, testAttributes1, witness, nonce2)
+	attrs := revocationAttrs(witness)
+	msg, err := issuer.IssueSignature(commitMsg.U, attrs, witness, nonce2)
 	require.NoError(t, err, "Error in IssueSignature")
-	cred, err := b.ConstructCredential(msg, testAttributes1)
+	cred, err := b.ConstructCredential(msg, attrs, len(attrs))
 	require.NoError(t, err, "Error in ConstructCredential")
 
 	// Showing

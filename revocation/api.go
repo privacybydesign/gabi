@@ -523,7 +523,7 @@ func (event *Event) hash() Hash {
 }
 
 func (event *Event) hashBytes() []byte {
-	bts := make([]byte, 8, 8+len(event.ParentHash)+int(parameters.attributeSize)/8+1)
+	bts := make([]byte, 8, 8+len(event.ParentHash)+int(Parameters.AttributeSize)/8+1)
 	binary.BigEndian.PutUint64(bts, event.Index)
 	bts = append(bts, event.ParentHash[:]...)
 	bts = append(bts, event.E.Bytes()...)

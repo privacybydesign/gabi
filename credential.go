@@ -32,10 +32,7 @@ type DisclosureProofBuilder struct {
 	undisclosedAttributes []int
 	pk                    *PublicKey
 	attributes            []*big.Int
-
-	revocationAttr   *big.Int
-	nonrevRandomizer *big.Int
-	nonrevBuilder    *NonRevocationProofBuilder
+	nonrevBuilder         *NonRevocationProofBuilder
 }
 
 type NonRevocationProofBuilder struct {
@@ -97,7 +94,7 @@ func getUndisclosedAttributes(disclosedAttributes []int, numAttributes int) []in
 // CreateDisclosureProof creates a disclosure proof (ProofD) voor the provided
 // indices of disclosed attributes.
 func (ic *Credential) CreateDisclosureProof(disclosedAttributes []int, nonrev bool, context, nonce1 *big.Int) (*ProofD, error) {
-	builder, err := ic.CreateDisclosureProofBuilder(disclosedAttributes, false)
+	builder, err := ic.CreateDisclosureProofBuilder(disclosedAttributes, nonrev)
 	if err != nil {
 		return nil, err
 	}
@@ -124,27 +121,22 @@ func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int, no
 		d.attrRandomizers[v], _ = common.RandomBigInt(ic.Pk.Params.LmCommit)
 	}
 
-	if nonrev && ic.NonRevocationWitness == nil {
+	if !nonrev {
+		return d, nil
+	}
+	if ic.NonRevocationWitness == nil {
 		return nil, errors.New("cannot prove nonrevocation: credential has no witness")
 	}
-	if ic.NonRevocationWitness != nil {
-		// Even if the requestor did not request a nonrevocation proof, it will require
-		// a proof of knowledge of the nonrevocation attribute e to be included in the
-		// ProofD, in order to be able to verify it. (This breaks backwards compatibility
-		// with pre-revocation requestors)
-		if nonrev {
-			var err error
-			d.nonrevBuilder, err = ic.nonrevConsumeBuilder()
-			if err != nil {
-				return nil, err
-			}
-			d.nonrevRandomizer = d.nonrevBuilder.randomizer
-		} else {
-			d.nonrevRandomizer = revocation.NewProofRandomizer()
-		}
-		d.revocationAttr = ic.NonRevocationWitness.E
-	}
 
+	revIdx, err := ic.NonrevIndex()
+	if err != nil {
+		return nil, err
+	}
+	d.nonrevBuilder, err = ic.nonrevConsumeBuilder()
+	if err != nil {
+		return nil, err
+	}
+	d.attrRandomizers[revIdx] = d.nonrevBuilder.randomizer
 	return d, nil
 }
 
@@ -210,6 +202,18 @@ func (ic *Credential) NonrevBuildProofBuilder() (*NonRevocationProofBuilder, err
 	return b, nil
 }
 
+func (ic *Credential) NonrevIndex() (int, error) {
+	if ic.NonRevocationWitness == nil {
+		return -1, errors.New("credential has no nonrevocation witness")
+	}
+	for idx, i := range ic.Attributes {
+		if i.Cmp(ic.NonRevocationWitness.E) == 0 {
+			return idx, nil
+		}
+	}
+	return -1, errors.New("revocation attribute not included in credential")
+}
+
 func (d *DisclosureProofBuilder) MergeProofPCommitment(commitment *ProofPCommitment) {
 	d.z.Mod(
 		d.z.Mul(d.z, commitment.Pcommit),
@@ -236,9 +240,6 @@ func (d *DisclosureProofBuilder) Commit(randomizers map[string]*big.Int) []*big.
 	for _, v := range d.undisclosedAttributes {
 		d.z.Mul(d.z, common.ModPow(d.pk.R[v], d.attrRandomizers[v], d.pk.N))
 		d.z.Mod(d.z, d.pk.N)
-	}
-	if d.revocationAttr != nil {
-		d.z.Mul(d.z, common.ModPow(d.pk.T, d.nonrevRandomizer, d.pk.N)).Mod(d.z, d.pk.N)
 	}
 
 	list := []*big.Int{d.randomizedSignature.A, d.z}
@@ -277,24 +278,19 @@ func (d *DisclosureProofBuilder) CreateProof(challenge *big.Int) Proof {
 	}
 
 	var nonrevProof *revocation.Proof
-	var nrResponse *big.Int
-	if d.revocationAttr != nil && d.nonrevRandomizer != nil {
-		nrResponse = new(big.Int).Add(d.nonrevRandomizer, new(big.Int).Mul(challenge, d.revocationAttr))
-	}
 	if d.nonrevBuilder != nil {
 		nonrevProof = d.nonrevBuilder.CreateProof(challenge)
 		delete(nonrevProof.Responses, "alpha") // reset from NonRevocationResponse during verification
 	}
 
 	return &ProofD{
-		C:                     challenge,
-		A:                     d.randomizedSignature.A,
-		EResponse:             eResponse,
-		VResponse:             vResponse,
-		AResponses:            aResponses,
-		ADisclosed:            aDisclosed,
-		NonRevocationResponse: nrResponse,
-		NonRevocationProof:    nonrevProof,
+		C:                  challenge,
+		A:                  d.randomizedSignature.A,
+		EResponse:          eResponse,
+		VResponse:          vResponse,
+		AResponses:         aResponses,
+		ADisclosed:         aDisclosed,
+		NonRevocationProof: nonrevProof,
 	}
 }
 

@@ -24,8 +24,8 @@ type (
 func NewQrGroup(modulus *big.Int) QrGroup {
 	g := QrGroup{N: modulus}
 	g.nDiv4 = new(big.Int).Div(g.N, big.NewInt(4))
-	g.nDiv4twoZk = new(big.Int).Mul(g.nDiv4, parameters.twoZk)
-	g.nbDiv4twoZk = new(big.Int).Mul(g.nDiv4twoZk, parameters.b)
+	g.nDiv4twoZk = new(big.Int).Mul(g.nDiv4, Parameters.twoZk)
+	g.nbDiv4twoZk = new(big.Int).Mul(g.nDiv4twoZk, Parameters.b)
 	return g
 }
 

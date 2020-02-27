@@ -188,7 +188,6 @@ func GenerateRevocationKeypair(privk *PrivateKey, pubk *PublicKey) error {
 
 	privk.ECDSA = base64.StdEncoding.EncodeToString(dsabts)
 	pubk.ECDSA = base64.StdEncoding.EncodeToString(pubdsabts)
-	pubk.T = common.RandomQR(pubk.N)
 	pubk.G = common.RandomQR(pubk.N)
 	pubk.H = common.RandomQR(pubk.N)
 
@@ -289,7 +288,6 @@ type PublicKey struct {
 	S           *big.Int          `xml:"Elements>S"` // Generator S
 	G           *big.Int          `xml:"Elements>G"` // Generator G for revocation
 	H           *big.Int          `xml:"Elements>H"` // Generator H for revocation
-	T           *big.Int          `xml:"Elements>T"` // Generator T for revocation
 	R           Bases             `xml:"Elements>Bases"`
 	EpochLength EpochLength       `xml:"Features"`
 	Params      *SystemParameters `xml:"-"`
@@ -300,7 +298,7 @@ type PublicKey struct {
 }
 
 // NewPublicKey creates and returns a new public key based on the provided parameters.
-func NewPublicKey(N, Z, S, G, H, T *big.Int, R []*big.Int, ecdsa string, counter uint, expiryDate time.Time) *PublicKey {
+func NewPublicKey(N, Z, S, G, H *big.Int, R []*big.Int, ecdsa string, counter uint, expiryDate time.Time) *PublicKey {
 	return &PublicKey{
 		Counter:     counter,
 		ExpiryDate:  expiryDate.Unix(),
@@ -310,7 +308,6 @@ func NewPublicKey(N, Z, S, G, H, T *big.Int, R []*big.Int, ecdsa string, counter
 		R:           R,
 		G:           G,
 		H:           H,
-		T:           T,
 		EpochLength: DefaultEpochLength,
 		Params:      DefaultSystemParameters[N.BitLen()],
 		ECDSA:       ecdsa,
@@ -388,7 +385,7 @@ func (pubk *PublicKey) RevocationKey() (*revocation.PublicKey, error) {
 }
 
 func (pubk *PublicKey) RevocationSupported() bool {
-	return pubk.G != nil && pubk.H != nil && pubk.T != nil && len(pubk.ECDSA) > 0
+	return pubk.G != nil && pubk.H != nil && len(pubk.ECDSA) > 0
 }
 
 // Print prints the key to stdout.

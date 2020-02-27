@@ -5,6 +5,8 @@
 package gabi
 
 import (
+	"errors"
+
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
 	"github.com/privacybydesign/gabi/revocation"
@@ -126,14 +128,13 @@ func (p *ProofS) Verify(pk *PublicKey, signature *CLSignature, context, nonce *b
 
 // ProofD represents a proof in the showing protocol.
 type ProofD struct {
-	C                     *big.Int          `json:"c"`
-	A                     *big.Int          `json:"A"`
-	EResponse             *big.Int          `json:"e_response"`
-	VResponse             *big.Int          `json:"v_response"`
-	AResponses            map[int]*big.Int  `json:"a_responses"`
-	NonRevocationResponse *big.Int          `json:"nonrev_response,omitempty"`
-	NonRevocationProof    *revocation.Proof `json:"nonrev_proof,omitempty"`
-	ADisclosed            map[int]*big.Int  `json:"a_disclosed"`
+	C                  *big.Int          `json:"c"`
+	A                  *big.Int          `json:"A"`
+	EResponse          *big.Int          `json:"e_response"`
+	VResponse          *big.Int          `json:"v_response"`
+	AResponses         map[int]*big.Int  `json:"a_responses"`
+	ADisclosed         map[int]*big.Int  `json:"a_disclosed"`
+	NonRevocationProof *revocation.Proof `json:"nonrev_proof,omitempty"`
 }
 
 func (p *ProofD) MergeProofP(proofP *ProofP, pk *PublicKey) {
@@ -191,10 +192,6 @@ func (p *ProofD) reconstructZ(pk *PublicKey) *big.Int {
 	Z := new(big.Int).Mul(knownC, Ae)
 	Z.Mul(Z, Rs).Mul(Z, Sv).Mod(Z, pk.N)
 
-	if p.NonRevocationResponse != nil {
-		Z.Mul(Z, common.ModPow(pk.T, p.NonRevocationResponse, pk.N)).Mod(Z, pk.N)
-	}
-
 	return Z
 }
 
@@ -220,8 +217,12 @@ func (p *ProofD) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.
 		if err != nil {
 			return false
 		}
+		revIdx := p.revocationAttrIndex()
+		if revIdx < 0 || p.AResponses[revIdx] == nil {
+			return false
+		}
 		notrevoked = p.NonRevocationProof.VerifyWithChallenge(rpk, reconstructedChallenge) &&
-			p.NonRevocationProof.Responses["alpha"].Cmp(p.NonRevocationResponse) == 0
+			p.NonRevocationProof.Responses["alpha"].Cmp(p.AResponses[revIdx]) == 0
 	} else {
 		notrevoked = true
 	}
@@ -239,7 +240,11 @@ func (p *ProofD) ChallengeContribution(pk *PublicKey) ([]*big.Int, error) {
 		if err != nil {
 			return nil, err
 		}
-		if err = p.NonRevocationProof.SetExpected(revPk, p.C, p.NonRevocationResponse); err != nil {
+		revIdx := p.revocationAttrIndex()
+		if revIdx < 0 || p.AResponses[revIdx] == nil {
+			return nil, errors.New("no revocation response found")
+		}
+		if err = p.NonRevocationProof.SetExpected(revPk, p.C, p.AResponses[revIdx]); err != nil {
 			return nil, err
 		}
 		contrib := p.NonRevocationProof.ChallengeContributions(revPk.Group)
@@ -252,6 +257,17 @@ func (p *ProofD) ChallengeContribution(pk *PublicKey) ([]*big.Int, error) {
 // interface).
 func (p *ProofD) SecretKeyResponse() *big.Int {
 	return p.AResponses[0]
+}
+
+func (p *ProofD) revocationAttrIndex() int {
+	params := revocation.Parameters
+	max := new(big.Int).Lsh(big.NewInt(1), params.AttributeSize+params.ChallengeLength+params.ZkStat+1)
+	for idx, i := range p.AResponses {
+		if i.Cmp(max) < 0 {
+			return idx
+		}
+	}
+	return -1
 }
 
 // Challenge returns the challenge in the proof (part of the Proof interface).
