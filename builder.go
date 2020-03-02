@@ -118,7 +118,7 @@ var (
 
 // ConstructCredential creates a credential using the IssueSignatureMessage from
 // the issuer and the content of the attributes.
-func (b *CredentialBuilder) ConstructCredential(msg *IssueSignatureMessage, attributes []*big.Int, revIdx int) (*Credential, error) {
+func (b *CredentialBuilder) ConstructCredential(msg *IssueSignatureMessage, attributes []*big.Int) (*Credential, error) {
 	if !msg.Proof.Verify(b.pk, msg.Signature, b.context, b.nonce2) {
 		return nil, ErrIncorrectProofOfSignatureCorrectness
 	}
@@ -147,7 +147,6 @@ func (b *CredentialBuilder) ConstructCredential(msg *IssueSignatureMessage, attr
 			return nil, err
 		}
 		msg.NonRevocationWitness.Updated = time.Unix(msg.NonRevocationWitness.SignedAccumulator.Accumulator.Time, 0)
-		exponents[revIdx] = msg.NonRevocationWitness.E
 	}
 	if !signature.Verify(b.pk, exponents) {
 		return nil, ErrIncorrectAttributeSignature

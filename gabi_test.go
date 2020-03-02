@@ -331,7 +331,7 @@ func TestFullIssuance(t *testing.T) {
 	issuer := NewIssuer(testPrivK, testPubK, context)
 	msg, err := issuer.IssueSignature(commitMsg.U, testAttributes1, nil, nonce2)
 	assert.NoError(t, err, "Error in IssueSignature")
-	_, err = b.ConstructCredential(msg, testAttributes1, -1)
+	_, err = b.ConstructCredential(msg, testAttributes1)
 	assert.NoError(t, err, "Error in IssueSignature")
 }
 
@@ -419,7 +419,7 @@ func TestFullIssuanceAndShowing(t *testing.T) {
 	sigMsg, err := issuer.IssueSignature(commitMsg.U, testAttributes1, nil, nonce2)
 	assert.NoError(t, err, "Error in IssueSignature")
 
-	cred, err := builder.ConstructCredential(sigMsg, testAttributes1, -1)
+	cred, err := builder.ConstructCredential(sigMsg, testAttributes1)
 	assert.NoError(t, err, "Error in credential construction")
 
 	// Showing
@@ -445,7 +445,7 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 	ism, err := issuer1.IssueSignature(commitMsg.U, testAttributes1, nil, nonce2)
 	assert.NoError(t, err, "Error creating Issue Signature")
 
-	cred1, err := cb1.ConstructCredential(ism, testAttributes1, -1)
+	cred1, err := cb1.ConstructCredential(ism, testAttributes1)
 	assert.NoError(t, err, "Error creating credential")
 
 	// Then create another credential based on the same credential with a partial
@@ -464,7 +464,7 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 
 	msg, err := issuer2.IssueSignature(commitMsg2.U, testAttributes1, nil, nonce2)
 	assert.NoError(t, err, "Error creating Issue Signature")
-	cred2, err := cb2.ConstructCredential(msg, testAttributes1, -1)
+	cred2, err := cb2.ConstructCredential(msg, testAttributes1)
 	assert.NoError(t, err, "Error creating credential")
 
 	// Showing
@@ -542,7 +542,7 @@ func createCredential(t *testing.T, context, secret *big.Int, issuer *Issuer) *C
 	ism, err := issuer.IssueSignature(commitMsg.U, testAttributes1, nil, nonce2)
 	assert.NoError(t, err, "Error creating Issue Signature")
 
-	cred, err := cb.ConstructCredential(ism, testAttributes1, -1)
+	cred, err := cb.ConstructCredential(ism, testAttributes1)
 	assert.NoError(t, err, "Error creating credential")
 	return cred
 }
@@ -574,7 +574,7 @@ func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 
 	msg, err := issuer2.IssueSignature(commitMsg.U, testAttributes2, nil, nonce2)
 	assert.NoError(t, err, "Error creating Issue Signature")
-	cred2, err := cb2.ConstructCredential(msg, testAttributes2, -1)
+	cred2, err := cb2.ConstructCredential(msg, testAttributes2)
 	assert.NoError(t, err, "Error creating credential")
 
 	// Showing
@@ -723,7 +723,7 @@ func TestFullIssueAndShowWithRevocation(t *testing.T) {
 	attrs := revocationAttrs(witness)
 	msg, err := issuer.IssueSignature(commitMsg.U, attrs, witness, nonce2)
 	require.NoError(t, err, "Error in IssueSignature")
-	cred, err := b.ConstructCredential(msg, attrs, len(attrs))
+	cred, err := b.ConstructCredential(msg, attrs)
 	require.NoError(t, err, "Error in ConstructCredential")
 
 	// Showing
