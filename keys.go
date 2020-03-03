@@ -38,7 +38,8 @@ type PrivateKey struct {
 	Q          *big.Int `xml:"Elements>q"`
 	PPrime     *big.Int `xml:"Elements>pPrime"`
 	QPrime     *big.Int `xml:"Elements>qPrime"`
-	ECDSA      string   `xml:",omitempty"`
+	order      *big.Int
+	ECDSA      string `xml:",omitempty"`
 
 	revocationKey *revocation.PrivateKey
 }
@@ -55,6 +56,8 @@ func NewPrivateKey(p, q *big.Int, ecdsa string, counter uint, expiryDate time.Ti
 		ECDSA:      ecdsa,
 	}
 
+	sk.order = new(big.Int).Mul(sk.PPrime, sk.QPrime)
+
 	return &sk
 }
 
@@ -66,6 +69,16 @@ func NewPrivateKeyFromXML(xmlInput string) (*PrivateKey, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Do some sanity checks on the key data
+	if new(big.Int).Rsh(new(big.Int).Sub(privk.P, bigONE), 1).Cmp(privk.PPrime) != 0 {
+		return nil, errors.New("Incompatible values for P and P'")
+	}
+	if new(big.Int).Rsh(new(big.Int).Sub(privk.Q, bigONE), 1).Cmp(privk.QPrime) != 0 {
+		return nil, errors.New("Incompatible values for Q and Q'")
+	}
+
+	privk.order = new(big.Int).Mul(privk.PPrime, privk.QPrime)
 	return privk, nil
 }
 
@@ -87,6 +100,16 @@ func NewPrivateKeyFromFile(filename string) (*PrivateKey, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Do some sanity checks on the key data
+	if new(big.Int).Rsh(new(big.Int).Sub(privk.P, bigONE), 1).Cmp(privk.PPrime) != 0 {
+		return nil, errors.New("Incompatible values for P and P'")
+	}
+	if new(big.Int).Rsh(new(big.Int).Sub(privk.Q, bigONE), 1).Cmp(privk.QPrime) != 0 {
+		return nil, errors.New("Incompatible values for Q and Q'")
+	}
+
+	privk.order = new(big.Int).Mul(privk.PPrime, privk.QPrime)
 	return privk, nil
 }
 
@@ -498,6 +521,7 @@ func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, e
 		Counter:    counter,
 		ExpiryDate: expiryDate.Unix(),
 	}
+	priv.order = new(big.Int).Mul(priv.PPrime, priv.QPrime)
 
 	// compute n
 	pubk := &PublicKey{Params: param, EpochLength: DefaultEpochLength, Counter: counter, ExpiryDate: expiryDate.Unix()}
