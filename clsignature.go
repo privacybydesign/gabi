@@ -55,8 +55,7 @@ func signMessageBlockAndCommitment(sk *PrivateKey, pk *PublicKey, U *big.Int, ms
 		return nil, err
 	}
 
-	order := new(big.Int).Mul(sk.PPrime, sk.QPrime)
-	d, _ := common.ModInverse(e, order)
+	d, _ := common.ModInverse(e, sk.order)
 	A := new(big.Int).Exp(Q, d, pk.N)
 
 	// TODO: this is probably open to side channel attacks, maybe use a
