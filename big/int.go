@@ -35,7 +35,7 @@ func (i *Int) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 		return errors.New("XML element was not a base 10 integer")
 	}
 	if i.Sign() < 0 {
-		return errors.New("XML element was not an unsigned integer")
+		return errors.New("Unexpected negative integer")
 	}
 	return nil
 }
