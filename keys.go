@@ -113,7 +113,7 @@ func (privk *PrivateKey) WriteToFile(filename string, forceOverwrite bool) (int6
 		f, err = os.Create(filename)
 	} else {
 		// This should return an error if the file already exists
-		f, err = os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0666)
+		f, err = os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
 	}
 	if err != nil {
 		return 0, err
@@ -312,7 +312,7 @@ func (pubk *PublicKey) WriteToFile(filename string, forceOverwrite bool) (int64,
 		f, err = os.Create(filename)
 	} else {
 		// This should return an error if the file already exists
-		f, err = os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0666)
+		f, err = os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0644)
 	}
 	if err != nil {
 		return 0, err
