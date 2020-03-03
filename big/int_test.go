@@ -51,4 +51,6 @@ func TestNegative(t *testing.T) {
 	bigint := NewInt(-42)
 	_, err := json.Marshal(bigint)
 	require.Error(t, err)
+	err = json.Unmarshal([]byte("-1234567891234567890123456789012345678"), bigint)
+	require.Error(t, err)
 }
