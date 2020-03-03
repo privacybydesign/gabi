@@ -34,6 +34,9 @@ func (i *Int) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	if _, ok := i.SetString(tmp.Str, 10); !ok {
 		return errors.New("XML element was not a base 10 integer")
 	}
+	if i.Sign() < 0 {
+		return errors.New("XML element was not an unsigned integer")
+	}
 	return nil
 }
 
@@ -55,12 +58,20 @@ func (i *Int) MarshalText() ([]byte, error) {
 func (i *Int) UnmarshalJSON(b []byte) error {
 	if b[0] != '"' { // Not a JSON string, try to decode an ordinarily base-10 encoded "math.big".Int
 		tmp := i.Value()
-		return json.Unmarshal(b, tmp)
+		err := json.Unmarshal(b, tmp)
+		if err != nil {
+			return err
+		}
+		if i.Sign() < 0 {
+			return errors.New("Unexpected negative integer")
+		}
+		return nil
 	}
 
 	bts := make([]byte, base64.StdEncoding.DecodedLen(len(b)-2))
 	n, err := base64.StdEncoding.Decode(bts, b[1:len(b)-1]) // Skip quote characters
 	i.SetBytes(bts[0:n])
+	// No need for sign check since setbytes interprets bytes as unsigned number.
 	return err
 }
 
