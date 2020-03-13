@@ -56,7 +56,7 @@ func NewPrivateKey(p, q *big.Int, ecdsa string, counter uint, expiryDate time.Ti
 		ECDSA:      ecdsa,
 	}
 
-	sk.order = new(big.Int).Mul(sk.PPrime, sk.QPrime)
+	sk.CacheOrder()
 
 	return &sk
 }
@@ -71,14 +71,11 @@ func NewPrivateKeyFromXML(xmlInput string) (*PrivateKey, error) {
 	}
 
 	// Do some sanity checks on the key data
-	if new(big.Int).Rsh(new(big.Int).Sub(privk.P, bigONE), 1).Cmp(privk.PPrime) != 0 {
-		return nil, errors.New("Incompatible values for P and P'")
-	}
-	if new(big.Int).Rsh(new(big.Int).Sub(privk.Q, bigONE), 1).Cmp(privk.QPrime) != 0 {
-		return nil, errors.New("Incompatible values for Q and Q'")
+	if err := privk.Validate(); err != nil {
+		return nil, err
 	}
 
-	privk.order = new(big.Int).Mul(privk.PPrime, privk.QPrime)
+	privk.CacheOrder()
 	return privk, nil
 }
 
@@ -102,15 +99,32 @@ func NewPrivateKeyFromFile(filename string) (*PrivateKey, error) {
 	}
 
 	// Do some sanity checks on the key data
-	if new(big.Int).Rsh(new(big.Int).Sub(privk.P, bigONE), 1).Cmp(privk.PPrime) != 0 {
-		return nil, errors.New("Incompatible values for P and P'")
-	}
-	if new(big.Int).Rsh(new(big.Int).Sub(privk.Q, bigONE), 1).Cmp(privk.QPrime) != 0 {
-		return nil, errors.New("Incompatible values for Q and Q'")
+	if err := privk.Validate(); err != nil {
+		return nil, err
 	}
 
-	privk.order = new(big.Int).Mul(privk.PPrime, privk.QPrime)
+	privk.CacheOrder()
 	return privk, nil
+}
+
+func (privk *PrivateKey) Validate() error {
+	if new(big.Int).Rsh(new(big.Int).Sub(privk.P, big.NewInt(1)), 1).Cmp(privk.PPrime) != 0 {
+		return errors.New("Incompatible values for P and P'")
+	}
+	if new(big.Int).Rsh(new(big.Int).Sub(privk.Q, big.NewInt(1)), 1).Cmp(privk.QPrime) != 0 {
+		return errors.New("Incompatible values for Q and Q'")
+	}
+	if !safeprime.ProbablySafePrime(privk.P, 40) {
+		return errors.New("P is not a safe prime")
+	}
+	if !safeprime.ProbablySafePrime(privk.Q, 40) {
+		return errors.New("Q is not a safe prime")
+	}
+	return nil
+}
+
+func (privk *PrivateKey) CacheOrder() {
+	privk.order = new(big.Int).Mul(privk.PPrime, privk.QPrime)
 }
 
 func (privk *PrivateKey) RevocationGenerateWitness(accumulator *revocation.Accumulator) (*revocation.Witness, error) {
