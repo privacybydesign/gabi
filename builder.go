@@ -65,7 +65,7 @@ type IssueSignatureMessage struct {
 	MDoublePrimes        map[int]*big.Int    `json:"mdoubleprimes"` // Issuers shares of random blind attributes
 }
 
-func userCommitment(pk *PublicKey, vPrime *big.Int, secret *big.Int, msg map[int]*big.Int) (U *big.Int) {
+func userCommitment(pk *PublicKey, secret *big.Int, vPrime *big.Int, msg map[int]*big.Int) (U *big.Int) {
 	// U = S^{vPrime} * R0^{secret} * Ri^{mi}
 	U = new(big.Int).Exp(pk.S, vPrime, pk.N)
 	U.Mul(U, new(big.Int).Exp(pk.R[0], secret, pk.N))
@@ -87,7 +87,7 @@ func NewCredentialBuilder(pk *PublicKey, context, secret *big.Int, nonce2 *big.I
 	}
 
 	// Commit to secret and blind attributes
-	U := userCommitment(pk, vPrime, secret, mPrimes)
+	U := userCommitment(pk, secret, vPrime, mPrimes)
 
 	return &CredentialBuilder{
 		pk:      pk,
