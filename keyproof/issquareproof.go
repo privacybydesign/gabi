@@ -296,15 +296,15 @@ func (s *isSquareProofStructure) numCommitments() int {
 	res := 1 + len(s.squares)
 	// Pedersens
 	res += s.nPedersen.numCommitments()
-	for i, _ := range s.squaresPedersen {
+	for i := range s.squaresPedersen {
 		res += s.squaresPedersen[i].numCommitments()
 	}
-	for i, _ := range s.rootsRep {
+	for i := range s.rootsRep {
 		res += s.rootsRep[i].numCommitments()
 	}
 	// Representationproofs
 	res += s.nRep.numCommitments()
-	for i, _ := range s.squaresRep {
+	for i := range s.squaresRep {
 		res += s.squaresRep[i].numCommitments()
 	}
 	// ValidityProofs

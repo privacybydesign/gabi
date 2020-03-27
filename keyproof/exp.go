@@ -264,17 +264,17 @@ func (s *expProofStructure) commitmentsFromSecrets(g group, list []*big.Int, bas
 	// inner bases and secrets (this is ugly code, hopefully go2 will make this better someday)
 	baseList := []BaseLookup{}
 	secretList := []SecretLookup{}
-	for i, _ := range commit.expBits {
+	for i := range commit.expBits {
 		baseList = append(baseList, &commit.expBits[i])
 		secretList = append(secretList, &commit.expBits[i])
 	}
-	for i, _ := range commit.basePows {
+	for i := range commit.basePows {
 		baseList = append(baseList, &commit.basePows[i])
 		secretList = append(secretList, &commit.basePows[i])
 	}
 	baseList = append(baseList, &commit.start)
 	secretList = append(secretList, &commit.start)
-	for i, _ := range commit.interRess {
+	for i := range commit.interRess {
 		baseList = append(baseList, &commit.interRess[i])
 		secretList = append(secretList, &commit.interRess[i])
 	}
@@ -289,7 +289,7 @@ func (s *expProofStructure) commitmentsFromSecrets(g group, list []*big.Int, bas
 
 	//base
 	commit.basePowRangeCommit = make([]rangeCommit, 0, len(s.basePowRange))
-	for i, _ := range s.basePowRange {
+	for i := range s.basePowRange {
 		curOff := len(list)
 		list = append(list, make([]*big.Int, s.basePowRange[i].numCommitments())...)
 		ic := i
@@ -305,7 +305,7 @@ func (s *expProofStructure) commitmentsFromSecrets(g group, list []*big.Int, bas
 		})
 	}
 	commit.basePowRelCommit = make([]multiplicationProofCommit, 0, len(s.basePowRels))
-	for i, _ := range s.basePowRels {
+	for i := range s.basePowRels {
 		curOff := len(list)
 		list = append(list, make([]*big.Int, s.basePowRels[i].numCommitments())...)
 		ic := i
@@ -326,7 +326,7 @@ func (s *expProofStructure) commitmentsFromSecrets(g group, list []*big.Int, bas
 
 	// interres
 	commit.interResRangeCommit = make([]rangeCommit, 0, len(s.interResRange))
-	for i, _ := range s.interResRange {
+	for i := range s.interResRange {
 		curOff := len(list)
 		list = append(list, make([]*big.Int, s.interResRange[i].numCommitments())...)
 		ic := i
@@ -344,7 +344,7 @@ func (s *expProofStructure) commitmentsFromSecrets(g group, list []*big.Int, bas
 
 	// steps
 	commit.interStepsCommit = make([]expStepCommit, 0, len(s.interSteps))
-	for i, _ := range s.interSteps {
+	for i := range s.interSteps {
 		curOff := len(list)
 		list = append(list, make([]*big.Int, s.interSteps[i].numCommitments())...)
 		ic := i
@@ -386,14 +386,14 @@ func (s *expProofStructure) buildProof(g group, challenge *big.Int, commit expPr
 
 	// inner secret data
 	var secretList []SecretLookup
-	for i, _ := range commit.expBits {
+	for i := range commit.expBits {
 		secretList = append(secretList, &commit.expBits[i])
 	}
-	for i, _ := range commit.basePows {
+	for i := range commit.basePows {
 		secretList = append(secretList, &commit.basePows[i])
 	}
 	secretList = append(secretList, &commit.start)
-	for i, _ := range commit.interRess {
+	for i := range commit.interRess {
 		secretList = append(secretList, &commit.interRess[i])
 	}
 	secretList = append(secretList, secretdata)
@@ -402,21 +402,21 @@ func (s *expProofStructure) buildProof(g group, challenge *big.Int, commit expPr
 
 	//bit proofs
 	proof.ExpBitProofs = make([]PedersenProof, len(commit.expBits))
-	for i, _ := range commit.expBits {
+	for i := range commit.expBits {
 		proof.ExpBitProofs[i] = s.expBits[i].buildProof(g, challenge, commit.expBits[i])
 	}
 
 	//base proofs
 	proof.BasePowProofs = make([]PedersenProof, len(commit.basePows))
-	for i, _ := range commit.basePows {
+	for i := range commit.basePows {
 		proof.BasePowProofs[i] = s.basePows[i].buildProof(g, challenge, commit.basePows[i])
 	}
-	for i, _ := range commit.basePowRangeCommit {
+	for i := range commit.basePowRangeCommit {
 		proof.BasePowRangeProofs = append(
 			proof.BasePowRangeProofs,
 			s.basePowRange[i].buildProof(g, challenge, commit.basePowRangeCommit[i], &innerSecrets))
 	}
-	for i, _ := range commit.basePowRelCommit {
+	for i := range commit.basePowRelCommit {
 		proof.BasePowRelProofs = append(
 			proof.BasePowRelProofs,
 			s.basePowRels[i].buildProof(g, challenge, commit.basePowRelCommit[i], &innerSecrets))
@@ -427,17 +427,17 @@ func (s *expProofStructure) buildProof(g group, challenge *big.Int, commit expPr
 
 	// interres proofs
 	proof.InterResProofs = make([]PedersenProof, len(commit.interRess))
-	for i, _ := range commit.interRess {
+	for i := range commit.interRess {
 		proof.InterResProofs[i] = s.interRess[i].buildProof(g, challenge, commit.interRess[i])
 	}
-	for i, _ := range commit.interResRangeCommit {
+	for i := range commit.interResRangeCommit {
 		proof.InterResRangeProofs = append(
 			proof.InterResRangeProofs,
 			s.interResRange[i].buildProof(g, challenge, commit.interResRangeCommit[i], &innerSecrets))
 	}
 
 	// step proofs
-	for i, _ := range commit.interStepsCommit {
+	for i := range commit.interStepsCommit {
 		proof.InterStepsProofs = append(
 			proof.InterStepsProofs,
 			s.interSteps[i].buildProof(g, challenge, commit.interStepsCommit[i], &innerSecrets))
@@ -461,7 +461,7 @@ func (s *expProofStructure) fakeProof(g group, challenge *big.Int) ExpProof {
 	proof.BasePowProofs = make([]PedersenProof, len(s.basePows))
 	proof.BasePowRangeProofs = make([]RangeProof, len(s.basePows))
 	proof.BasePowRelProofs = make([]MultiplicationProof, len(s.basePows))
-	for i, _ := range s.basePows {
+	for i := range s.basePows {
 		proof.BasePowProofs[i] = s.basePows[i].fakeProof(g)
 		proof.BasePowRangeProofs[i] = s.basePowRange[i].fakeProof(g)
 		proof.BasePowRelProofs[i] = s.basePowRels[i].fakeProof(g)
@@ -471,12 +471,12 @@ func (s *expProofStructure) fakeProof(g group, challenge *big.Int) ExpProof {
 
 	proof.InterResProofs = make([]PedersenProof, len(s.interRess))
 	proof.InterResRangeProofs = make([]RangeProof, len(s.interRess))
-	for i, _ := range s.interRess {
+	for i := range s.interRess {
 		proof.InterResProofs[i] = s.interRess[i].fakeProof(g)
 		proof.InterResRangeProofs[i] = s.interResRange[i].fakeProof(g)
 	}
 
-	for i, _ := range s.interSteps {
+	for i := range s.interSteps {
 		proof.InterStepsProofs = append(proof.InterStepsProofs, s.interSteps[i].fakeProof(g, challenge))
 	}
 
@@ -491,7 +491,7 @@ func (s *expProofStructure) verifyProofStructure(challenge *big.Int, proof ExpPr
 	if len(proof.ExpBitProofs) != int(s.bitlen) {
 		return false
 	}
-	for i, _ := range proof.ExpBitProofs {
+	for i := range proof.ExpBitProofs {
 		if !s.expBits[i].verifyProofStructure(proof.ExpBitProofs[i]) {
 			return false
 		}
@@ -501,7 +501,7 @@ func (s *expProofStructure) verifyProofStructure(challenge *big.Int, proof ExpPr
 	if len(proof.BasePowProofs) != int(s.bitlen) || len(proof.BasePowRangeProofs) != int(s.bitlen) || len(proof.BasePowRelProofs) != int(s.bitlen) {
 		return false
 	}
-	for i, _ := range proof.BasePowProofs {
+	for i := range proof.BasePowProofs {
 		if !s.basePows[i].verifyProofStructure(proof.BasePowProofs[i]) ||
 			!s.basePowRange[i].verifyProofStructure(proof.BasePowRangeProofs[i]) ||
 			!s.basePowRels[i].verifyProofStructure(proof.BasePowRelProofs[i]) {
@@ -518,7 +518,7 @@ func (s *expProofStructure) verifyProofStructure(challenge *big.Int, proof ExpPr
 	if len(proof.InterResProofs) != int(s.bitlen-1) || len(proof.InterResRangeProofs) != int(s.bitlen-1) {
 		return false
 	}
-	for i, _ := range proof.InterResProofs {
+	for i := range proof.InterResProofs {
 		if !s.interRess[i].verifyProofStructure(proof.InterResProofs[i]) ||
 			!s.interResRange[i].verifyProofStructure(proof.InterResRangeProofs[i]) {
 			return false
@@ -529,7 +529,7 @@ func (s *expProofStructure) verifyProofStructure(challenge *big.Int, proof ExpPr
 	if len(proof.InterStepsProofs) != int(s.bitlen) {
 		return false
 	}
-	for i, _ := range proof.InterStepsProofs {
+	for i := range proof.InterStepsProofs {
 		if !s.interSteps[i].verifyProofStructure(challenge, proof.InterStepsProofs[i]) {
 			return false
 		}
@@ -542,12 +542,12 @@ func (s *expProofStructure) commitmentsFromProof(g group, list []*big.Int, chall
 	// inner bases and proofs (again hopefully go2 will make this better)
 	baseList := []BaseLookup{}
 	proofList := []ProofLookup{}
-	for i, _ := range proof.ExpBitProofs {
+	for i := range proof.ExpBitProofs {
 		proof.ExpBitProofs[i].setName(strings.Join([]string{s.myname, "bit", fmt.Sprintf("%v", i)}, "_"))
 		baseList = append(baseList, &proof.ExpBitProofs[i])
 		proofList = append(proofList, &proof.ExpBitProofs[i])
 	}
-	for i, _ := range proof.BasePowProofs {
+	for i := range proof.BasePowProofs {
 		proof.BasePowProofs[i].setName(strings.Join([]string{s.myname, "base", fmt.Sprintf("%v", i)}, "_"))
 		baseList = append(baseList, &proof.BasePowProofs[i])
 		proofList = append(proofList, &proof.BasePowProofs[i])
@@ -555,7 +555,7 @@ func (s *expProofStructure) commitmentsFromProof(g group, list []*big.Int, chall
 	proof.StartProof.setName(strings.Join([]string{s.myname, "start"}, "_"))
 	baseList = append(baseList, &proof.StartProof)
 	proofList = append(proofList, &proof.StartProof)
-	for i, _ := range proof.InterResProofs {
+	for i := range proof.InterResProofs {
 		proof.InterResProofs[i].setName(strings.Join([]string{s.myname, "inter", fmt.Sprintf("%v", i)}, "_"))
 		baseList = append(baseList, &proof.InterResProofs[i])
 		proofList = append(proofList, &proof.InterResProofs[i])
@@ -572,7 +572,7 @@ func (s *expProofStructure) commitmentsFromProof(g group, list []*big.Int, chall
 	todoOffset := new(uint32)
 
 	// bit
-	for i, _ := range proof.ExpBitProofs {
+	for i := range proof.ExpBitProofs {
 		curOff := len(list)
 		list = append(list, make([]*big.Int, s.expBits[i].numCommitments())...)
 		ic := i
@@ -586,7 +586,7 @@ func (s *expProofStructure) commitmentsFromProof(g group, list []*big.Int, chall
 	}
 
 	//base
-	for i, _ := range proof.BasePowProofs {
+	for i := range proof.BasePowProofs {
 		curOff := len(list)
 		list = append(list, make([]*big.Int, s.basePows[i].numCommitments())...)
 		ic := i
@@ -603,7 +603,7 @@ func (s *expProofStructure) commitmentsFromProof(g group, list []*big.Int, chall
 	list = s.start.commitmentsFromProof(g, list, challenge, proof.StartProof)
 
 	// interres
-	for i, _ := range s.interRess {
+	for i := range s.interRess {
 		curOff := len(list)
 		list = append(list, make([]*big.Int, s.interRess[i].numCommitments())...)
 		ic := i
@@ -620,7 +620,7 @@ func (s *expProofStructure) commitmentsFromProof(g group, list []*big.Int, chall
 	list = s.expBitEq.commitmentsFromProof(g, list, challenge, &innerBases, &innerProof)
 
 	//base
-	for i, _ := range s.basePowRange {
+	for i := range s.basePowRange {
 		curOff := len(list)
 		list = append(list, make([]*big.Int, s.basePowRange[i].numCommitments())...)
 		ic := i
@@ -632,7 +632,7 @@ func (s *expProofStructure) commitmentsFromProof(g group, list []*big.Int, chall
 			}
 		})
 	}
-	for i, _ := range s.basePowRels {
+	for i := range s.basePowRels {
 		curOff := len(list)
 		list = append(list, make([]*big.Int, s.basePowRels[i].numCommitments())...)
 		ic := i
@@ -649,7 +649,7 @@ func (s *expProofStructure) commitmentsFromProof(g group, list []*big.Int, chall
 	list = s.startRep.commitmentsFromProof(g, list, challenge, &innerBases, &innerProof)
 
 	// interres
-	for i, _ := range s.interResRange {
+	for i := range s.interResRange {
 		curOff := len(list)
 		list = append(list, make([]*big.Int, s.interResRange[i].numCommitments())...)
 		ic := i
@@ -663,7 +663,7 @@ func (s *expProofStructure) commitmentsFromProof(g group, list []*big.Int, chall
 	}
 
 	// steps
-	for i, _ := range s.interSteps {
+	for i := range s.interSteps {
 		curOff := len(list)
 		list = append(list, make([]*big.Int, s.interSteps[i].numCommitments())...)
 		ic := i
@@ -716,11 +716,11 @@ func (s *expProofStructure) isTrue(secretdata SecretLookup) bool {
 
 func (s *expProofStructure) numRangeProofs() int {
 	res := len(s.basePowRange)
-	for i, _ := range s.basePowRels {
+	for i := range s.basePowRels {
 		res += s.basePowRels[i].numRangeProofs()
 	}
 	res += len(s.interResRange)
-	for i, _ := range s.interSteps {
+	for i := range s.interSteps {
 		res += s.interSteps[i].numRangeProofs()
 	}
 	return res
@@ -728,28 +728,28 @@ func (s *expProofStructure) numRangeProofs() int {
 
 func (s *expProofStructure) numCommitments() int {
 	res := 0
-	for i, _ := range s.expBits {
+	for i := range s.expBits {
 		res += s.expBits[i].numCommitments()
 	}
 	res += s.expBitEq.numCommitments()
-	for i, _ := range s.basePows {
+	for i := range s.basePows {
 		res += s.basePows[i].numCommitments()
 	}
-	for i, _ := range s.basePowRange {
+	for i := range s.basePowRange {
 		res += s.basePowRange[i].numCommitments()
 	}
-	for i, _ := range s.basePowRels {
+	for i := range s.basePowRels {
 		res += s.basePowRels[i].numCommitments()
 	}
 	res += s.start.numCommitments()
 	res += s.startRep.numCommitments()
-	for i, _ := range s.interRess {
+	for i := range s.interRess {
 		res += s.interRess[i].numCommitments()
 	}
-	for i, _ := range s.interResRange {
+	for i := range s.interResRange {
 		res += s.interResRange[i].numCommitments()
 	}
-	for i, _ := range s.interSteps {
+	for i := range s.interSteps {
 		res += s.interSteps[i].numCommitments()
 	}
 	return res

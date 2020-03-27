@@ -181,7 +181,7 @@ func (b *CredentialBuilder) proveCommitment(U, nonce1 *big.Int) *ProofU {
 	sCommit, _ := common.RandomBigInt(b.pk.Params.LsCommit)
 	vPrimeCommit, _ := common.RandomBigInt(b.pk.Params.LvPrimeCommit)
 	mPrimesCommit := make(map[int]*big.Int)
-	for i, _ := range b.mPrimes {
+	for i := range b.mPrimes {
 		mPrimesCommit[i], _ = common.RandomBigInt(b.pk.Params.LmCommit)
 	}
 
@@ -189,7 +189,7 @@ func (b *CredentialBuilder) proveCommitment(U, nonce1 *big.Int) *ProofU {
 	Sv := new(big.Int).Exp(b.pk.S, vPrimeCommit, b.pk.N)
 	R0s := new(big.Int).Exp(b.pk.R[0], sCommit, b.pk.N)
 	Ucommit := new(big.Int).Mul(Sv, R0s)
-	for i, _ := range b.mPrimes {
+	for i := range b.mPrimes {
 		Ucommit.Mul(Ucommit, new(big.Int).Exp(b.pk.R[i], mPrimesCommit[i], b.pk.N))
 	}
 	Ucommit.Mod(Ucommit, b.pk.N)
@@ -255,7 +255,7 @@ func (b *CredentialBuilder) Commit(randomizers map[string]*big.Int) []*big.Int {
 	b.vPrimeCommit, _ = common.RandomBigInt(b.pk.Params.LvPrimeCommit)
 
 	b.mPrimesCommit = make(map[int]*big.Int)
-	for i, _ := range b.mPrimes {
+	for i := range b.mPrimes {
 		b.mPrimesCommit[i], _ = common.RandomBigInt(b.pk.Params.LmCommit)
 	}
 	// U_commit = U_commit * S^{v_prime_commit} * R_0^{s_commit}
@@ -263,7 +263,7 @@ func (b *CredentialBuilder) Commit(randomizers map[string]*big.Int) []*big.Int {
 	r0s := new(big.Int).Exp(b.pk.R[0], b.skRandomizer, b.pk.N)
 	b.uCommit.Mul(b.uCommit, sv).Mul(b.uCommit, r0s).Mod(b.uCommit, b.pk.N)
 
-	for i, _ := range b.mPrimes {
+	for i := range b.mPrimes {
 		b.uCommit.Mul(b.uCommit, new(big.Int).Exp(b.pk.R[i], b.mPrimesCommit[i], b.pk.N))
 	}
 	b.uCommit.Mod(b.uCommit, b.pk.N)
