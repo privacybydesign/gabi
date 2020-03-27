@@ -29,12 +29,12 @@ func NewIssuer(sk *PrivateKey, pk *PublicKey, context *big.Int) *Issuer {
 // the proofs containted in the IssueCommitmentMessage! That needs to be done at
 // a higher level!
 func (i *Issuer) IssueSignature(U *big.Int, attributes []*big.Int, witness *revocation.Witness, nonce2 *big.Int, blind []int) (*IssueSignatureMessage, error) {
-	signature, mDoublePrimes, err := i.signCommitmentAndAttributes(U, attributes, blind)
+	signature, mIssuer, err := i.signCommitmentAndAttributes(U, attributes, blind)
 	if err != nil {
 		return nil, err
 	}
 	proof := i.proveSignature(signature, nonce2)
-	return &IssueSignatureMessage{Signature: signature, Proof: proof, NonRevocationWitness: witness, MDoublePrimes: mDoublePrimes}, nil
+	return &IssueSignatureMessage{Signature: signature, Proof: proof, NonRevocationWitness: witness, MIssuer: mIssuer}, nil
 }
 
 // signCommitmentAndAttributes produces a (partial) signature on the commitment
@@ -42,20 +42,21 @@ func (i *Issuer) IssueSignature(U *big.Int, attributes []*big.Int, witness *revo
 // itself does not verify for the same reason as mentioned above.
 // Arg blind is a list of indices representing the random blind attributes.
 func (i *Issuer) signCommitmentAndAttributes(U *big.Int, attributes []*big.Int, blind []int) (*CLSignature, map[int]*big.Int, error) {
-	mDoublePrimes := make(map[int]*big.Int)
+	mIssuer := make(map[int]*big.Int)
+	ms := append([]*big.Int{big.NewInt(0)}, attributes...)
+
 	for _, j := range blind {
 		r, _ := common.RandomBigInt(i.Pk.Params.Lm - 1)
-		mDoublePrimes[j+1] = r
-		attributes[j] = r
+		mIssuer[j+1] = r
+		ms[j+1] = r
 	}
-	ms := append([]*big.Int{big.NewInt(0)}, attributes...)
 
 	cl, err := signMessageBlockAndCommitment(i.Sk, i.Pk, U, ms)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return cl, mDoublePrimes, nil
+	return cl, mIssuer, nil
 }
 
 // randomElementMultiplicativeGroup returns a random element in the

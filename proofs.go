@@ -34,11 +34,11 @@ func createChallenge(context, nonce *big.Int, contributions []*big.Int, issig bo
 // ProofU represents a proof of correctness of the commitment in the first phase
 // of the issuance protocol.
 type ProofU struct {
-	U               *big.Int         `json:"U"`
-	C               *big.Int         `json:"c"`
-	VPrimeResponse  *big.Int         `json:"v_prime_response"`
-	SResponse       *big.Int         `json:"s_response"`
-	MPrimeResponses map[int]*big.Int `json:"m_prime_responses"`
+	U              *big.Int         `json:"U"`
+	C              *big.Int         `json:"c"`
+	VPrimeResponse *big.Int         `json:"v_prime_response"`
+	SResponse      *big.Int         `json:"s_response"`
+	MUserResponses map[int]*big.Int `json:"m_user_responses"`
 }
 
 func (p *ProofU) MergeProofP(proofP *ProofP, pk *PublicKey) {
@@ -83,8 +83,8 @@ func (p *ProofU) reconstructUcommit(pk *PublicKey) *big.Int {
 	Ucommit := new(big.Int).Mul(Uc, Sv)
 	Ucommit.Mul(Ucommit, R0s).Mod(Ucommit, pk.N)
 
-	for i, response_mi := range p.MPrimeResponses {
-		Rimi := common.ModPow(pk.R[i], response_mi, pk.N)
+	for i, miUserResponse := range p.MUserResponses {
+		Rimi := common.ModPow(pk.R[i], miUserResponse, pk.N)
 		Ucommit.Mul(Ucommit, Rimi).Mod(Ucommit, pk.N)
 	}
 
