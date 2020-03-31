@@ -1,7 +1,4 @@
 *.test
 .idea/
-<<<<<<< HEAD
 vendor/
-=======
 .DS_Store
->>>>>>> Modified keyshare implementation to better match what the protocol spoken requires.
