@@ -146,6 +146,12 @@ func (b *CredentialBuilder) ConstructCredential(msg *IssueSignatureMessage, attr
 	// For all attributes that are sums of shares between user/issuer, compute this sum
 	ms := append([]*big.Int{b.secret}, attributes...)
 	for i, miUser := range b.mUser {
+		if i >= len(ms) {
+			return nil, errors.New("got too few attributes")
+		}
+		if ms[i].Cmp(big.NewInt(0)) != 0 {
+			return nil, errors.New("attribute values at random blind indices should zero")
+		}
 		ms[i] = new(big.Int).Add(msg.MIssuer[i], miUser) // mi = mi' + mi", for i \in randomblind
 	}
 
