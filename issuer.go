@@ -6,6 +6,7 @@ package gabi
 
 import (
 	"crypto/rand"
+	"errors"
 
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
@@ -46,6 +47,10 @@ func (i *Issuer) signCommitmentAndAttributes(U *big.Int, attributes []*big.Int, 
 	ms := append([]*big.Int{big.NewInt(0)}, attributes...)
 
 	for _, j := range blind {
+		if attributes[j].Cmp(big.NewInt(0)) != 0 {
+			return nil, nil, errors.New("attribute values at random blind indices be should zero")
+		}
+		// Replace with a attribute value with issuer's share
 		r, _ := common.RandomBigInt(i.Pk.Params.Lm - 1)
 		mIssuer[j+1] = r
 		ms[j+1] = r
