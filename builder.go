@@ -150,7 +150,7 @@ func (b *CredentialBuilder) ConstructCredential(msg *IssueSignatureMessage, attr
 			return nil, errors.New("got too few attributes")
 		}
 		if ms[i].Cmp(big.NewInt(0)) != 0 {
-			return nil, errors.New("attribute values at random blind indices should zero")
+			return nil, errors.New("attribute values at random blind indices should be zero")
 		}
 		ms[i] = new(big.Int).Add(msg.MIssuer[i], miUser) // mi = mi' + mi", for i \in randomblind
 	}
