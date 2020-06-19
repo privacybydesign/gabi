@@ -107,6 +107,16 @@ var (
 		new(big.Int).SetBytes([]byte("two'")),
 		new(big.Int).SetBytes([]byte("three'")),
 		new(big.Int).SetBytes([]byte("four'"))}
+	testAttributes3 = []*big.Int{
+		new(big.Int).SetBytes([]byte("one")),
+		new(big.Int).SetBytes([]byte("two")),
+		big.NewInt(0),
+		new(big.Int).SetBytes([]byte("four"))}
+	testAttributes4 = []*big.Int{
+		new(big.Int).SetBytes([]byte("one")),
+		big.NewInt(0),
+		big.NewInt(0),
+		big.NewInt(0)}
 )
 
 func setupParameters() error {
@@ -317,7 +327,7 @@ func TestSignatureMessage(t *testing.T) {
 
 	issuer := NewIssuer(testPrivK, testPubK, context)
 	_, err := issuer.IssueSignature(commitMsg.U, testAttributes1, nil, nonce2, nil)
-	assert.NoError(t, err, "Error in IssueSignature")
+	assert.NoError(t, err, "error in IssueSignature")
 }
 
 func TestFullIssuance(t *testing.T) {
@@ -330,14 +340,14 @@ func TestFullIssuance(t *testing.T) {
 
 	issuer := NewIssuer(testPrivK, testPubK, context)
 	msg, err := issuer.IssueSignature(commitMsg.U, testAttributes1, nil, nonce2, nil)
-	assert.NoError(t, err, "Error in IssueSignature")
+	assert.NoError(t, err, "error in IssueSignature")
 	_, err = b.ConstructCredential(msg, testAttributes1)
-	assert.NoError(t, err, "Error in IssueSignature")
+	assert.NoError(t, err, "error in IssueSignature")
 }
 
 func TestShowingProof(t *testing.T) {
 	signature, err := SignMessageBlock(testPrivK, testPubK, testAttributes1)
-	assert.NoError(t, err, "Error producing CL signature.")
+	assert.NoError(t, err, "error producing CL signature.")
 	cred := &Credential{Pk: testPubK, Attributes: testAttributes1, Signature: signature}
 	disclosed := []int{1, 2}
 
@@ -417,10 +427,10 @@ func TestFullIssuanceAndShowing(t *testing.T) {
 	commitMsg := builder.CommitToSecretAndProve(nonce1)
 	issuer := NewIssuer(testPrivK, testPubK, context)
 	sigMsg, err := issuer.IssueSignature(commitMsg.U, testAttributes1, nil, nonce2, nil)
-	assert.NoError(t, err, "Error in IssueSignature")
+	assert.NoError(t, err, "error in IssueSignature")
 
 	cred, err := builder.ConstructCredential(sigMsg, testAttributes1)
-	assert.NoError(t, err, "Error in credential construction")
+	assert.NoError(t, err, "error in credential construction")
 
 	// Showing
 	n1, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
@@ -443,10 +453,10 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 
 	issuer1 := NewIssuer(testPrivK, testPubK, context)
 	ism, err := issuer1.IssueSignature(commitMsg.U, testAttributes1, nil, nonce2, nil)
-	assert.NoError(t, err, "Error creating Issue Signature")
+	assert.NoError(t, err, "error creating Issue Signature")
 
 	cred1, err := cb1.ConstructCredential(ism, testAttributes1)
-	assert.NoError(t, err, "Error creating credential")
+	assert.NoError(t, err, "error creating credential")
 
 	// Then create another credential based on the same credential with a partial
 	// disclosure of the first credential.
@@ -463,9 +473,9 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 	assert.True(t, commitMsg2.Proofs.Verify([]*PublicKey{testPubK, testPubK}, context, nonce1, false, nil), "Proofs in commit message do not verify!")
 
 	msg, err := issuer2.IssueSignature(commitMsg2.U, testAttributes1, nil, nonce2, nil)
-	assert.NoError(t, err, "Error creating Issue Signature")
+	assert.NoError(t, err, "error creating Issue Signature")
 	cred2, err := cb2.ConstructCredential(msg, testAttributes1)
-	assert.NoError(t, err, "Error creating credential")
+	assert.NoError(t, err, "error creating credential")
 
 	// Showing
 	nonce1s, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
@@ -511,14 +521,14 @@ func TestGenerateKeyPair(t *testing.T) {
 	// Using the toy parameters, generate a bunch of keys
 	for i := 0; i < 1; i++ {
 		privk, pubk, err := GenerateKeyPair(DefaultSystemParameters[256], 6, 0, time.Now().AddDate(1, 0, 0))
-		assert.NoError(t, err, "Error generating key pair")
+		assert.NoError(t, err, "error generating key pair")
 		testPrivateKey(t, privk, true)
 		testPublicKey(t, pubk, privk)
 	}
 
 	// Generate one key of the smallest supported sizes
 	//privk, pubk, err := GenerateKeyPair(DefaultSystemParameters[1024], 6, 0, time.Now().AddDate(1, 0, 0))
-	//assert.NoError(t, err, "Error generating key pair")
+	//assert.NoError(t, err, "error generating key pair")
 	//testPrivateKey(t, privk, true)
 	//testPublicKey(t, pubk, privk)
 }
@@ -527,7 +537,7 @@ func genRandomIssuer(t *testing.T, context *big.Int) *Issuer {
 	// TODO: key pair generation is slow, consider caching or providing key material
 	keylength := 1024
 	privk, pubk, err := GenerateKeyPair(DefaultSystemParameters[keylength], 6, 0, time.Now().AddDate(1, 0, 0))
-	assert.NoError(t, err, "Error generating key pair")
+	assert.NoError(t, err, "error generating key pair")
 	return NewIssuer(privk, pubk, context)
 }
 
@@ -540,10 +550,10 @@ func createCredential(t *testing.T, context, secret *big.Int, issuer *Issuer) *C
 	commitMsg := cb.CommitToSecretAndProve(nonce1)
 
 	ism, err := issuer.IssueSignature(commitMsg.U, testAttributes1, nil, nonce2, nil)
-	assert.NoError(t, err, "Error creating Issue Signature")
+	assert.NoError(t, err, "error creating Issue Signature")
 
 	cred, err := cb.ConstructCredential(ism, testAttributes1)
-	assert.NoError(t, err, "Error creating credential")
+	assert.NoError(t, err, "error creating credential")
 	return cred
 }
 
@@ -573,9 +583,9 @@ func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 	assert.True(t, commitMsg.Proofs.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, false, nil), "Proofs in commit message do not verify!")
 
 	msg, err := issuer2.IssueSignature(commitMsg.U, testAttributes2, nil, nonce2, nil)
-	assert.NoError(t, err, "Error creating Issue Signature")
+	assert.NoError(t, err, "error creating Issue Signature")
 	cred2, err := cb2.ConstructCredential(msg, testAttributes2)
-	assert.NoError(t, err, "Error creating credential")
+	assert.NoError(t, err, "error creating credential")
 
 	// Showing
 	nonce1s, _ := common.RandomBigInt(issuer2.Pk.Params.Lstatzk)
@@ -620,7 +630,7 @@ func TestBigAttribute(t *testing.T) {
 		new(big.Int).SetBytes([]byte("This is a very long attribute: its size of 132 bytes exceeds the maximum message length of all currently supported public key sizes.")),
 	}
 	signature, err := SignMessageBlock(testPrivK, testPubK, attrs)
-	assert.NoError(t, err, "Error producing CL signature.")
+	assert.NoError(t, err, "error producing CL signature.")
 	cred := &Credential{Pk: testPubK, Attributes: attrs, Signature: signature}
 	assert.True(t, signature.Verify(testPubK, attrs), "Failed to create CL signature over large attribute")
 
@@ -716,9 +726,9 @@ func TestFullIssueAndShowWithRevocation(t *testing.T) {
 	issuer := NewIssuer(testPrivK, testPubK, context)
 	attrs := revocationAttrs(witness)
 	msg, err := issuer.IssueSignature(commitMsg.U, attrs, witness, nonce2, nil)
-	require.NoError(t, err, "Error in IssueSignature")
+	require.NoError(t, err, "error in IssueSignature")
 	cred, err := b.ConstructCredential(msg, attrs)
-	require.NoError(t, err, "Error in ConstructCredential")
+	require.NoError(t, err, "error in ConstructCredential")
 
 	// Showing
 	nonce1s, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
@@ -808,13 +818,34 @@ func TestRandomBlindIssuance(t *testing.T) {
 
 	issuer := NewIssuer(testPrivK, testPubK, context)
 
-	// testAttributes1 = [a0, a1, a2, a3], after random blind issuance becomes
+	// testAttributes3 = [a0, a1, a2, a3], with a2 = nil, becomes
 	// cred.Attributes = [sk, a0, a1, a2, a3] in the credential, with a2 the sum of two random 255-bit integers.
-	msg, err := issuer.IssueSignature(commitMsg.U, testAttributes1, nil, nonce2, []int{2})
-	assert.NoError(t, err, "Error in IssueSignature")
-	cred, err := b.ConstructCredential(msg, testAttributes1)
-	assert.NoError(t, err, "Error in ConstructCredential")
-	assert.NotNil(t, cred.Attributes[2], "randomblind attribute should very likely not be nil")
+	msg, err := issuer.IssueSignature(commitMsg.U, testAttributes3, nil, nonce2, []int{2})
+	assert.NoError(t, err, "error in IssueSignature")
+	cred, err := b.ConstructCredential(msg, testAttributes3)
+	assert.NoError(t, err, "error in ConstructCredential")
+	assert.NotEqual(t, big.NewInt(0), cred.Attributes[3], "randomblind attribute should very likely not be zero")
+}
+
+func TestRandomBlindIssuanceTooFewAttributes(t *testing.T) {
+	context, _ := common.RandomBigInt(testPubK.Params.Lh)
+	nonce1, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
+	nonce2, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
+	secret, _ := common.RandomBigInt(testPubK.Params.Lm)
+
+	b := NewCredentialBuilder(testPubK, context, secret, nonce2, []int{2})
+	commitMsg := b.CommitToSecretAndProve(nonce1)
+
+	issuer := NewIssuer(testPrivK, testPubK, context)
+
+	// testAttributes3 = [a0, a1, a2 (nil), a3], after random blind issuance becomes
+	// cred.Attributes = [sk, a0, a1, a2, a3] in the credential, with a2 the sum of two random 255-bit integers.
+	msg, err := issuer.IssueSignature(commitMsg.U, testAttributes3, nil, nonce2, []int{2})
+	assert.NoError(t, err, "error in IssueSignature")
+	// The following line should fail because we don't give enough values for all non-randomblind attributes
+	// We give 2, but we need 3 (for a0, a1 and a3)
+	_, err = b.ConstructCredential(msg, testAttributes3[:1])
+	assert.EqualError(t, err, "got too few attributes")
 }
 
 func TestMultipleRandomBlindIssuance(t *testing.T) {
@@ -828,20 +859,19 @@ func TestMultipleRandomBlindIssuance(t *testing.T) {
 
 	issuer := NewIssuer(testPrivK, testPubK, context)
 
-	// testAttributes1 = [a0, a1, a2, a3], after random blind issuance becomes
+	// testAttributes4 = [a0, a1 (nil), a2 (nil), a3 (nil)], after random blind issuance becomes
 	// cred.Attributes = [sk, a0, a1, a2, a3] in the credential
 	// with a1, a2, a3 the sum of two random 255-bit integers.
-	msg, err := issuer.IssueSignature(commitMsg.U, testAttributes1, nil, nonce2, []int{1, 2, 3})
-	assert.NoError(t, err, "Error in IssueSignature")
-	cred, err := b.ConstructCredential(msg, testAttributes1)
-	assert.NoError(t, err, "Error in ConstructCredential")
+	msg, err := issuer.IssueSignature(commitMsg.U, testAttributes4, nil, nonce2, []int{1, 2, 3})
+	assert.NoError(t, err, "error in IssueSignature")
 
-	assert.NotNil(t, cred.Attributes[1], "randomblind attribute should very likely not be nil")
-	assert.NotNil(t, cred.Attributes[2], "randomblind attribute should very likely not be nil")
-	assert.NotNil(t, cred.Attributes[3], "randomblind attribute should very likely not be nil")
+	cred, err := b.ConstructCredential(msg, testAttributes4)
+	assert.NoError(t, err, "error in ConstructCredential")
+
+	for i := range []int{2, 3, 4} {
+		assert.NotEqual(t, big.NewInt(0), cred.Attributes[i], "randomblind attribute should very likely not be zero")
+	}
 }
-
-// TODO: More Blind tests?
 
 func TestMain(m *testing.M) {
 	err := setupParameters()
