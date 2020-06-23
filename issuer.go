@@ -48,7 +48,7 @@ func (i *Issuer) signCommitmentAndAttributes(U *big.Int, attributes []*big.Int, 
 
 	for _, j := range blind {
 		if attributes[j].Cmp(big.NewInt(0)) != 0 {
-			return nil, nil, errors.New("attribute values at random blind indices be should be zero")
+			return nil, nil, errors.New("attribute values at random blind indices should be zero")
 		}
 		// Replace with a attribute value with issuer's share
 		r, _ := common.RandomBigInt(i.Pk.Params.Lm - 1)

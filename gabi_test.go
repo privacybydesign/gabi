@@ -818,7 +818,7 @@ func TestRandomBlindIssuance(t *testing.T) {
 
 	issuer := NewIssuer(testPrivK, testPubK, context)
 
-	// testAttributes3 = [a0, a1, a2, a3], with a2 = nil, becomes
+	// testAttributes3 = [a0, a1, a2, a3], with a2 = 0, becomes
 	// cred.Attributes = [sk, a0, a1, a2, a3] in the credential, with a2 the sum of two random 255-bit integers.
 	msg, err := issuer.IssueSignature(commitMsg.U, testAttributes3, nil, nonce2, []int{2})
 	assert.NoError(t, err, "error in IssueSignature")
@@ -838,7 +838,7 @@ func TestRandomBlindIssuanceTooFewAttributes(t *testing.T) {
 
 	issuer := NewIssuer(testPrivK, testPubK, context)
 
-	// testAttributes3 = [a0, a1, a2 (nil), a3], after random blind issuance becomes
+	// testAttributes3 = [a0, a1, a2 (0), a3], after random blind issuance becomes
 	// cred.Attributes = [sk, a0, a1, a2, a3] in the credential, with a2 the sum of two random 255-bit integers.
 	msg, err := issuer.IssueSignature(commitMsg.U, testAttributes3, nil, nonce2, []int{2})
 	assert.NoError(t, err, "error in IssueSignature")
@@ -859,7 +859,7 @@ func TestMultipleRandomBlindIssuance(t *testing.T) {
 
 	issuer := NewIssuer(testPrivK, testPubK, context)
 
-	// testAttributes4 = [a0, a1 (nil), a2 (nil), a3 (nil)], after random blind issuance becomes
+	// testAttributes4 = [a0, a1 (0), a2 (0), a3 (0)], after random blind issuance becomes
 	// cred.Attributes = [sk, a0, a1, a2, a3] in the credential
 	// with a1, a2, a3 the sum of two random 255-bit integers.
 	msg, err := issuer.IssueSignature(commitMsg.U, testAttributes4, nil, nonce2, []int{1, 2, 3})
@@ -871,6 +871,46 @@ func TestMultipleRandomBlindIssuance(t *testing.T) {
 	for i := range []int{2, 3, 4} {
 		assert.NotEqual(t, big.NewInt(0), cred.Attributes[i], "randomblind attribute should very likely not be zero")
 	}
+}
+
+func TestIssueSignatureNonZeroRandomBlindAttributes(t *testing.T) {
+	context, _ := common.RandomBigInt(testPubK.Params.Lh)
+	nonce1, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
+	nonce2, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
+	secret, _ := common.RandomBigInt(testPubK.Params.Lm)
+
+	b := NewCredentialBuilder(testPubK, context, secret, nonce2, []int{2})
+	commitMsg := b.CommitToSecretAndProve(nonce1)
+
+	issuer := NewIssuer(testPrivK, testPubK, context)
+
+	// testAttributes1 = [a0, a1, a2, a3] (all non-zero)
+	_, err := issuer.IssueSignature(commitMsg.U, testAttributes1, nil, nonce2, []int{2})
+
+	// The caller of IssueSignature is responsible for initializing the attributes at
+	// the random blind indices as zero
+	assert.EqualError(t, err, "attribute values at random blind indices should be zero")
+}
+
+func TestConstructCredentialNonZeroRandomBlindAttributes(t *testing.T) {
+	context, _ := common.RandomBigInt(testPubK.Params.Lh)
+	nonce1, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
+	nonce2, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
+	secret, _ := common.RandomBigInt(testPubK.Params.Lm)
+
+	b := NewCredentialBuilder(testPubK, context, secret, nonce2, []int{2})
+	commitMsg := b.CommitToSecretAndProve(nonce1)
+
+	issuer := NewIssuer(testPrivK, testPubK, context)
+
+	// testAttributes3 = [a0, a1, a2 (0), a3] (rest non-zero)
+	msg, err := issuer.IssueSignature(commitMsg.U, testAttributes3, nil, nonce2, []int{2})
+	assert.NoError(t, err, "error in IssueSignature")
+
+	// testAttributes1 are all non-zero, this should give an error
+	// attributes at the randomblind indices should be initialized as 0 by the client
+	_, err = b.ConstructCredential(msg, testAttributes1)
+	assert.EqualError(t, err, "attribute values at random blind indices should be zero")
 }
 
 func TestMain(m *testing.M) {
