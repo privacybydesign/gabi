@@ -77,8 +77,8 @@ func userCommitment(pk *PublicKey, secret *big.Int, vPrime *big.Int, msg map[int
 	return
 }
 
-// NewCredentialBuilder creates a new credential builder. The resulting credential builder
-// is already committed to the provided secret.
+// NewCredentialBuilder creates a new credential builder.
+// The resulting credential builder is already committed to the provided secret.
 // arg blind: list of indices of random blind attributes (exlcuding the secret key)
 func NewCredentialBuilder(pk *PublicKey, context, secret *big.Int, nonce2 *big.Int, blind []int) *CredentialBuilder {
 	vPrime, _ := common.RandomBigInt(pk.Params.LvPrime)
@@ -107,7 +107,7 @@ func NewCredentialBuilder(pk *PublicKey, context, secret *big.Int, nonce2 *big.I
 // secret (set on creation of the builder, see NewBuilder) and a proof of
 // correctness of this commitment.
 func (b *CredentialBuilder) CommitToSecretAndProve(nonce1 *big.Int) *IssueCommitmentMessage {
-	proofU := b.proveCommitment(b.u, nonce1)
+	proofU := b.proveCommitment(nonce1)
 
 	return &IssueCommitmentMessage{U: b.u, Proofs: ProofList{proofU}, Nonce2: b.nonce2}
 }
@@ -184,43 +184,12 @@ func (b *CredentialBuilder) ConstructCredential(msg *IssueSignatureMessage, attr
 	return cred, nil
 }
 
-func (b *CredentialBuilder) proveCommitment(U, nonce1 *big.Int) *ProofU {
+// Creates a proofU using a provided nonce
+func (b *CredentialBuilder) proveCommitment(nonce1 *big.Int) Proof {
 	sCommit, _ := common.RandomBigInt(b.pk.Params.LsCommit)
-	vPrimeCommit, _ := common.RandomBigInt(b.pk.Params.LvPrimeCommit)
-	mUserCommit := make(map[int]*big.Int)
-	for i := range b.mUser {
-		mUserCommit[i], _ = common.RandomBigInt(b.pk.Params.LmCommit)
-	}
-
-	// Ucommit = S^{vPrimeCommit} * R_0^{sCommit} * R_i^{m_iUserCommit}
-	Sv := new(big.Int).Exp(b.pk.S, vPrimeCommit, b.pk.N)
-	R0s := new(big.Int).Exp(b.pk.R[0], sCommit, b.pk.N)
-	Ucommit := new(big.Int).Mul(Sv, R0s)
-	Ucommit.Mod(Ucommit, b.pk.N)
-	for i := range b.mUser {
-		Ucommit.Mul(Ucommit, new(big.Int).Exp(b.pk.R[i], mUserCommit[i], b.pk.N))
-		Ucommit.Mod(Ucommit, b.pk.N)
-	}
-
-	c := common.HashCommit([]*big.Int{b.context, U, Ucommit, nonce1}, false)
-
-	sResponse := new(big.Int).Mul(c, b.secret)
-	sResponse.Add(sResponse, sCommit)
-
-	vPrimeResponse := new(big.Int).Mul(c, b.vPrime)
-	vPrimeResponse.Add(vPrimeResponse, vPrimeCommit)
-
-	mUserResponses := make(map[int]*big.Int)
-	for i, miUser := range b.mUser {
-		mUserResponse := new(big.Int).Mul(c, miUser)
-		mUserResponses[i] = mUserResponse.Add(mUserResponse, mUserCommit[i])
-	}
-
-	return &ProofU{U: U, C: c,
-		VPrimeResponse: vPrimeResponse,
-		SResponse:      sResponse,
-		MUserResponses: mUserResponses,
-	}
+	contrib := b.Commit(map[string]*big.Int{"secretkey": sCommit})
+	c := createChallenge(b.context, nonce1, contrib, false)
+	return b.CreateProof(c)
 }
 
 // CredentialBuilder is a temporary object to hold some state for the protocol
@@ -256,22 +225,23 @@ func (b *CredentialBuilder) PublicKey() *PublicKey {
 	return b.pk
 }
 
-// Commit commits to the secret (first) attribute using the provided randomizer.
+// Commits to the secret (first attribute) using the provided randomizer.
+// Optionally commits to the user shares of random blind attributes if any are present.
 func (b *CredentialBuilder) Commit(randomizers map[string]*big.Int) []*big.Int {
 	b.skRandomizer = randomizers["secretkey"]
-	// vPrimeCommit
 	b.vPrimeCommit, _ = common.RandomBigInt(b.pk.Params.LvPrimeCommit)
-
 	b.mUserCommit = make(map[int]*big.Int)
 	for i := range b.mUser {
 		b.mUserCommit[i], _ = common.RandomBigInt(b.pk.Params.LmCommit)
 	}
+
 	// U_commit = U_commit * S^{v_prime_commit} * R_0^{s_commit}
 	sv := new(big.Int).Exp(b.pk.S, b.vPrimeCommit, b.pk.N)
 	r0s := new(big.Int).Exp(b.pk.R[0], b.skRandomizer, b.pk.N)
 	b.uCommit.Mul(b.uCommit, sv).Mul(b.uCommit, r0s)
 	b.uCommit.Mod(b.uCommit, b.pk.N)
 
+	// U_commit = U_commit * R_i^{m_iUserCommit} for i in random blind
 	for i := range b.mUser {
 		b.uCommit.Mul(b.uCommit, new(big.Int).Exp(b.pk.R[i], b.mUserCommit[i], b.pk.N))
 		b.uCommit.Mod(b.uCommit, b.pk.N)
@@ -281,6 +251,7 @@ func (b *CredentialBuilder) Commit(randomizers map[string]*big.Int) []*big.Int {
 	if b.proofPcomm != nil {
 		ucomm.Mul(ucomm, b.proofPcomm.P).Mod(ucomm, b.pk.N)
 	}
+
 	return []*big.Int{ucomm, b.uCommit}
 }
 
