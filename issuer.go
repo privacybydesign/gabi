@@ -39,9 +39,9 @@ func (i *Issuer) IssueSignature(U *big.Int, attributes []*big.Int, witness *revo
 }
 
 // signCommitmentAndAttributes produces a (partial) signature on the commitment
-// and the attributes (some of might are unknown to the issuer). The signature by
-// itself does not verify for the same reason as mentioned above.
-// Arg blind is a list of indices representing the random blind attributes.
+// and the attributes (some of which might be unknown to the issuer).
+// Arg "blind" is a list of indices representing the random blind attributes.
+// The signature does not verify (yet) due to blinding factors present.
 func (i *Issuer) signCommitmentAndAttributes(U *big.Int, attributes []*big.Int, blind []int) (*CLSignature, map[int]*big.Int, error) {
 	mIssuer := make(map[int]*big.Int)
 	ms := append([]*big.Int{big.NewInt(0)}, attributes...)
@@ -50,7 +50,7 @@ func (i *Issuer) signCommitmentAndAttributes(U *big.Int, attributes []*big.Int, 
 		if attributes[j] != nil {
 			return nil, nil, errors.New("attribute at random blind index should be nil before issuance")
 		}
-		// Replace with a attribute value with issuer's share
+		// Replace attribute value with issuer's share
 		r, _ := common.RandomBigInt(i.Pk.Params.Lm - 1)
 		mIssuer[j+1] = r
 		ms[j+1] = r

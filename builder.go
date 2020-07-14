@@ -65,6 +65,7 @@ type IssueSignatureMessage struct {
 	MIssuer              map[int]*big.Int    `json:"missuer"` // Issuers shares of random blind attributes
 }
 
+// Commits to the provided secret and user's share of random blind attributes "msg"
 func userCommitment(pk *PublicKey, secret *big.Int, vPrime *big.Int, msg map[int]*big.Int) (U *big.Int) {
 	// U = S^{vPrime} * R0^{secret} * Ri^{mi}
 	U = new(big.Int).Exp(pk.S, vPrime, pk.N)
@@ -191,13 +192,15 @@ func (b *CredentialBuilder) proveCommitment(U, nonce1 *big.Int) *ProofU {
 		mUserCommit[i], _ = common.RandomBigInt(b.pk.Params.LmCommit)
 	}
 
+	// Ucommit = S^{vPrimeCommit} * R_0^{sCommit} * R_i^{m_iUserCommit}
 	Sv := new(big.Int).Exp(b.pk.S, vPrimeCommit, b.pk.N)
 	R0s := new(big.Int).Exp(b.pk.R[0], sCommit, b.pk.N)
 	Ucommit := new(big.Int).Mul(Sv, R0s)
+	Ucommit.Mod(Ucommit, b.pk.N)
 	for i := range b.mUser {
 		Ucommit.Mul(Ucommit, new(big.Int).Exp(b.pk.R[i], mUserCommit[i], b.pk.N))
+		Ucommit.Mod(Ucommit, b.pk.N)
 	}
-	Ucommit.Mod(Ucommit, b.pk.N)
 
 	c := common.HashCommit([]*big.Int{b.context, U, Ucommit, nonce1}, false)
 
@@ -266,12 +269,13 @@ func (b *CredentialBuilder) Commit(randomizers map[string]*big.Int) []*big.Int {
 	// U_commit = U_commit * S^{v_prime_commit} * R_0^{s_commit}
 	sv := new(big.Int).Exp(b.pk.S, b.vPrimeCommit, b.pk.N)
 	r0s := new(big.Int).Exp(b.pk.R[0], b.skRandomizer, b.pk.N)
-	b.uCommit.Mul(b.uCommit, sv).Mul(b.uCommit, r0s).Mod(b.uCommit, b.pk.N)
+	b.uCommit.Mul(b.uCommit, sv).Mul(b.uCommit, r0s)
+	b.uCommit.Mod(b.uCommit, b.pk.N)
 
 	for i := range b.mUser {
 		b.uCommit.Mul(b.uCommit, new(big.Int).Exp(b.pk.R[i], b.mUserCommit[i], b.pk.N))
+		b.uCommit.Mod(b.uCommit, b.pk.N)
 	}
-	b.uCommit.Mod(b.uCommit, b.pk.N)
 
 	ucomm := new(big.Int).Set(b.u)
 	if b.proofPcomm != nil {
