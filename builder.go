@@ -87,7 +87,7 @@ func NewCredentialBuilder(pk *PublicKey, context, secret *big.Int, nonce2 *big.I
 		mUser[i+1], _ = common.RandomBigInt(pk.Params.Lm - 1)
 	}
 
-	// Commit to secret and blind attributes
+	// Commit to secret and, optionally, user's shares of random blind attributes
 	U := userCommitment(pk, secret, vPrime, mUser)
 
 	return &CredentialBuilder{
