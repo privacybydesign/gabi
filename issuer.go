@@ -6,7 +6,7 @@ package gabi
 
 import (
 	"crypto/rand"
-	"errors"
+	"github.com/go-errors/errors"
 
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
