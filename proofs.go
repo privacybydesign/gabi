@@ -38,7 +38,7 @@ type ProofU struct {
 	C              *big.Int         `json:"c"`
 	VPrimeResponse *big.Int         `json:"v_prime_response"`
 	SResponse      *big.Int         `json:"s_response"`
-	MUserResponses map[int]*big.Int `json:"m_user_responses"`
+	MUserResponses map[int]*big.Int `json:"m_user_responses,omitempty"`
 }
 
 func (p *ProofU) MergeProofP(proofP *ProofP, pk *PublicKey) {
