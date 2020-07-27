@@ -277,6 +277,9 @@ func (w *Witness) Update(pk *PublicKey, update *Update) error {
 		return err
 	}
 	if newAcc.Index == ourAcc.Index {
+		if newAcc.Time <= ourAcc.Time {
+			return nil
+		}
 		*w.SignedAccumulator = *update.SignedAccumulator
 		w.Updated = time.Unix(newAcc.Time, 0)
 		return nil
