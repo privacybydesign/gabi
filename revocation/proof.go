@@ -270,27 +270,31 @@ func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
 func (w *Witness) Update(pk *PublicKey, update *Update) error {
 	Logger.Tracef("revocation.Witness.Update()")
 	defer Logger.Tracef("revocation.Witness.Update() done")
-	acc, err := update.Verify(pk)
+
+	newAcc, err := update.Verify(pk)
+	ourAcc := w.SignedAccumulator.Accumulator
 	if err != nil {
 		return err
 	}
-	if acc.Index == w.SignedAccumulator.Accumulator.Index {
+	if newAcc.Index == ourAcc.Index {
 		*w.SignedAccumulator = *update.SignedAccumulator
-		w.Updated = time.Unix(acc.Time, 0)
+		w.Updated = time.Unix(newAcc.Time, 0)
 		return nil
 	}
+
 	if len(update.Events) == 0 {
 		return nil
 	}
-	startIndex, endIndex := update.Events[0].Index, acc.Index
-	if endIndex <= w.SignedAccumulator.Accumulator.Index {
+	startIndex, endIndex := update.Events[0].Index, newAcc.Index
+	if endIndex <= ourAcc.Index {
 		return nil
 	}
-	if startIndex > w.SignedAccumulator.Accumulator.Index+1 {
+	if startIndex > ourAcc.Index+1 {
 		return errors.New("update too new")
 	}
+
 	var a, b big.Int
-	if new(big.Int).GCD(&a, &b, w.E, update.Product(w.SignedAccumulator.Accumulator.Index+1)).Cmp(bigOne) != 0 {
+	if new(big.Int).GCD(&a, &b, w.E, update.Product(ourAcc.Index+1)).Cmp(bigOne) != 0 {
 		return ErrorRevoked
 	}
 
@@ -298,17 +302,17 @@ func (w *Witness) Update(pk *PublicKey, update *Update) error {
 	newU := new(big.Int)
 	newU.Mul(
 		new(big.Int).Exp(w.U, &b, pk.Group.N),
-		new(big.Int).Exp(acc.Nu, &a, pk.Group.N),
+		new(big.Int).Exp(newAcc.Nu, &a, pk.Group.N),
 	).Mod(newU, pk.Group.N)
 
-	if !verify(newU, w.E, acc, pk.Group) {
+	if !verify(newU, w.E, newAcc, pk.Group) {
 		return errors.New("nonrevocation witness invalidated by update")
 	}
 
 	// Update witness state only now after all possible errors have not occured
 	w.U = newU
 	w.SignedAccumulator = update.SignedAccumulator
-	w.Updated = time.Unix(acc.Time, 0)
+	w.Updated = time.Unix(newAcc.Time, 0)
 
 	return nil
 }
