@@ -54,6 +54,7 @@ func (b *NonRevocationProofBuilder) UpdateCommit(witness *revocation.Witness) er
 	}
 	b.witness = witness
 	b.commit.Update(b.commitments, witness)
+	b.index = witness.SignedAccumulator.Accumulator.Index
 	return nil
 }
 
@@ -166,8 +167,10 @@ func (ic *Credential) NonrevPrepareCache() error {
 	var err error
 	select {
 	case b = <-ic.nonrevCache:
+		Logger.Trace("updating existing nonrevocation commitment")
 		err = b.UpdateCommit(ic.NonRevocationWitness)
 	default:
+		Logger.Trace("instantiating new nonrevocation commitment")
 		b, err = ic.NonrevBuildProofBuilder()
 	}
 	if err != nil {
