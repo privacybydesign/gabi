@@ -703,7 +703,7 @@ func TestRevoked(t *testing.T) {
 }
 
 func TestFullIssueAndShowWithRevocation(t *testing.T) {
-	_, _, witness, _, _ := setupRevocation(t)
+	revkey, revpk, witness, update, acc := setupRevocation(t)
 
 	// Issuance
 	context, _ := common.RandomBigInt(testPubK.Params.Lh)
@@ -723,9 +723,41 @@ func TestFullIssueAndShowWithRevocation(t *testing.T) {
 	// Showing
 	nonce1s, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
 	disclosedAttributes := []int{1, 3}
+	require.Len(t, cred.nonrevCache, 0)
 	proofd, err := cred.CreateDisclosureProof(disclosedAttributes, true, context, nonce1s)
 	require.NoError(t, err)
+	require.True(t, proofd.HasNonRevocationProof())
 	assert.True(t, proofd.Verify(testPubK, context, nonce1s, false), "Proof of disclosure did not verify, whereas it should.")
+
+	// prepare nonrevocation proof cache
+	require.NoError(t, cred.NonrevPrepareCache())
+	require.Len(t, cred.nonrevCache, 1)
+	cache := <-cred.nonrevCache
+	require.Equal(t, cache.index, acc.Index)
+	cred.nonrevCache <- cache
+
+	// show again, using the nonrevocation proof cache
+	proofd, err = cred.CreateDisclosureProof(disclosedAttributes, true, context, nonce1s)
+	require.NoError(t, err)
+	require.True(t, proofd.HasNonRevocationProof())
+	assert.True(t, proofd.Verify(testPubK, context, nonce1s, false), "Proof of disclosure did not verify, whereas it should.")
+	require.Len(t, cred.nonrevCache, 0)
+	require.NoError(t, cred.NonrevPrepareCache())
+
+	// simulate revocation of another credential
+	w, err := revocation.RandomWitness(revkey, acc)
+	require.NoError(t, err)
+	acc, event, err := acc.Remove(revkey, w.E, update.Events[0])
+	require.NoError(t, err)
+	update, err = revocation.NewUpdate(revkey, acc, []*revocation.Event{event})
+	require.NoError(t, err)
+
+	// update witness and nonrevocation proof cache
+	require.NoError(t, cred.NonRevocationWitness.Update(revpk, update))
+	require.NoError(t, cred.NonrevPrepareCache())
+	require.Len(t, cred.nonrevCache, 1)
+	cache = <-cred.nonrevCache
+	require.Equal(t, cache.index, acc.Index)
 }
 
 // TODO: tests to add:
