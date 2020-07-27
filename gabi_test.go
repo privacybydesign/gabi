@@ -693,18 +693,12 @@ func TestNotRevoked(t *testing.T) {
 func TestRevoked(t *testing.T) {
 	revkey, revpk, witness, update, acc := setupRevocation(t)
 
-	// Issuance
-	attrs := revocationAttrs(witness)
-	signature, err := SignMessageBlock(testPrivK, testPubK, attrs)
-	require.NoError(t, err)
-	require.True(t, signature.Verify(testPubK, attrs))
-
 	acc, event, err := acc.Remove(revkey, witness.E, update.Events[0])
 	require.NoError(t, err)
 	update, err = revocation.NewUpdate(revkey, acc, []*revocation.Event{event})
 	require.NoError(t, err)
 
-	// Try to update Accumulator to latest update (where the witness.E is removed)
+	// Try to update witness to latest update (where the witness.E is removed)
 	require.Equal(t, revocation.ErrorRevoked, witness.Update(revpk, update))
 }
 
