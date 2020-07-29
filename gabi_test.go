@@ -127,7 +127,7 @@ func setupParameters() error {
 	testPubK = NewPublicKey(n, Z, S, nil, nil, R, "", 0, time.Now().AddDate(1, 0, 0))
 
 	var err error
-	testPrivK1, err = NewPrivateKeyFromXML(xmlPrivKey1)
+	testPrivK1, err = NewPrivateKeyFromXML(xmlPrivKey1, false)
 	if err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func setupParameters() error {
 	if err != nil {
 		return err
 	}
-	testPrivK2, err = NewPrivateKeyFromXML(xmlPrivKey2)
+	testPrivK2, err = NewPrivateKeyFromXML(xmlPrivKey2, false)
 	if err != nil {
 		return err
 	}
