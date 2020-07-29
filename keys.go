@@ -63,16 +63,18 @@ func NewPrivateKey(p, q *big.Int, ecdsa string, counter uint, expiryDate time.Ti
 
 // NewPrivateKeyFromXML creates a new issuer private key using the xml data
 // provided.
-func NewPrivateKeyFromXML(xmlInput string) (*PrivateKey, error) {
+func NewPrivateKeyFromXML(xmlInput string, demo bool) (*PrivateKey, error) {
 	privk := &PrivateKey{}
 	err := xml.Unmarshal([]byte(xmlInput), privk)
 	if err != nil {
 		return nil, err
 	}
 
-	// Do some sanity checks on the key data
-	if err := privk.Validate(); err != nil {
-		return nil, err
+	if !demo {
+		// Do some sanity checks on the key data
+		if err := privk.Validate(); err != nil {
+			return nil, err
+		}
 	}
 
 	privk.CacheOrder()
@@ -80,31 +82,19 @@ func NewPrivateKeyFromXML(xmlInput string) (*PrivateKey, error) {
 }
 
 // NewPrivateKeyFromFile create a new issuer private key from an xml file.
-func NewPrivateKeyFromFile(filename string) (*PrivateKey, error) {
+func NewPrivateKeyFromFile(filename string, demo bool) (*PrivateKey, error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-	privk := &PrivateKey{}
 
 	b, err := ioutil.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}
 
-	err = xml.Unmarshal(b, privk)
-	if err != nil {
-		return nil, err
-	}
-
-	// Do some sanity checks on the key data
-	if err := privk.Validate(); err != nil {
-		return nil, err
-	}
-
-	privk.CacheOrder()
-	return privk, nil
+	return NewPrivateKeyFromXML(string(b), demo)
 }
 
 func (privk *PrivateKey) Validate() error {
