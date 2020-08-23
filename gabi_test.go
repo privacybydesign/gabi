@@ -870,7 +870,8 @@ func TestMultipleRandomBlindIssuance(t *testing.T) {
 	cred, err := b.ConstructCredential(msg, testAttributes4)
 	assert.NoError(t, err, "error in ConstructCredential")
 
-	for i := range []int{2, 3, 4} {
+	for _, i := range []int{2, 3, 4} {
+		assert.Contains(t, msg.MIssuer, i)
 		assert.NotNil(t, cred.Attributes[i], "randomblind attribute should not be nil after issuance")
 		// Test 0 <= randomblind < 2^256
 		assert.Equal(t, 1, cred.Attributes[i].Cmp(big.NewInt(-1)))
