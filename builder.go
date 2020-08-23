@@ -225,7 +225,7 @@ func (b *CredentialBuilder) PublicKey() *PublicKey {
 	return b.pk
 }
 
-// Commits to the secret (first attribute) using the provided randomizer.
+// Commit commits to the secret (first attribute) using the provided randomizer.
 // Optionally commits to the user shares of random blind attributes if any are present.
 func (b *CredentialBuilder) Commit(randomizers map[string]*big.Int) []*big.Int {
 	b.skRandomizer = randomizers["secretkey"]
@@ -262,12 +262,14 @@ func (b *CredentialBuilder) CreateProof(challenge *big.Int) Proof {
 
 	mUserResponses := make(map[int]*big.Int)
 	for i, miUser := range b.mUser {
-		mUserResponse := new(big.Int).Mul(challenge, miUser)
-		mUserResponses[i] = mUserResponse.Add(mUserResponse, b.mUserCommit[i])
+		mUserResponses[i] = new(big.Int).Add(b.mUserCommit[i], new(big.Int).Mul(challenge, miUser))
 	}
 
-	return &ProofU{U: b.u, C: challenge,
+	return &ProofU{
+		U:              b.u,
+		C:              challenge,
 		VPrimeResponse: vPrimeResponse,
 		SResponse:      sResponse,
-		MUserResponses: mUserResponses}
+		MUserResponses: mUserResponses,
+	}
 }
