@@ -6,6 +6,7 @@ package gabi
 
 import (
 	"crypto/rand"
+
 	"github.com/go-errors/errors"
 
 	"github.com/privacybydesign/gabi/big"
@@ -51,7 +52,10 @@ func (i *Issuer) signCommitmentAndAttributes(U *big.Int, attributes []*big.Int, 
 			return nil, nil, errors.New("attribute at random blind index should be nil before issuance")
 		}
 		// Replace attribute value with issuer's share
-		r, _ := common.RandomBigInt(i.Pk.Params.Lm - 1)
+		r, err := common.RandomBigInt(i.Pk.Params.Lm - 1)
+		if err != nil {
+			return nil, nil, err
+		}
 		mIssuer[j+1] = r
 		ms[j+1] = r
 	}
