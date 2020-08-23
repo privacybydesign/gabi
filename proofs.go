@@ -5,11 +5,11 @@
 package gabi
 
 import (
-	"errors"
-
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
 	"github.com/privacybydesign/gabi/revocation"
+
+	"github.com/go-errors/errors"
 )
 
 // Proof represents a non-interactive zero-knowledge proof
