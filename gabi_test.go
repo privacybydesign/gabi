@@ -782,9 +782,12 @@ func TestRandomBlindProofU(t *testing.T) {
 
 	b := NewCredentialBuilder(testPubK, context, secret, nonce2, []int{2})
 	commitMsg := b.CommitToSecretAndProve(nonce1)
-
 	proofU, err := commitMsg.Proofs.GetFirstProofU()
 	assert.NoError(t, err)
+
+	assert.Len(t, proofU.MUserResponses, 1)
+	assert.Contains(t, proofU.MUserResponses, 2+1)
+
 	c, err := proofU.ChallengeContribution(testPubK)
 	assert.NoError(t, err)
 	assert.True(t, proofU.VerifyWithChallenge(testPubK, createChallenge(context, nonce1, c, false)))
@@ -820,6 +823,9 @@ func TestRandomBlindIssuance(t *testing.T) {
 	// cred.Attributes = [sk, a0, a1, a2, a3] in the credential, with a2 the sum of two random 255-bit integers.
 	msg, err := issuer.IssueSignature(commitMsg.U, testAttributes3, nil, nonce2, []int{2})
 	assert.NoError(t, err, "error in IssueSignature")
+	require.Len(t, msg.MIssuer, 1)
+	require.Contains(t, msg.MIssuer, 3)
+
 	cred, err := b.ConstructCredential(msg, testAttributes3)
 	assert.NoError(t, err, "error in ConstructCredential")
 	assert.NotNil(t, cred.Attributes[3], "randomblind should not be nil")
