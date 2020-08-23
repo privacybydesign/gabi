@@ -62,7 +62,7 @@ type IssueSignatureMessage struct {
 	Proof                *ProofS             `json:"proof"`
 	Signature            *CLSignature        `json:"signature"`
 	NonRevocationWitness *revocation.Witness `json:"nonrev,omitempty"`
-	MIssuer              map[int]*big.Int    `json:"missuer,omitempty"` // Issuers shares of random blind attributes
+	MIssuer              map[int]*big.Int    `json:"m_issuer,omitempty"` // Issuers shares of random blind attributes
 }
 
 // Commits to the provided secret and user's share of random blind attributes "msg"
