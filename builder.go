@@ -18,11 +18,13 @@ import (
 // IssueCommitmentMessage encapsulates the messages sent by the receiver to the
 // issuer in the second step of the issuance protocol.
 type IssueCommitmentMessage struct {
-	U          *big.Int          `json:"U,omitempty"`
-	Nonce2     *big.Int          `json:"n_2"`
-	Proofs     ProofList         `json:"combinedProofs"`
-	ProofPjwt  string            `json:"proofPJwt,omitempty"`
-	ProofPjwts map[string]string `json:"proofPJwts,omitempty"`
+	U                    *big.Int            `json:"U,omitempty"`
+	Nonce2               *big.Int            `json:"n_2"`
+	Proofs               ProofList           `json:"combinedProofs"`
+	ProofPjwt            string              `json:"proofPJwt,omitempty"`
+	ProofPjwts           map[string]string   `json:"proofPJwts,omitempty"`
+	KeyshareWs           map[string]*big.Int `json:"keyshareWs,omitempty"`
+	KeyshareContribution string              `json:"keyshareContribution,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler (json's default unmarshaler
@@ -188,7 +190,7 @@ func (b *CredentialBuilder) ConstructCredential(msg *IssueSignatureMessage, attr
 func (b *CredentialBuilder) proveCommitment(nonce1 *big.Int) Proof {
 	sCommit, _ := common.RandomBigInt(b.pk.Params.LsCommit)
 	contrib := b.Commit(map[string]*big.Int{"secretkey": sCommit})
-	c := createChallenge(b.context, nonce1, contrib, false)
+	c := createChallenge(b.context, nonce1, contrib, nil, false)
 	return b.CreateProof(c)
 }
 
@@ -210,6 +212,8 @@ type CredentialBuilder struct {
 
 	mUser       map[int]*big.Int // Map of users shares of random blind attributes
 	mUserCommit map[int]*big.Int
+
+	newStyleKeyshareSession bool
 }
 
 func (b *CredentialBuilder) MergeProofPCommitment(commitment *ProofPCommitment) {
@@ -218,6 +222,11 @@ func (b *CredentialBuilder) MergeProofPCommitment(commitment *ProofPCommitment) 
 		b.uCommit.Mul(b.uCommit, commitment.Pcommit),
 		b.pk.N,
 	)
+}
+
+func (b *CredentialBuilder) MergeKeyshareP(keyshareP *big.Int) {
+	b.proofPcomm = &ProofPCommitment{P: new(big.Int).Set(keyshareP)}
+	b.newStyleKeyshareSession = true
 }
 
 // PublicKey returns the Idemix public key against which the credential will verify.
@@ -265,8 +274,17 @@ func (b *CredentialBuilder) CreateProof(challenge *big.Int) Proof {
 		mUserResponses[i] = new(big.Int).Add(b.mUserCommit[i], new(big.Int).Mul(challenge, miUser))
 	}
 
+	var U *big.Int
+	if b.newStyleKeyshareSession {
+		U = new(big.Int).Mul(b.u, b.proofPcomm.P)
+		U.Mod(U, b.pk.N)
+	} else {
+		// U can be modified in the proof, so make sure this is a copy
+		U = new(big.Int).Set(b.u)
+	}
+
 	return &ProofU{
-		U:              b.u,
+		U:              U,
 		C:              challenge,
 		VPrimeResponse: vPrimeResponse,
 		SResponse:      sResponse,

@@ -1,7 +1,10 @@
 package common
 
-import "testing"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"testing"
+
+	"github.com/privacybydesign/gabi/big"
+)
 
 func TestHashCommit(t *testing.T) {
 	listA := []*big.Int{
@@ -9,7 +12,7 @@ func TestHashCommit(t *testing.T) {
 		big.NewInt(2),
 		big.NewInt(3),
 	}
-	hashA := HashCommit(listA, false)
+	hashA := HashCommit(listA, false, false)
 	if hashA == nil {
 		t.Error("Failed to generate hash for A")
 		return
@@ -20,7 +23,7 @@ func TestHashCommit(t *testing.T) {
 		nil,
 		big.NewInt(3),
 	}
-	hashB := HashCommit(listB, false)
+	hashB := HashCommit(listB, false, false)
 	if hashB == nil {
 		t.Error("Failed to generate hash for B")
 		return
@@ -30,7 +33,7 @@ func TestHashCommit(t *testing.T) {
 		big.NewInt(1),
 		big.NewInt(2),
 	}
-	hashC := HashCommit(listC, false)
+	hashC := HashCommit(listC, false, false)
 	if hashC == nil {
 		t.Error("Failed to generate hash for C")
 		return

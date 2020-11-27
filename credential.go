@@ -99,7 +99,7 @@ func (ic *Credential) CreateDisclosureProof(disclosedAttributes []int, nonrev bo
 	if err != nil {
 		return nil, err
 	}
-	challenge := ProofBuilderList{builder}.Challenge(context, nonce1, false)
+	challenge := ProofBuilderList{builder}.Challenge(context, nonce1, nil, false)
 	return builder.CreateProof(challenge).(*ProofD), nil
 }
 
@@ -222,6 +222,10 @@ func (d *DisclosureProofBuilder) MergeProofPCommitment(commitment *ProofPCommitm
 		d.z.Mul(d.z, commitment.Pcommit),
 		d.pk.N,
 	)
+}
+
+func (d *DisclosureProofBuilder) MergeKeyshareP(keyshareP *big.Int) {
+	//nop
 }
 
 // PublicKey returns the Idemix public key against which this disclosure proof will verify.

@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/internal/common"
 )
 
 var (
@@ -18,8 +19,16 @@ func NewKeyshareSecret() (*big.Int, error) {
 	return big.RandInt(rand.Reader, new(big.Int).Lsh(big.NewInt(1), DefaultSystemParameters[1024].Lm-1))
 }
 
-// Generate commitments for the keyshare server for given set of keys
-func NewKeyshareCommitments(secret *big.Int, keys []*PublicKey) (*big.Int, []*ProofPCommitment, error) {
+// Generate keyshare parts of P for given set of keys
+func KeysharePs(secret *big.Int, keys []*PublicKey) map[string]*big.Int {
+	Ps := make(map[string]*big.Int)
+	for _, key := range keys {
+		Ps[key.KeyID] = new(big.Int).Exp(key.R[0], secret, key.N)
+	}
+	return Ps
+}
+
+func NewKeyshareCommitments(keys []*PublicKey) (*big.Int, map[string]*big.Int, error) {
 	// Determine required randomizer length
 	var lRand uint = 0
 	for _, key := range keys {
@@ -37,23 +46,58 @@ func NewKeyshareCommitments(secret *big.Int, keys []*PublicKey) (*big.Int, []*Pr
 	}
 
 	// And exponentiate it with all keys
-	var exponentiatedCommitments []*ProofPCommitment
+	Ws := make(map[string]*big.Int)
 	for _, key := range keys {
-		exponentiatedCommitments = append(exponentiatedCommitments,
-			&ProofPCommitment{
-				P:       new(big.Int).Exp(key.R[0], secret, key.N),
-				Pcommit: new(big.Int).Exp(key.R[0], commit, key.N),
-			})
+		Ws[key.KeyID] = new(big.Int).Exp(key.R[0], commit, key.N)
 	}
 
-	return commit, exponentiatedCommitments, nil
+	return commit, Ws, nil
 }
 
-// Generate keyshare response for a given challenge and commit, given a secret
-func KeyshareResponse(secret, commit, challenge *big.Int, key *PublicKey) *ProofP {
-	return &ProofP{
-		P:         new(big.Int).Exp(key.R[0], secret, key.N),
-		C:         new(big.Int).Set(challenge),
-		SResponse: new(big.Int).Add(commit, new(big.Int).Mul(challenge, secret)),
+// Generate commitments for the keyshare server for given set of keys
+func NewProofPCommitments(secret *big.Int, keys []*PublicKey) (*big.Int, []*ProofPCommitment, error) {
+	Ps := KeysharePs(secret, keys)
+	commit, Ws, err := NewKeyshareCommitments(keys)
+
+	if err != nil {
+		return nil, nil, err
 	}
+
+	// Merge Ps and Ws
+	ppCommitments := make([]*ProofPCommitment, len(keys))
+	for i, key := range keys {
+		ppCommitments[i] = &ProofPCommitment{
+			P:       Ps[key.KeyID],
+			Pcommit: Ws[key.KeyID],
+		}
+	}
+
+	return commit, ppCommitments, nil
+}
+
+// Generate keyshare response for a givven challenge and commit, given a secret
+func KeyshareResponse(userS, secret, commit, challenge *big.Int) *KeyshareContribution {
+	return &KeyshareContribution{
+		S: new(big.Int).Add(userS, new(big.Int).Add(commit, new(big.Int).Mul(challenge, secret))),
+		C: new(big.Int).Set(challenge),
+	}
+}
+
+// Generate keyshare ProofP for a given challenge and commit, given a secret
+func KeyshareProofP(secret, commit, challenge *big.Int, key *PublicKey) *ProofP {
+	P := KeysharePs(secret, []*PublicKey{key})
+	response := KeyshareResponse(big.NewInt(0), secret, commit, challenge)
+	return &ProofP{
+		P:         P[key.KeyID],
+		C:         response.C,
+		SResponse: response.S,
+	}
+}
+
+func KeyshareChallenge(userK *big.Int, Ws map[string]*big.Int) *big.Int {
+	Wcontrib := prepareKeyshareContributions(Ws)
+	hashList := make([]*big.Int, 1+len(Wcontrib))
+	hashList[0] = userK
+	copy(hashList[1:], Wcontrib)
+	return common.HashCommit(hashList, false, true)
 }

@@ -373,7 +373,7 @@ func (p *proof) ProofResult(name string) *big.Int {
 func (p *proof) verify(pk *PublicKey) bool {
 	grp := (*qrGroup)(pk.Group)
 	commitments := proofstructure.commitmentsFromProof(grp, []*big.Int{}, p.Challenge, grp, p, p)
-	return (*Proof)(p).VerifyWithChallenge(pk, common.HashCommit(commitments, false))
+	return (*Proof)(p).VerifyWithChallenge(pk, common.HashCommit(commitments, false, false))
 }
 
 func (s *proofStructure) commitmentsFromSecrets(g *qrGroup, list []*big.Int, bases keyproof.BaseLookup, secretdata keyproof.SecretLookup) ([]*big.Int, proofCommit) {

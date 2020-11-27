@@ -90,7 +90,7 @@ func (i *Issuer) proveSignature(signature *CLSignature, nonce2 *big.Int) *ProofS
 	eCommit := randomElementMultiplicativeGroup(groupModulus)
 	ACommit := new(big.Int).Exp(Q, eCommit, i.Pk.N)
 
-	c := common.HashCommit([]*big.Int{i.Context, Q, signature.A, nonce2, ACommit}, false)
+	c := common.HashCommit([]*big.Int{i.Context, Q, signature.A, nonce2, ACommit}, false, false)
 	eResponse := new(big.Int).Mul(c, d)
 	eResponse.Sub(eCommit, eResponse).Mod(eResponse, groupModulus)
 
