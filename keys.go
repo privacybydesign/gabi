@@ -5,6 +5,7 @@
 package gabi
 
 import (
+	"encoding/asn1"
 	"encoding/base64"
 	"encoding/xml"
 	"fmt"
@@ -20,6 +21,7 @@ import (
 	"github.com/privacybydesign/gabi/revocation"
 	"github.com/privacybydesign/gabi/safeprime"
 	"github.com/privacybydesign/gabi/signed"
+	"golang.org/x/crypto/sha3"
 )
 
 const (
@@ -455,6 +457,27 @@ func (pubk *PublicKey) WriteToFile(filename string, forceOverwrite bool) (int64,
 	defer f.Close()
 
 	return pubk.WriteTo(f)
+}
+
+// Hash returns the output of a cryptographic hash function applied to the specified bytes.
+//
+// The hash is constructed as SHAKE256(bts)^2 mod n.
+func (pubk *PublicKey) Hash(bts []byte) *big.Int {
+	output := make([]byte, pubk.Params.Ln/8) // pubk.Params.Ln is in bits, not bytes
+	x := new(big.Int)
+	max := new(big.Int).Rsh(pubk.N, 1)
+
+	// Compute H(i || bts) with increasing i until the output is smaller than (n-1)/2
+	for i := 0; i == 0 || x.Cmp(max) >= 0; i++ {
+		asn, _ := asn1.Marshal(struct { // error never errors
+			A int
+			B []byte
+		}{A: i, B: bts})
+		sha3.ShakeSum256(output, asn)
+		x.SetBytes(output).Rsh(x, 1) // We want not Ln but Ln-1 bits
+	}
+
+	return x.Mul(x, x).Mod(x, pubk.N) // embed in QR_n by squaring mod n
 }
 
 // findMatch returns the first element of safeprimes that makes a suitable pair with p:
