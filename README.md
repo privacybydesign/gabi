@@ -1,22 +1,19 @@
-[![GoDoc](https://godoc.org/github.com/privacybydesign/gabi?status.svg)](https://godoc.org/github.com/privacybydesign/gabi)
+[![Go Reference](https://pkg.go.dev/badge/github.com/privacybydesign/gabi.svg)](https://pkg.go.dev/github.com/privacybydesign/gabi)
 Gabi
 ====
 
-Gabi is a Go implementation of the [IRMA](https://www.irmacard.org) approach to the [Idemix](http://www.research.ibm.com/labs/zurich/idemix/) attribute based credential system. Check out the [IRMA](https://privacybydesign.foundation/irma) website to learn more on this great alternative to traditional identity management. 
+`gabi` is a Go implementation of the [IRMA](https://irma.app) approach to the Idemix attribute based credential system. Check out the [Privacy by Design Foundation](https://privacybydesign.foundation/irma-en) website to learn more on this great alternative to traditional identity management. 
 
-gabi itself is designed to be compatible with the existing [Java](https://github.com/credentials/credentials_idemix) and [C++](https://github.com/credentials/silvia) implementations of the IRMA system.
+`gabi` is the authoritative IRMA Idemix implementation, but it is still largely compatible with the now deprecated [Java](https://github.com/privacybydesign/irma_api_common) implementation.
 
-Status
-------
-
-Do note that this library is still fairly young. As such there might be some API-changes in the near future. And although most (if not all) cryptographic primitives are present, it does need additional "field testing". In addition, since this library implements (non-trivial) cryptography it needs to be checked by many more eyeballs.
+gabi serves as the cryptographic core of [`irmago`](https://github.com/privacybydesign/irmago), which implements the IRMA server, IRMA app core, shared functionality between the two, and more. Most projects wanting to use IRMA or Idemix will want to use `irmago` instead of depending on `gabi` directly.
 
 Install
 -------
 
 To install:
 
-    go get -v github.com/privacybydesign/gabi
+    go get github.com/privacybydesign/gabi
 
 Test
 ----
