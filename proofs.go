@@ -134,13 +134,14 @@ func (p *ProofS) Verify(pk *PublicKey, signature *CLSignature, context, nonce *b
 
 // ProofD represents a proof in the showing protocol.
 type ProofD struct {
-	C                  *big.Int          `json:"c"`
-	A                  *big.Int          `json:"A"`
-	EResponse          *big.Int          `json:"e_response"`
-	VResponse          *big.Int          `json:"v_response"`
-	AResponses         map[int]*big.Int  `json:"a_responses"`
-	ADisclosed         map[int]*big.Int  `json:"a_disclosed"`
-	NonRevocationProof *revocation.Proof `json:"nonrev_proof,omitempty"`
+	C                  *big.Int                    `json:"c"`
+	A                  *big.Int                    `json:"A"`
+	EResponse          *big.Int                    `json:"e_response"`
+	VResponse          *big.Int                    `json:"v_response"`
+	AResponses         map[int]*big.Int            `json:"a_responses"`
+	ADisclosed         map[int]*big.Int            `json:"a_disclosed"`
+	NonRevocationProof *revocation.Proof           `json:"nonrev_proof,omitempty"`
+	LinkabilityProof   *ContextualLinkabilityProof `json:"link_proof,omitempty"`
 }
 
 func (p *ProofD) MergeProofP(proofP *ProofP, pk *PublicKey) {
@@ -214,6 +215,10 @@ func (p *ProofD) HasNonRevocationProof() bool {
 	return p.NonRevocationProof != nil
 }
 
+func (p *ProofD) HasContextualLinkabilityProof() bool {
+	return p.LinkabilityProof != nil
+}
+
 // Verify verifies the proof against the given public key and the provided
 // reconstruted challenge.
 func (p *ProofD) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.Int) bool {
@@ -241,6 +246,7 @@ func (p *ProofD) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.
 // challenge.
 func (p *ProofD) ChallengeContribution(pk *PublicKey) ([]*big.Int, error) {
 	l := []*big.Int{p.A, p.reconstructZ(pk)}
+
 	if p.NonRevocationProof != nil {
 		revPk, err := pk.RevocationKey()
 		if err != nil {
@@ -256,6 +262,17 @@ func (p *ProofD) ChallengeContribution(pk *PublicKey) ([]*big.Int, error) {
 		contrib := p.NonRevocationProof.ChallengeContributions(revPk.Group)
 		l = append(l, contrib...)
 	}
+
+	if p.LinkabilityProof == nil {
+		return l, nil
+	}
+
+	linkability, err := p.LinkabilityProof.optionsFromProof(pk)
+	if err != nil {
+		return nil, err
+	}
+	l = append(l, linkability.challengeContributions(p.LinkabilityProof.Ints, p.AResponses, p.C)...)
+
 	return l, nil
 }
 

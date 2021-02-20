@@ -5,6 +5,7 @@
 package gabi
 
 import (
+	"encoding/asn1"
 	"os"
 	"testing"
 	"time"
@@ -369,9 +370,9 @@ func TestCombinedShowingProof(t *testing.T) {
 	issuer2 := NewIssuer(testPrivK2, testPubK2, context)
 	cred2 := createCredential(t, context, secret, issuer2)
 
-	b1, err := cred1.CreateDisclosureProofBuilder([]int{1, 2}, false)
+	b1, err := cred1.CreateDisclosureProofBuilder([]int{1, 2}, false, nil)
 	require.NoError(t, err)
-	b2, err := cred2.CreateDisclosureProofBuilder([]int{1, 3}, false)
+	b2, err := cred2.CreateDisclosureProofBuilder([]int{1, 3}, false, nil)
 	require.NoError(t, err)
 	builders := ProofBuilderList([]ProofBuilder{b1, b2})
 	prooflist := builders.BuildProofList(context, nonce1, false)
@@ -379,10 +380,12 @@ func TestCombinedShowingProof(t *testing.T) {
 	assert.True(t, prooflist.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, false, nil), "Prooflist does not verify whereas it should!")
 }
 
-// A convenience function for initializing big integers from known correct (10
-// base) strings. Use with care, errors are ignored.
+// A convenience function for initializing big integers from base 10 strings.
 func s2big(s string) (r *big.Int) {
-	r, _ = new(big.Int).SetString(s, 10)
+	r, b := new(big.Int).SetString(s, 10)
+	if !b {
+		panic("not a base 10 int")
+	}
 	return
 }
 
@@ -439,6 +442,217 @@ func TestFullIssuanceAndShowing(t *testing.T) {
 	assert.True(t, proof.Verify(testPubK, context, n1, false), "Proof of disclosure does not verify, whereas it should.")
 }
 
+func TestContextualLinkability(t *testing.T) {
+	cred := issue(t)
+	linkability := &ContextualLinkability{
+		Attributes:  []int{3},
+		EpochLength: 60 * 60 * 24 * 365,
+		EpochCount:  1,
+		Verifier:    "test",
+	}
+
+	// Do two disclosures in the same epoch
+	// (The epoch length above, 1 year, is unrealisticly large: we choose it such that it is very
+	//  unlikely that an epoch transition happens to happen between construction of the two proofs.)
+	proof1, ints1, _, _ := prove(t, cred, linkability)
+	proof2, ints2, _, _ := prove(t, cred, linkability)
+
+	// ints must be of the form { 3: [int] }
+	assert.Contains(t, ints1, 3)
+	assert.Len(t, ints1, 1)
+	assert.Len(t, ints1[3], 1)
+
+	// The sent integers are the same
+	assert.Equal(t, ints1, ints2)
+
+	// The sent integer is of the form H(epoch || verifier || 0)^attr
+	R := (&ContextualLinkability{
+		Verifier: "test",
+		pk:       testPubK,
+	}).hash(time.Now().Unix() / int64(linkability.EpochLength))
+	assert.Equal(t,
+		R.Exp(R, cred.Attributes[3], testPubK.N).Mod(R, testPubK.N),
+		ints1[3][0],
+	)
+
+	// But our two proofs are different
+	assert.NotEqual(t, proof1.A, proof2.A)
+	assert.NotEqual(t, proof1.EResponse, proof2.EResponse)
+	assert.NotEqual(t, proof1.VResponse, proof2.VResponse)
+	for i := range proof1.AResponses {
+		assert.NotEqual(t, proof1.AResponses[i], proof2.AResponses[i])
+	}
+}
+
+func TestContextualLinkabilityTwoVerifiers(t *testing.T) {
+	cred := issue(t)
+	linkability := &ContextualLinkability{
+		Attributes:  []int{3},
+		EpochLength: 60 * 60 * 24 * 365,
+		EpochCount:  1,
+		Verifier:    "test1",
+	}
+
+	// Do two disclosures in the same epoch but with different verifiers
+	// (The epoch length above, 1 year, is unrealisticly large: we choose it such that it is very
+	//  unlikely that an epoch transition happens to happen between construction of the two proofs.)
+	_, ints1, _, _ := prove(t, cred, linkability)
+	linkability.Verifier = "test2"
+	_, ints2, _, _ := prove(t, cred, linkability)
+
+	// ints must be of the form { 3: [int] }
+	assert.Contains(t, ints1, 3)
+	assert.Contains(t, ints2, 3)
+	assert.Len(t, ints1, 1)
+	assert.Len(t, ints2, 1)
+	assert.Len(t, ints1[3], 1)
+	assert.Len(t, ints2[3], 1)
+
+	assert.NotEqual(t, ints1[3][0], ints2[3][0])
+}
+
+// Check that two proofs during different epochs have one linkable int in common
+func TestContextualLinkabilityTwoEpochs(t *testing.T) {
+	cred := issue(t)
+	linkability := &ContextualLinkability{
+		Attributes:  []int{3},
+		EpochLength: 1, // epochs of one second so we can transition during the test
+		EpochCount:  2,
+		Verifier:    "test",
+	}
+
+	// Do two disclosures in successive epoch
+	_, ints1, _, _ := prove(t, cred, linkability)
+	time.Sleep(1 * time.Second) // move to next epoch
+	_, ints2, _, _ := prove(t, cred, linkability)
+
+	// ints must be of the form { 3: [int, int] }
+	assert.Contains(t, ints1, 3)
+	assert.Contains(t, ints2, 3)
+	assert.Len(t, ints1, 1)
+	assert.Len(t, ints2, 1)
+	assert.Len(t, ints1[3], 2)
+	assert.Len(t, ints2[3], 2)
+
+	// second linkable integer of the first proof equals the first one of the second proof
+	assert.Equal(t, ints1[3][1], ints2[3][0])
+	// integers constructed during different epochs are different
+	assert.NotEqual(t, ints1[3][0], ints2[3][1])
+}
+
+func TestContextualLinkabilityWrongInt(t *testing.T) {
+	cred := issue(t)
+	linkability := &ContextualLinkability{
+		Attributes:  []int{3},
+		EpochLength: 60 * 60 * 24,
+		EpochCount:  1,
+		Verifier:    "test",
+	}
+
+	proof, ints1, context, nonce := prove(t, cred, linkability)
+	assert.Contains(t, ints1, 3)
+	assert.Len(t, ints1, 1)
+	assert.Len(t, ints1[3], 1)
+	assert.True(t, proof.Verify(testPubK, context, nonce, false))
+
+	// If user sends a wrong linkable integer the proof no longer verifies
+	proof.LinkabilityProof.Ints[3][0] = common.RandomQR(testPubK.N)
+	assert.False(t, proof.Verify(testPubK, context, nonce, false))
+}
+
+func TestContextualLinkabilityHash(t *testing.T) {
+	linkability := &ContextualLinkability{
+		Verifier: "test",
+		pk:       testPubK,
+	}
+	bts, err := asn1.Marshal(contextualLinkabilityHashInput{0, "test", 0})
+	assert.NoError(t, err)
+	hash := testPubK.Hash(bts)
+	assert.Equal(t, hash, linkability.hash(0))
+
+	// different epoch yields different hash
+	assert.NotEqual(t, hash, linkability.hash(1))
+
+	// different verifier yields different hash
+	linkability.Verifier = "test2"
+	assert.NotEqual(t, hash, linkability.hash(0))
+
+	// different public key yields different hash
+	linkability.Verifier = "test"
+	linkability.pk = testPubK1
+	assert.NotEqual(t, hash, linkability.hash(0))
+}
+
+func TestQRHash(t *testing.T) {
+	tests := []struct {
+		input string
+		want  *big.Int
+	}{
+		{
+			input: "",
+			want:  s2big("22612456565964368785284987268551673147585852201464794203168013944102079325205162710322120093992551372521346059714439784379362155536671766823708451685660466441514662396213512201770682741951542863338732031898157848120246312305350913996993434498936651561157650292814393119099963152481878206880023425772376982819"),
+		},
+		{
+			input: "1",
+			want:  s2big("92724927799373379098274822925273455428173300208665763007399245948917273784700088568252304466680208283660606259462198383403071140415816469843965496834674832754754511644639616614417912501063252008042359824585835996616511016169002931920783296916823084876134626245480702043566587159224310376102808921236578908346"),
+		},
+		{
+			input: "Hello, World!",
+			want:  s2big("2953713186933946589326074811841349753890900327703665746460330971217192799660533513530199766346818025201242209267380360952570878043738268716500340046135573706902608123792364551425219548694404352060280054875634650995771918716762876593660470874186170169349058414352314429824081592372076818546562574643364068529"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			require.Equal(t, tt.want, testPubK.Hash([]byte(tt.input)))
+		})
+	}
+}
+
+func issue(t *testing.T) *Credential {
+	context, _ := common.RandomBigInt(testPubK.Params.Lh)
+	nonce1, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
+	nonce2, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
+	secret, _ := common.RandomBigInt(testPubK.Params.Lm)
+
+	cb1 := NewCredentialBuilder(testPubK, context, secret, nonce2, nil)
+	commitMsg := cb1.CommitToSecretAndProve(nonce1)
+	issuer := NewIssuer(testPrivK, testPubK, context)
+	ism, err := issuer.IssueSignature(commitMsg.U, testAttributes1, nil, nonce2, nil)
+	assert.NoError(t, err, "error creating Issue Signature")
+	cred, err := cb1.ConstructCredential(ism, testAttributes1)
+	assert.NoError(t, err, "error creating credential")
+
+	return cred
+}
+
+func prove(t *testing.T, cred *Credential, linkability *ContextualLinkability) (
+	*ProofD, map[int][]*big.Int, *big.Int, *big.Int,
+) {
+	db, err := cred.CreateDisclosureProofBuilder([]int{1, 2}, false, linkability)
+	require.NoError(t, err)
+
+	builders := ProofBuilderList([]ProofBuilder{db})
+	context, _ := common.RandomBigInt(testPubK.Params.Lh)
+	nonce, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
+	prooflist := builders.BuildProofList(context, nonce, false)
+
+	assert.True(t,
+		prooflist.Verify([]*PublicKey{cred.Pk}, context, nonce, false, nil),
+		"Prooflist does not verify whereas it should!",
+	)
+
+	proof := prooflist[0].(*ProofD)
+	hasLinkProof := proof.HasContextualLinkabilityProof()
+	require.Equal(t, hasLinkProof, linkability != nil)
+	if !hasLinkProof {
+		return proof, nil, context, nonce
+	}
+
+	ints, err := proof.LinkabilityProof.LinkableInts(linkability)
+	assert.NoError(t, err)
+	return proof, ints, context, nonce
+}
+
 func TestFullBoundIssuanceAndShowing(t *testing.T) {
 	context, _ := common.RandomBigInt(testPubK.Params.Lh)
 	nonce1, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
@@ -461,7 +675,7 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 	cb2 := NewCredentialBuilder(testPubK, context, secret, nonce2, nil)
 	issuer2 := NewIssuer(testPrivK, testPubK, context)
 
-	db, err := cred1.CreateDisclosureProofBuilder([]int{1, 2}, false)
+	db, err := cred1.CreateDisclosureProofBuilder([]int{1, 2}, false, nil)
 	require.NoError(t, err)
 	builders := ProofBuilderList([]ProofBuilder{db, cb2})
 	prooflist := builders.BuildProofList(context, nonce1, false)
@@ -571,7 +785,7 @@ func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 	cb2 := NewCredentialBuilder(issuer2.Pk, context, secret, nonce2, nil)
 
 	nonce1, _ := common.RandomBigInt(DefaultSystemParameters[keylength].Lstatzk)
-	db, err := cred1.CreateDisclosureProofBuilder([]int{1, 2}, false)
+	db, err := cred1.CreateDisclosureProofBuilder([]int{1, 2}, false, nil)
 	require.NoError(t, err)
 	builders := ProofBuilderList([]ProofBuilder{db, cb2})
 	prooflist := builders.BuildProofList(context, nonce1, false)
@@ -611,7 +825,7 @@ func TestWronglyBoundIssuanceAndShowingWithDifferentIssuers(t *testing.T) {
 	cb2 := NewCredentialBuilder(issuer2.Pk, context, secret2, nonce2, nil)
 
 	nonce1, _ := common.RandomBigInt(DefaultSystemParameters[keylength].Lstatzk)
-	db, err := cred1.CreateDisclosureProofBuilder([]int{1, 2}, false)
+	db, err := cred1.CreateDisclosureProofBuilder([]int{1, 2}, false, nil)
 	require.NoError(t, err)
 	builders := ProofBuilderList([]ProofBuilder{db, cb2})
 	prooflist := builders.BuildProofList(context, nonce1, false)

@@ -5,6 +5,8 @@
 package gabi
 
 import (
+	"time"
+
 	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
@@ -33,6 +35,7 @@ type DisclosureProofBuilder struct {
 	pk                    *PublicKey
 	attributes            []*big.Int
 	nonrevBuilder         *NonRevocationProofBuilder
+	linkability           *ContextualLinkability
 }
 
 type NonRevocationProofBuilder struct {
@@ -95,7 +98,7 @@ func getUndisclosedAttributes(disclosedAttributes []int, numAttributes int) []in
 // CreateDisclosureProof creates a disclosure proof (ProofD) voor the provided
 // indices of disclosed attributes.
 func (ic *Credential) CreateDisclosureProof(disclosedAttributes []int, nonrev bool, context, nonce1 *big.Int) (*ProofD, error) {
-	builder, err := ic.CreateDisclosureProofBuilder(disclosedAttributes, nonrev)
+	builder, err := ic.CreateDisclosureProofBuilder(disclosedAttributes, nonrev, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -106,8 +109,20 @@ func (ic *Credential) CreateDisclosureProof(disclosedAttributes []int, nonrev bo
 // CreateDisclosureProofBuilder produces a DisclosureProofBuilder, an object to
 // hold the state in the protocol for producing a disclosure proof that is
 // linked to other proofs.
-func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int, nonrev bool) (*DisclosureProofBuilder, error) {
+func (ic *Credential) CreateDisclosureProofBuilder(
+	disclosedAttributes []int, nonrev bool, linkability *ContextualLinkability,
+) (*DisclosureProofBuilder, error) {
 	d := &DisclosureProofBuilder{}
+	d.disclosedAttributes = disclosedAttributes
+	d.undisclosedAttributes = getUndisclosedAttributes(disclosedAttributes, len(ic.Attributes))
+
+	if linkability != nil {
+		d.linkability = linkability.copy() // store our own copy since committing modifies it
+		if err := linkability.validate(d, ic, nonrev); err != nil {
+			return nil, err
+		}
+	}
+
 	d.z = big.NewInt(1)
 	d.pk = ic.Pk
 	d.randomizedSignature = ic.Signature.Randomize(ic.Pk)
@@ -115,8 +130,6 @@ func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int, no
 	d.vCommit, _ = common.RandomBigInt(ic.Pk.Params.LvCommit)
 
 	d.attrRandomizers = make(map[int]*big.Int)
-	d.disclosedAttributes = disclosedAttributes
-	d.undisclosedAttributes = getUndisclosedAttributes(disclosedAttributes, len(ic.Attributes))
 	d.attributes = ic.Attributes
 	for _, v := range d.undisclosedAttributes {
 		d.attrRandomizers[v], _ = common.RandomBigInt(ic.Pk.Params.LmCommit)
@@ -254,6 +267,15 @@ func (d *DisclosureProofBuilder) Commit(randomizers map[string]*big.Int) []*big.
 		}
 		list = append(list, l...)
 	}
+
+	if d.linkability == nil {
+		return list
+	}
+
+	d.linkability.epoch = time.Now().Unix() / int64(d.linkability.EpochLength)
+	d.linkability.pk = d.pk
+	list = append(list, d.linkability.commit(d.attrRandomizers)...)
+
 	return list
 }
 
@@ -275,6 +297,15 @@ func (d *DisclosureProofBuilder) CreateProof(challenge *big.Int) Proof {
 		aResponses[v] = t.Add(d.attrRandomizers[v], t)
 	}
 
+	var linkproof *ContextualLinkabilityProof
+	if d.linkability != nil {
+		linkproof = &ContextualLinkabilityProof{
+			Ints:     d.linkability.createProof(d.attributes),
+			Epoch:    d.linkability.epoch,
+			Verifier: d.linkability.Verifier,
+		}
+	}
+
 	aDisclosed := make(map[int]*big.Int)
 	for _, v := range d.disclosedAttributes {
 		aDisclosed[v] = d.attributes[v]
@@ -294,6 +325,7 @@ func (d *DisclosureProofBuilder) CreateProof(challenge *big.Int) Proof {
 		AResponses:         aResponses,
 		ADisclosed:         aDisclosed,
 		NonRevocationProof: nonrevProof,
+		LinkabilityProof:   linkproof,
 	}
 }
 
