@@ -469,7 +469,7 @@ func (pubk *PublicKey) Hash(bts []byte) *big.Int {
 
 	// Compute H(i || bts) with increasing i until the output is smaller than (n-1)/2
 	for i := 0; i == 0 || x.Cmp(max) >= 0; i++ {
-		asn, _ := asn1.Marshal(struct { // error never errors
+		asn, _ := asn1.Marshal(struct { // does not error
 			A int
 			B []byte
 		}{A: i, B: bts})

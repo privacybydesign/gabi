@@ -565,7 +565,7 @@ func TestContextualLinkabilityHash(t *testing.T) {
 		Verifier: "test",
 		pk:       testPubK,
 	}
-	bts, err := asn1.Marshal(contextualLinkabilityHashInput{0, "test", 0})
+	bts, err := asn1.Marshal(contextualLinkabilityHashInput{0, "test"})
 	assert.NoError(t, err)
 	hash := testPubK.Hash(bts)
 	assert.Equal(t, hash, linkability.hash(0))

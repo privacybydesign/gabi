@@ -38,7 +38,6 @@ type (
 	contextualLinkabilityHashInput struct {
 		Epoch    int64
 		Verifier string
-		Count    int64 // For later extension to k-anonymity; not currently used
 	}
 )
 
@@ -46,9 +45,9 @@ type (
 // this many seconds old
 const epochGrace = 3 * 60
 
-// hash computes the base element R = H(epoch || verifier || count) for linkable integers.
+// hash computes the base element R = H(epoch || verifier) for linkable integers.
 func (l *ContextualLinkability) hash(epoch int64) *big.Int {
-	bts, _ := asn1.Marshal(contextualLinkabilityHashInput{epoch, l.Verifier, 0}) // does not error
+	bts, _ := asn1.Marshal(contextualLinkabilityHashInput{epoch, l.Verifier}) // does not error
 	return l.pk.Hash(bts)
 }
 
