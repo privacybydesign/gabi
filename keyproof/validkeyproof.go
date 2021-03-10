@@ -40,7 +40,7 @@ type (
 	}
 )
 
-func NewValidKeyProofStructure(N *big.Int, Z *big.Int, S *big.Int, Bases []*big.Int) ValidKeyProofStructure {
+func NewValidKeyProofStructure(N *big.Int, Bases []*big.Int) ValidKeyProofStructure {
 	var structure ValidKeyProofStructure
 
 	structure.n = new(big.Int).Set(N)
@@ -86,8 +86,7 @@ func NewValidKeyProofStructure(N *big.Int, Z *big.Int, S *big.Int, Bases []*big.
 	structure.pprimeIsPrime = newPrimeProofStructure("pprime", uint((N.BitLen()+1)/2))
 	structure.qprimeIsPrime = newPrimeProofStructure("qprime", uint((N.BitLen()+1)/2))
 
-	BaseList := append([]*big.Int{Z, S}, Bases...)
-	structure.basesValid = newIsSquareProofStructure(N, BaseList)
+	structure.basesValid = newIsSquareProofStructure(N, Bases)
 
 	return structure
 }

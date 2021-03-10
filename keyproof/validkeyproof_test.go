@@ -17,7 +17,7 @@ func TestValidKeyProof(t *testing.T) {
 
 	Follower.(*TestFollower).count = 0
 
-	s := NewValidKeyProofStructure(big.NewInt(p*q), big.NewInt(a), big.NewInt(b), []*big.Int{big.NewInt(c)})
+	s := NewValidKeyProofStructure(big.NewInt(p*q), []*big.Int{big.NewInt(a), big.NewInt(b), big.NewInt(c)})
 	proof := s.BuildProof(big.NewInt((p-1)/2), big.NewInt((q-1)/2))
 
 	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
@@ -36,7 +36,7 @@ func TestValidKeyProofStructure(t *testing.T) {
 	const b = 49
 	const c = 64
 
-	s := NewValidKeyProofStructure(big.NewInt(p*q), big.NewInt(a), big.NewInt(b), []*big.Int{big.NewInt(c)})
+	s := NewValidKeyProofStructure(big.NewInt(p*q), []*big.Int{big.NewInt(a), big.NewInt(b), big.NewInt(c)})
 	proof := s.BuildProof(big.NewInt((p-1)/2), big.NewInt((q-1)/2))
 
 	backup := proof.GroupPrime
@@ -113,7 +113,7 @@ func TestValidKeyProofJSON(t *testing.T) {
 	const b = 49
 	const c = 64
 
-	s := NewValidKeyProofStructure(big.NewInt(p*q), big.NewInt(a), big.NewInt(b), []*big.Int{big.NewInt(c)})
+	s := NewValidKeyProofStructure(big.NewInt(p*q), []*big.Int{big.NewInt(a), big.NewInt(b), big.NewInt(c)})
 	proofBefore := s.BuildProof(big.NewInt((p-1)/2), big.NewInt((q-1)/2))
 	proofJSON, err := json.Marshal(proofBefore)
 	assert.NoError(t, err, "error during json marshal")
