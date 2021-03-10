@@ -1,7 +1,9 @@
 package keyproof
 
-import "github.com/privacybydesign/gabi/big"
-import "github.com/privacybydesign/gabi/safeprime"
+import (
+	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/safeprime"
+)
 
 // Performance parameter, defines ammount of extra bits allowed when using a convenient safe prime
 const convenientRange = 100
@@ -53,8 +55,13 @@ func findSafePrime(size int) *big.Int {
 	result := findConvenientPrime(size)
 	if result == nil {
 		var err error
-		result, err = safeprime.Generate(size, nil)
-		if err != nil {
+		stop := make(chan struct{})
+		resultChan, errChan := safeprime.GenerateConcurrent(size, stop)
+		select {
+		case result = <-resultChan:
+			stop <- struct{}{}
+			break
+		case err = <-errChan:
 			panic(err.Error())
 		}
 	}
