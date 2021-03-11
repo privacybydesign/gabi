@@ -3,6 +3,7 @@ package keyproof
 import (
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
+	"github.com/privacybydesign/gabi/safeprime"
 )
 
 type (
@@ -89,6 +90,25 @@ func NewValidKeyProofStructure(N *big.Int, Bases []*big.Int) ValidKeyProofStruct
 	structure.basesValid = newIsSquareProofStructure(N, Bases)
 
 	return structure
+}
+
+func CanProve(Pprime *big.Int, Qprime *big.Int) bool {
+	P := new(big.Int).Add(new(big.Int).Lsh(Pprime, 1), big.NewInt(1))
+	Q := new(big.Int).Add(new(big.Int).Lsh(Qprime, 1), big.NewInt(1))
+	if !safeprime.ProbablySafePrime(P, 80) || !safeprime.ProbablySafePrime(Q, 80) {
+		return false
+	}
+
+	bigOne := big.NewInt(1)
+	bigEight := big.NewInt(8)
+	PMod := new(big.Int).Mod(P, bigEight)
+	QMod := new(big.Int).Mod(Q, bigEight)
+	PPrimeMod := new(big.Int).Mod(Pprime, bigEight)
+	QPrimeMod := new(big.Int).Mod(Qprime, bigEight)
+
+	return PMod.Cmp(bigOne) != 0 && QMod.Cmp(bigOne) != 0 &&
+		PPrimeMod.Cmp(bigOne) != 0 && QPrimeMod.Cmp(bigOne) != 0 &&
+		PMod.Cmp(QMod) != 0 && PPrimeMod.Cmp(QPrimeMod) != 0
 }
 
 func (s *ValidKeyProofStructure) BuildProof(Pprime *big.Int, Qprime *big.Int) ValidKeyProof {
