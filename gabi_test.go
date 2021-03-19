@@ -13,9 +13,8 @@ import (
 	"github.com/privacybydesign/gabi/internal/common"
 	"github.com/privacybydesign/gabi/revocation"
 	"github.com/privacybydesign/gabi/safeprime"
-	"github.com/stretchr/testify/require"
-
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -133,6 +132,7 @@ func setupParameters() error {
 
 	testPrivK = NewPrivateKey(p, q, "", 0, time.Now().AddDate(1, 0, 0))
 	testPubK = NewPublicKey(n, Z, S, nil, nil, R, "", 0, time.Now().AddDate(1, 0, 0))
+	testPubK.KeyID = "testPubK"
 
 	var err error
 	testPrivK1, err = NewPrivateKeyFromXML(xmlPrivKey1, false)
@@ -143,6 +143,7 @@ func setupParameters() error {
 	if err != nil {
 		return err
 	}
+	testPubK1.KeyID = "testPubK1"
 	testPrivK2, err = NewPrivateKeyFromXML(xmlPrivKey2, false)
 	if err != nil {
 		return err
@@ -151,6 +152,7 @@ func setupParameters() error {
 	if err != nil {
 		return err
 	}
+	testPubK2.KeyID = "testPubK2"
 	return nil
 }
 
@@ -235,11 +237,11 @@ func TestProofU(t *testing.T) {
 	secret, _ := common.RandomBigInt(DefaultSystemParameters[keylength].Lm)
 
 	b := NewCredentialBuilder(testPubK, context, secret, nonce2, nil)
-	proofU := b.CreateProof(createChallenge(context, nonce1, b.Commit(map[string]*big.Int{"secretkey": secret}), false))
+	proofU := b.CreateProof(createChallenge(context, nonce1, b.Commit(map[string]*big.Int{"secretkey": secret}), nil, false))
 
-	contrib, err := proofU.ChallengeContribution(testPubK)
+	contrib, err := proofU.ChallengeContribution(testPubK, nil)
 	require.NoError(t, err)
-	assert.True(t, proofU.VerifyWithChallenge(testPubK, createChallenge(context, nonce1, contrib, false)), "ProofU does not verify, whereas it should.")
+	assert.True(t, proofU.VerifyWithChallenge(testPubK, createChallenge(context, nonce1, contrib, nil, false)), "ProofU does not verify, whereas it should.")
 }
 
 func TestProofULogged(t *testing.T) {
@@ -266,7 +268,7 @@ func TestCommitmentMessage(t *testing.T) {
 	b := NewCredentialBuilder(testPubK, context, secret, nonce2, nil)
 	msg := b.CommitToSecretAndProve(nonce1)
 
-	assert.True(t, msg.Proofs.Verify([]*PublicKey{testPubK}, context, nonce1, false, nil), "Commitment message proof does not verify, whereas it should.")
+	assert.True(t, msg.Proofs.Verify([]*PublicKey{testPubK}, context, nonce1, false, nil, nil, nil), "Commitment message proof does not verify, whereas it should.")
 }
 
 func TestProofS(t *testing.T) {
@@ -374,9 +376,9 @@ func TestCombinedShowingProof(t *testing.T) {
 	b2, err := cred2.CreateDisclosureProofBuilder([]int{1, 3}, false)
 	require.NoError(t, err)
 	builders := ProofBuilderList([]ProofBuilder{b1, b2})
-	prooflist := builders.BuildProofList(context, nonce1, false)
+	prooflist := builders.BuildProofList(context, nonce1, nil, false)
 
-	assert.True(t, prooflist.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, false, nil), "Prooflist does not verify whereas it should!")
+	assert.True(t, prooflist.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, false, nil, nil, nil), "Prooflist does not verify whereas it should!")
 }
 
 // A convenience function for initializing big integers from known correct (10
@@ -464,11 +466,11 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 	db, err := cred1.CreateDisclosureProofBuilder([]int{1, 2}, false)
 	require.NoError(t, err)
 	builders := ProofBuilderList([]ProofBuilder{db, cb2})
-	prooflist := builders.BuildProofList(context, nonce1, false)
+	prooflist := builders.BuildProofList(context, nonce1, nil, false)
 
 	commitMsg2 := cb2.CreateIssueCommitmentMessage(prooflist)
 
-	assert.True(t, commitMsg2.Proofs.Verify([]*PublicKey{testPubK, testPubK}, context, nonce1, false, nil), "Proofs in commit message do not verify!")
+	assert.True(t, commitMsg2.Proofs.Verify([]*PublicKey{testPubK, testPubK}, context, nonce1, false, nil, nil, nil), "Proofs in commit message do not verify!")
 
 	msg, err := issuer2.IssueSignature(commitMsg2.U, testAttributes1, nil, nonce2, nil)
 	assert.NoError(t, err, "error creating Issue Signature")
@@ -574,11 +576,11 @@ func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 	db, err := cred1.CreateDisclosureProofBuilder([]int{1, 2}, false)
 	require.NoError(t, err)
 	builders := ProofBuilderList([]ProofBuilder{db, cb2})
-	prooflist := builders.BuildProofList(context, nonce1, false)
+	prooflist := builders.BuildProofList(context, nonce1, nil, false)
 
 	commitMsg := cb2.CreateIssueCommitmentMessage(prooflist)
 
-	assert.True(t, commitMsg.Proofs.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, false, nil), "Proofs in commit message do not verify!")
+	assert.True(t, commitMsg.Proofs.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, false, nil, nil, nil), "Proofs in commit message do not verify!")
 
 	msg, err := issuer2.IssueSignature(commitMsg.U, testAttributes2, nil, nonce2, nil)
 	assert.NoError(t, err, "error creating Issue Signature")
@@ -614,11 +616,11 @@ func TestWronglyBoundIssuanceAndShowingWithDifferentIssuers(t *testing.T) {
 	db, err := cred1.CreateDisclosureProofBuilder([]int{1, 2}, false)
 	require.NoError(t, err)
 	builders := ProofBuilderList([]ProofBuilder{db, cb2})
-	prooflist := builders.BuildProofList(context, nonce1, false)
+	prooflist := builders.BuildProofList(context, nonce1, nil, false)
 
 	commitMsg := cb2.CreateIssueCommitmentMessage(prooflist)
 
-	assert.False(t, commitMsg.Proofs.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, false, nil), "Proofs in commit message verify, whereas they should not!")
+	assert.False(t, commitMsg.Proofs.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, false, nil, nil, nil), "Proofs in commit message verify, whereas they should not!")
 }
 
 func TestBigAttribute(t *testing.T) {
@@ -695,7 +697,7 @@ func TestNotRevoked(t *testing.T) {
 	proofd, err := cred.CreateDisclosureProof([]int{1, 2}, true, context, nonce)
 	require.NoError(t, err)
 	require.NotNil(t, proofd.NonRevocationProof)
-	require.True(t, ProofList{proofd}.Verify([]*PublicKey{testPubK}, context, nonce, false, nil))
+	require.True(t, ProofList{proofd}.Verify([]*PublicKey{testPubK}, context, nonce, false, nil, nil, nil))
 }
 
 func TestRevoked(t *testing.T) {
@@ -768,6 +770,22 @@ func TestFullIssueAndShowWithRevocation(t *testing.T) {
 	require.Equal(t, cache.index, acc.Index)
 }
 
+func TestKeyshare(t *testing.T) {
+	secret, err := NewKeyshareSecret()
+	require.NoError(t, err)
+
+	commit, W, err := NewProofPCommitments(secret, []*PublicKey{testPubK})
+	require.NoError(t, err)
+
+	response := KeyshareProofP(secret, commit, big.NewInt(123), testPubK)
+	assert.Equal(t, new(big.Int).Exp(testPubK.R[0], response.SResponse, testPubK.N),
+		new(big.Int).Mod(
+			new(big.Int).Mul(
+				W[0].Pcommit,
+				new(big.Int).Exp(W[0].P, big.NewInt(123), testPubK.N)),
+			testPubK.N))
+}
+
 // TODO: tests to add:
 // - Reading/writing key files
 // - Tests with expiration dates?
@@ -788,9 +806,9 @@ func TestRandomBlindProofU(t *testing.T) {
 	assert.Len(t, proofU.MUserResponses, 1)
 	assert.Contains(t, proofU.MUserResponses, 2+1)
 
-	c, err := proofU.ChallengeContribution(testPubK)
+	c, err := proofU.ChallengeContribution(testPubK, nil)
 	assert.NoError(t, err)
-	assert.True(t, proofU.VerifyWithChallenge(testPubK, createChallenge(context, nonce1, c, false)))
+	assert.True(t, proofU.VerifyWithChallenge(testPubK, createChallenge(context, nonce1, c, nil, false)))
 }
 
 // Tests CreateProof() and Commit()
@@ -802,10 +820,10 @@ func TestRandomBlindCreateProofUandCommit(t *testing.T) {
 	secret, _ := common.RandomBigInt(DefaultSystemParameters[keylength].Lm)
 
 	b := NewCredentialBuilder(testPubK, context, secret, nonce2, []int{2})
-	proofU := b.CreateProof(createChallenge(context, nonce1, b.Commit(map[string]*big.Int{"secretkey": secret}), false))
-	c, err := proofU.ChallengeContribution(testPubK)
+	proofU := b.CreateProof(createChallenge(context, nonce1, b.Commit(map[string]*big.Int{"secretkey": secret}), nil, false))
+	c, err := proofU.ChallengeContribution(testPubK, nil)
 	assert.NoError(t, err)
-	assert.True(t, proofU.VerifyWithChallenge(testPubK, createChallenge(context, nonce1, c, false)), "ProofU does not verify, whereas it should.")
+	assert.True(t, proofU.VerifyWithChallenge(testPubK, createChallenge(context, nonce1, c, nil, false)), "ProofU does not verify, whereas it should.")
 }
 
 func TestRandomBlindIssuance(t *testing.T) {
@@ -923,6 +941,320 @@ func TestConstructCredentialNonZeroRandomBlindAttributes(t *testing.T) {
 	// attributes at the randomblind indices should be initialized as nil by the client.
 	_, err = b.ConstructCredential(msg, testAttributes1)
 	assert.EqualError(t, err, "attribute at random blind index should be nil before issuance")
+}
+
+func TestCreateChallengeKeyshareCompatibility(t *testing.T) {
+	context, err := common.RandomBigInt(testPubK.Params.Lh)
+	require.NoError(t, err)
+	nonce, err := common.RandomBigInt(testPubK.Params.Lstatzk)
+	require.NoError(t, err)
+	a, err := common.RandomBigInt(256)
+	require.NoError(t, err)
+	b, err := common.RandomBigInt(256)
+	require.NoError(t, err)
+
+	c1 := createChallenge(context, nonce, []*big.Int{a}, []*big.Int{b}, false)
+	k := createChallenge(context, nonce, []*big.Int{a}, nil, false)
+	c2 := KeyshareChallenge(k, map[string]*big.Int{"b": b})
+	assert.Equal(t, 0, c1.Cmp(c2), "Keyshare and discloser dont agree on challenge")
+}
+
+func TestFullIssuanceAndShowingWithOldKeyshare(t *testing.T) {
+	context, err := common.RandomBigInt(testPubK.Params.Lh)
+	require.NoError(t, err)
+	nonce1, err := common.RandomBigInt(testPubK.Params.Lstatzk)
+	require.NoError(t, err)
+	nonce2, err := common.RandomBigInt(testPubK.Params.Lstatzk)
+	require.NoError(t, err)
+	secret, err := common.RandomBigInt(testPubK.Params.Lm)
+	require.NoError(t, err)
+	kssecret, err := NewKeyshareSecret()
+	require.NoError(t, err)
+
+	// Issuance
+	builder := NewCredentialBuilder(testPubK, context, secret, nonce2, nil)
+	ksCommit, ProofPCommitment, err := NewProofPCommitments(kssecret, []*PublicKey{testPubK})
+	require.NoError(t, err)
+	builder.MergeProofPCommitment(ProofPCommitment[0])
+	challenge := ProofBuilderList{builder}.Challenge(context, nonce1, nil, false)
+	userProof := builder.CreateProof(challenge)
+	proofP := KeyshareProofP(kssecret, ksCommit, challenge, testPubK)
+	userProof.MergeProofP(proofP, testPubK)
+	commitMsg := builder.CreateIssueCommitmentMessage(ProofList{userProof})
+
+	assert.True(t, commitMsg.Proofs.Verify([]*PublicKey{testPubK}, context, nonce1, false, []bool{true}, nil, nil), "Issuance proof not valid")
+	issuer := NewIssuer(testPrivK, testPubK, context)
+	sigMsg, err := issuer.IssueSignature(commitMsg.Proofs[0].(*ProofU).U, testAttributes1, nil, nonce2, nil)
+	assert.NoError(t, err, "Error in IssueSignature")
+
+	cred, err := builder.ConstructCredential(sigMsg, testAttributes1)
+	require.NoError(t, err, "Error in credential construction")
+
+	// Showing
+	n1, err := common.RandomBigInt(testPubK.Params.Lstatzk)
+	require.NoError(t, err)
+	disclosed := []int{1, 2}
+
+	discloseBuilder, err := cred.CreateDisclosureProofBuilder(disclosed, false)
+	require.NoError(t, err)
+	discloseKsCommit, discloseProofPCommitment, err := NewProofPCommitments(kssecret, []*PublicKey{testPubK})
+	discloseBuilder.MergeProofPCommitment(discloseProofPCommitment[0])
+	discloseChallenge := ProofBuilderList{discloseBuilder}.Challenge(context, n1, nil, false)
+	discloseUserProof := discloseBuilder.CreateProof(discloseChallenge)
+	discloseProofP := KeyshareProofP(kssecret, discloseKsCommit, discloseChallenge, testPubK)
+	discloseUserProof.MergeProofP(discloseProofP, testPubK)
+	assert.True(t, discloseUserProof.(*ProofD).Verify(testPubK, context, n1, false), "proof of disclosure does not verify, whereas it should.")
+}
+
+func TestMixedSessionOldKeyshare(t *testing.T) {
+	context, err := common.RandomBigInt(testPubK.Params.Lh)
+	require.NoError(t, err)
+	nonce1, err := common.RandomBigInt(testPubK.Params.Lstatzk)
+	require.NoError(t, err)
+	nonce2, err := common.RandomBigInt(testPubK.Params.Lstatzk)
+	require.NoError(t, err)
+	secret, err := common.RandomBigInt(testPubK.Params.Lm)
+	require.NoError(t, err)
+	kssecret, err := NewKeyshareSecret()
+	require.NoError(t, err)
+
+	// Issuance
+	builder := NewCredentialBuilder(testPubK, context, secret, nonce2, nil)
+	ksCommit, ProofPCommitment, err := NewProofPCommitments(kssecret, []*PublicKey{testPubK})
+	require.NoError(t, err)
+	builder.MergeProofPCommitment(ProofPCommitment[0])
+	challenge := ProofBuilderList{builder}.Challenge(context, nonce1, nil, false)
+	userProof := builder.CreateProof(challenge)
+	proofP := KeyshareProofP(kssecret, ksCommit, challenge, testPubK)
+	userProof.MergeProofP(proofP, testPubK)
+	commitMsg := builder.CreateIssueCommitmentMessage(ProofList{userProof})
+
+	assert.True(t, commitMsg.Proofs.Verify([]*PublicKey{testPubK}, context, nonce1, false, []bool{true}, nil, nil), "Issuance proof not valid")
+	issuer := NewIssuer(testPrivK, testPubK, context)
+	sigMsg, err := issuer.IssueSignature(commitMsg.Proofs[0].(*ProofU).U, testAttributes1, nil, nonce2, nil)
+	assert.NoError(t, err, "Error in IssueSignature")
+
+	cred1, err := builder.ConstructCredential(sigMsg, testAttributes1)
+	require.NoError(t, err, "Error in credential construction")
+
+	// prepare second (non-Keyshare) cred
+	issuer2 := NewIssuer(testPrivK2, testPubK2, context)
+	cred2 := createCredential(t, context, secret, issuer2)
+
+	// Disclosure
+	n1, err := common.RandomBigInt(testPubK.Params.Lstatzk)
+	require.NoError(t, err)
+	b1, err := cred1.CreateDisclosureProofBuilder([]int{1, 2}, false)
+	require.NoError(t, err)
+	b2, err := cred2.CreateDisclosureProofBuilder([]int{1, 3}, false)
+	require.NoError(t, err)
+	builders := ProofBuilderList([]ProofBuilder{b1, b2})
+	discloseCommit, discloseProofPCommits, err := NewProofPCommitments(kssecret, []*PublicKey{testPubK})
+	require.NoError(t, err)
+	b1.MergeProofPCommitment(discloseProofPCommits[0])
+	discloseChallenge := builders.Challenge(context, n1, nil, false)
+	discloseProofP := KeyshareProofP(kssecret, discloseCommit, discloseChallenge, testPubK)
+	proofs, err := builders.BuildDistributedProofList(discloseChallenge, []*ProofP{discloseProofP, nil})
+	require.NoError(t, err)
+	assert.True(t, proofs.Verify([]*PublicKey{testPubK, testPubK2}, context, n1, false, []bool{true, false}, nil, nil))
+}
+
+func TestFullIssuanceAndShowingWithNewKeyshare(t *testing.T) {
+	context, err := common.RandomBigInt(testPubK.Params.Lh)
+	require.NoError(t, err)
+	nonce1, err := common.RandomBigInt(testPubK.Params.Lstatzk)
+	require.NoError(t, err)
+	nonce2, err := common.RandomBigInt(testPubK.Params.Lstatzk)
+	require.NoError(t, err)
+	secret, err := common.RandomBigInt(testPubK.Params.Lm)
+	require.NoError(t, err)
+	kssecret, err := NewKeyshareSecret()
+	require.NoError(t, err)
+
+	builder := NewCredentialBuilder(testPubK, context, secret, nonce2, nil)
+	Ps := KeysharePs(kssecret, []*PublicKey{testPubK})
+	builder.MergeKeyshareP(Ps["testPubK"])
+	k := ProofBuilderList{builder}.Challenge(context, nonce1, nil, false)
+	ksCommit, Ws, err := NewKeyshareCommitments([]*PublicKey{testPubK})
+	require.NoError(t, err)
+	challenge := KeyshareChallenge(k, Ws)
+	userProof := builder.CreateProof(challenge)
+	keyshareContribution := KeyshareResponse(userProof.SecretKeyResponse(), kssecret, ksCommit, challenge)
+	userProof.MergeKeyshareContribution(keyshareContribution)
+	commitMsg := builder.CreateIssueCommitmentMessage(ProofList{userProof})
+
+	assert.True(t, commitMsg.Proofs.Verify([]*PublicKey{testPubK}, context, nonce1, false, []bool{true}, Ws, keyshareContribution), "Issuance proof not valid")
+	issuer := NewIssuer(testPrivK, testPubK, context)
+	sigMsg, err := issuer.IssueSignature(commitMsg.Proofs[0].(*ProofU).U, testAttributes1, nil, nonce2, nil)
+	assert.NoError(t, err, "Error in IssueSignature")
+
+	cred, err := builder.ConstructCredential(sigMsg, testAttributes1)
+	require.NoError(t, err, "error in credential construction")
+
+	// Showing
+	n1, err := common.RandomBigInt(testPubK.Params.Lstatzk)
+	require.NoError(t, err)
+	disclosed := []int{1, 2}
+
+	discloseBuilder, err := cred.CreateDisclosureProofBuilder(disclosed, false)
+	discloseK := ProofBuilderList{discloseBuilder}.Challenge(context, n1, nil, false)
+	discloseKsCommit, Ws, err := NewKeyshareCommitments([]*PublicKey{testPubK})
+	require.NoError(t, err)
+	discloseChallenge := KeyshareChallenge(discloseK, Ws)
+	discloseUserProof := discloseBuilder.CreateProof(discloseChallenge)
+	discloseKeyshareResponse := KeyshareResponse(discloseUserProof.SecretKeyResponse(), kssecret, discloseKsCommit, discloseChallenge)
+	discloseUserProof.MergeKeyshareContribution(discloseKeyshareResponse)
+	assert.True(t, ProofList{discloseUserProof}.Verify([]*PublicKey{testPubK}, context, n1, false, []bool{true}, Ws, discloseKeyshareResponse), "Disclosure not valid")
+}
+
+func TestMixedSessionNewKeyshare(t *testing.T) {
+	context, err := common.RandomBigInt(testPubK.Params.Lh)
+	require.NoError(t, err)
+	nonce1, err := common.RandomBigInt(testPubK.Params.Lstatzk)
+	require.NoError(t, err)
+	nonce2, err := common.RandomBigInt(testPubK.Params.Lstatzk)
+	require.NoError(t, err)
+	secret, err := common.RandomBigInt(testPubK.Params.Lm)
+	require.NoError(t, err)
+	kssecret, err := NewKeyshareSecret()
+	require.NoError(t, err)
+
+	builder := NewCredentialBuilder(testPubK, context, secret, nonce2, nil)
+	Ps := KeysharePs(kssecret, []*PublicKey{testPubK})
+	builder.MergeKeyshareP(Ps["testPubK"])
+	k := ProofBuilderList{builder}.Challenge(context, nonce1, nil, false)
+	ksCommit, Ws, err := NewKeyshareCommitments([]*PublicKey{testPubK})
+	require.NoError(t, err)
+	challenge := KeyshareChallenge(k, Ws)
+	userProof := builder.CreateProof(challenge)
+	keyshareContribution := KeyshareResponse(userProof.SecretKeyResponse(), kssecret, ksCommit, challenge)
+	userProof.MergeKeyshareContribution(keyshareContribution)
+	commitMsg := builder.CreateIssueCommitmentMessage(ProofList{userProof})
+
+	assert.True(t, commitMsg.Proofs.Verify([]*PublicKey{testPubK}, context, nonce1, false, []bool{true}, Ws, keyshareContribution), "Issuance proof not valid")
+	issuer := NewIssuer(testPrivK, testPubK, context)
+	sigMsg, err := issuer.IssueSignature(commitMsg.Proofs[0].(*ProofU).U, testAttributes1, nil, nonce2, nil)
+	assert.NoError(t, err, "Error in IssueSignature")
+
+	cred1, err := builder.ConstructCredential(sigMsg, testAttributes1)
+	require.NoError(t, err, "error in credential construction")
+
+	// prepare second (non-Keyshare) cred
+	issuer2 := NewIssuer(testPrivK2, testPubK2, context)
+	cred2 := createCredential(t, context, secret, issuer2)
+
+	// Disclosure
+	n1, err := common.RandomBigInt(testPubK.Params.Lstatzk)
+	require.NoError(t, err)
+	b1, err := cred1.CreateDisclosureProofBuilder([]int{1, 2}, false)
+	require.NoError(t, err)
+	b2, err := cred2.CreateDisclosureProofBuilder([]int{1, 3}, false)
+	require.NoError(t, err)
+	builders := ProofBuilderList([]ProofBuilder{b1, b2})
+	discloseK := builders.Challenge(context, n1, nil, false)
+	discloseCommit, discloseWs, err := NewKeyshareCommitments([]*PublicKey{testPubK})
+	require.NoError(t, err)
+	discloseChallenge := KeyshareChallenge(discloseK, discloseWs)
+	proofs, err := builders.BuildDistributedProofList(discloseChallenge, nil)
+	require.NoError(t, err)
+	discloseKeyshareContribution := KeyshareResponse(proofs[0].SecretKeyResponse(), kssecret, discloseCommit, discloseChallenge)
+	proofs[0].MergeKeyshareContribution(discloseKeyshareContribution)
+	assert.True(t, proofs.Verify([]*PublicKey{testPubK, testPubK2}, context, n1, false, []bool{true, false}, discloseWs, discloseKeyshareContribution))
+}
+
+func TestFullIssuanceAndShowingOldToNew(t *testing.T) {
+	context, err := common.RandomBigInt(testPubK.Params.Lh)
+	require.NoError(t, err)
+	nonce1, err := common.RandomBigInt(testPubK.Params.Lstatzk)
+	require.NoError(t, err)
+	nonce2, err := common.RandomBigInt(testPubK.Params.Lstatzk)
+	require.NoError(t, err)
+	secret, err := common.RandomBigInt(testPubK.Params.Lm)
+	require.NoError(t, err)
+	kssecret, err := NewKeyshareSecret()
+	require.NoError(t, err)
+
+	// Issuance
+	builder := NewCredentialBuilder(testPubK, context, secret, nonce2, nil)
+	ksCommit, ProofPCommitment, err := NewProofPCommitments(kssecret, []*PublicKey{testPubK})
+	require.NoError(t, err)
+	builder.MergeProofPCommitment(ProofPCommitment[0])
+	challenge := ProofBuilderList{builder}.Challenge(context, nonce1, nil, false)
+	userProof := builder.CreateProof(challenge)
+	proofP := KeyshareProofP(kssecret, ksCommit, challenge, testPubK)
+	userProof.MergeProofP(proofP, testPubK)
+	commitMsg := builder.CreateIssueCommitmentMessage(ProofList{userProof})
+
+	assert.True(t, commitMsg.Proofs.Verify([]*PublicKey{testPubK}, context, nonce1, false, []bool{true}, nil, nil), "Issuance proof not valid")
+	issuer := NewIssuer(testPrivK, testPubK, context)
+	sigMsg, err := issuer.IssueSignature(commitMsg.Proofs[0].(*ProofU).U, testAttributes1, nil, nonce2, nil)
+	assert.NoError(t, err, "Error in IssueSignature")
+
+	cred, err := builder.ConstructCredential(sigMsg, testAttributes1)
+	require.NoError(t, err, "Error in credential construction")
+
+	// Showing
+	n1, err := common.RandomBigInt(testPubK.Params.Lstatzk)
+	require.NoError(t, err)
+	disclosed := []int{1, 2}
+
+	discloseBuilder, err := cred.CreateDisclosureProofBuilder(disclosed, false)
+	k := ProofBuilderList{discloseBuilder}.Challenge(context, n1, nil, false)
+	discloseKsCommit, Ws, err := NewKeyshareCommitments([]*PublicKey{testPubK})
+	require.NoError(t, err)
+	discloseChallenge := KeyshareChallenge(k, Ws)
+	discloseUserProof := discloseBuilder.CreateProof(discloseChallenge)
+	discloseKeyshareResponse := KeyshareResponse(discloseUserProof.SecretKeyResponse(), kssecret, discloseKsCommit, discloseChallenge)
+	discloseUserProof.MergeKeyshareContribution(discloseKeyshareResponse)
+	assert.True(t, ProofList{discloseUserProof}.Verify([]*PublicKey{testPubK}, context, n1, false, []bool{true}, Ws, discloseKeyshareResponse), "Disclosure not valid")
+}
+
+func TestFullIssuanceAndShowingNewToOld(t *testing.T) {
+	context, err := common.RandomBigInt(testPubK.Params.Lh)
+	require.NoError(t, err)
+	nonce1, err := common.RandomBigInt(testPubK.Params.Lstatzk)
+	require.NoError(t, err)
+	nonce2, err := common.RandomBigInt(testPubK.Params.Lstatzk)
+	require.NoError(t, err)
+	secret, err := common.RandomBigInt(testPubK.Params.Lm)
+	require.NoError(t, err)
+	kssecret, err := NewKeyshareSecret()
+	require.NoError(t, err)
+
+	builder := NewCredentialBuilder(testPubK, context, secret, nonce2, nil)
+	Ps := KeysharePs(kssecret, []*PublicKey{testPubK})
+	builder.MergeKeyshareP(Ps["testPubK"])
+	k := ProofBuilderList{builder}.Challenge(context, nonce1, nil, false)
+	ksCommit, Ws, err := NewKeyshareCommitments([]*PublicKey{testPubK})
+	require.NoError(t, err)
+	challenge := KeyshareChallenge(k, Ws)
+	userProof := builder.CreateProof(challenge)
+	keyshareContribution := KeyshareResponse(userProof.SecretKeyResponse(), kssecret, ksCommit, challenge)
+	userProof.MergeKeyshareContribution(keyshareContribution)
+	commitMsg := builder.CreateIssueCommitmentMessage(ProofList{userProof})
+
+	assert.True(t, commitMsg.Proofs.Verify([]*PublicKey{testPubK}, context, nonce1, false, []bool{true}, Ws, keyshareContribution), "Issuance proof not valid")
+	issuer := NewIssuer(testPrivK, testPubK, context)
+	sigMsg, err := issuer.IssueSignature(commitMsg.Proofs[0].(*ProofU).U, testAttributes1, nil, nonce2, nil)
+	assert.NoError(t, err, "Error in IssueSignature")
+
+	cred, err := builder.ConstructCredential(sigMsg, testAttributes1)
+	require.NoError(t, err, "error in credential construction")
+
+	// Showing
+	n1, err := common.RandomBigInt(testPubK.Params.Lstatzk)
+	require.NoError(t, err)
+	disclosed := []int{1, 2}
+
+	discloseBuilder, err := cred.CreateDisclosureProofBuilder(disclosed, false)
+	require.NoError(t, err)
+	discloseKsCommit, discloseProofPCommitment, err := NewProofPCommitments(kssecret, []*PublicKey{testPubK})
+	discloseBuilder.MergeProofPCommitment(discloseProofPCommitment[0])
+	discloseChallenge := ProofBuilderList{discloseBuilder}.Challenge(context, n1, nil, false)
+	discloseUserProof := discloseBuilder.CreateProof(discloseChallenge)
+	discloseProofP := KeyshareProofP(kssecret, discloseKsCommit, discloseChallenge, testPubK)
+	discloseUserProof.MergeProofP(discloseProofP, testPubK)
+	assert.True(t, discloseUserProof.(*ProofD).Verify(testPubK, context, n1, false), "proof of disclosure does not verify, whereas it should.")
 }
 
 func TestMain(m *testing.M) {

@@ -319,6 +319,7 @@ type PublicKey struct {
 	EpochLength EpochLength       `xml:"Features"`
 	Params      *SystemParameters `xml:"-"`
 	Issuer      string            `xml:"-"`
+	KeyID       string            `xml:"-"` // Used during new keyshare protocol
 	ECDSA       string            `xml:",omitempty"`
 
 	revocationKey *revocation.PublicKey

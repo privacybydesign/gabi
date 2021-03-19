@@ -16,19 +16,35 @@ import (
 type Proof interface {
 	VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.Int) bool
 	SecretKeyResponse() *big.Int
-	ChallengeContribution(pk *PublicKey) ([]*big.Int, error)
+	ChallengeContribution(pk *PublicKey, keyshareW *big.Int) ([]*big.Int, error)
 	MergeProofP(proofP *ProofP, pk *PublicKey)
+	VerifyKeyshareContribution(contrib *KeyshareContribution) bool
+	MergeKeyshareContribution(contrib *KeyshareContribution)
+}
+
+// KeyshareContribution represents the (signed) portion of a keyshare servers contribution to a proof
+type KeyshareContribution struct {
+	S *big.Int
+	C *big.Int
 }
 
 // createChallenge creates a challenge based on context, nonce and the
 // contributions.
-func createChallenge(context, nonce *big.Int, contributions []*big.Int, issig bool) *big.Int {
+func createChallenge(context, nonce *big.Int, contributions []*big.Int, keyshareContributions []*big.Int, issig bool) *big.Int {
 	// Basically, sandwich the contributions between context and nonce
 	input := make([]*big.Int, 2+len(contributions))
 	input[0] = context
 	copy(input[1:1+len(contributions)], contributions)
 	input[len(input)-1] = nonce
-	return common.HashCommit(input, issig)
+	inner := common.HashCommit(input, issig, false)
+	if len(keyshareContributions) != 0 {
+		outerinput := make([]*big.Int, 1+len(keyshareContributions))
+		outerinput[0] = inner
+		copy(outerinput[1:], keyshareContributions)
+		return common.HashCommit(outerinput, false, true)
+	} else {
+		return inner
+	}
 }
 
 // ProofU represents a proof of correctness of the commitment in the first phase
@@ -49,13 +65,21 @@ func (p *ProofU) MergeProofP(proofP *ProofP, pk *PublicKey) {
 	p.SResponse.Add(p.SResponse, proofP.SResponse)
 }
 
+func (p *ProofU) MergeKeyshareContribution(contribution *KeyshareContribution) {
+	p.SResponse.Set(contribution.S)
+}
+
 // Verify verifies whether the proof is correct.
 func (p *ProofU) Verify(pk *PublicKey, context, nonce *big.Int) bool {
-	contrib, err := p.ChallengeContribution(pk)
+	contrib, err := p.ChallengeContribution(pk, nil)
 	if err != nil {
 		return false
 	}
-	return p.VerifyWithChallenge(pk, createChallenge(context, nonce, contrib, false))
+	return p.VerifyWithChallenge(pk, createChallenge(context, nonce, contrib, nil, false))
+}
+
+func (p *ProofU) VerifyKeyshareContribution(contribution *KeyshareContribution) bool {
+	return p.C.Cmp(contribution.C) == 0 && p.SResponse.Cmp(contribution.S) == 0
 }
 
 // correctResponseSizes checks the sizes of the elements in the ProofU proof.
@@ -74,7 +98,7 @@ func (p *ProofU) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.
 
 // reconstructUcommit reconstructs U from the information in the proof and the
 // provided public key.
-func (p *ProofU) reconstructUcommit(pk *PublicKey) *big.Int {
+func (p *ProofU) reconstructUcommit(pk *PublicKey, keyshareW *big.Int) *big.Int {
 	// Reconstruct Ucommit
 	// U_commit = U^{-C} * S^{VPrimeResponse} * R_0^{SResponse}
 	Uc := common.ModPow(p.U, new(big.Int).Neg(p.C), pk.N)
@@ -86,6 +110,9 @@ func (p *ProofU) reconstructUcommit(pk *PublicKey) *big.Int {
 	for i, miUserResponse := range p.MUserResponses {
 		Rimi := common.ModPow(pk.R[i], miUserResponse, pk.N)
 		Ucommit.Mul(Ucommit, Rimi).Mod(Ucommit, pk.N)
+	}
+	if keyshareW != nil {
+		Ucommit.Mul(Ucommit, new(big.Int).ModInverse(keyshareW, pk.N)).Mod(Ucommit, pk.N)
 	}
 
 	return Ucommit
@@ -104,8 +131,8 @@ func (p *ProofU) Challenge() *big.Int {
 
 // ChallengeContribution returns the contribution of this proof to the
 // challenge.
-func (p *ProofU) ChallengeContribution(pk *PublicKey) ([]*big.Int, error) {
-	return []*big.Int{p.U, p.reconstructUcommit(pk)}, nil
+func (p *ProofU) ChallengeContribution(pk *PublicKey, keyshareW *big.Int) ([]*big.Int, error) {
+	return []*big.Int{p.U, p.reconstructUcommit(pk, keyshareW)}, nil
 }
 
 // ProofS represents a proof.
@@ -127,7 +154,7 @@ func (p *ProofS) Verify(pk *PublicKey, signature *CLSignature, context, nonce *b
 	Q := new(big.Int).Exp(signature.A, signature.E, pk.N)
 
 	// Recalculate hash
-	cPrime := common.HashCommit([]*big.Int{context, Q, signature.A, nonce, ACommit}, false)
+	cPrime := common.HashCommit([]*big.Int{context, Q, signature.A, nonce, ACommit}, false, false)
 
 	return p.C.Cmp(cPrime) == 0
 }
@@ -145,6 +172,10 @@ type ProofD struct {
 
 func (p *ProofD) MergeProofP(proofP *ProofP, pk *PublicKey) {
 	p.SecretKeyResponse().Add(p.SecretKeyResponse(), proofP.SResponse)
+}
+
+func (p *ProofD) MergeKeyshareContribution(contribution *KeyshareContribution) {
+	p.AResponses[0].Set(contribution.S)
 }
 
 // correctResponseSizes checks the sizes of the elements in the ProofD proof.
@@ -173,7 +204,7 @@ func (p *ProofD) correctResponseSizes(pk *PublicKey) bool {
 
 // reconstructZ reconstructs Z from the information in the proof and the
 // provided public key.
-func (p *ProofD) reconstructZ(pk *PublicKey) *big.Int {
+func (p *ProofD) reconstructZ(pk *PublicKey, keyshareW *big.Int) *big.Int {
 	// known = Z / ( prod_{disclosed} R_i^{a_i} * A^{2^{l_e - 1}} )
 	numerator := new(big.Int).Lsh(big.NewInt(1), pk.Params.Le-1)
 	numerator.Exp(p.A, numerator, pk.N)
@@ -198,16 +229,24 @@ func (p *ProofD) reconstructZ(pk *PublicKey) *big.Int {
 	Z := new(big.Int).Mul(knownC, Ae)
 	Z.Mul(Z, Rs).Mul(Z, Sv).Mod(Z, pk.N)
 
+	if keyshareW != nil {
+		Z.Mul(Z, new(big.Int).ModInverse(keyshareW, pk.N)).Mod(Z, pk.N)
+	}
+
 	return Z
 }
 
 // Verify verifies the proof against the given public key, context, and nonce.
 func (p *ProofD) Verify(pk *PublicKey, context, nonce1 *big.Int, issig bool) bool {
-	contrib, err := p.ChallengeContribution(pk)
+	contrib, err := p.ChallengeContribution(pk, nil)
 	if err != nil {
 		return false
 	}
-	return p.VerifyWithChallenge(pk, createChallenge(context, nonce1, contrib, issig))
+	return p.VerifyWithChallenge(pk, createChallenge(context, nonce1, contrib, nil, issig))
+}
+
+func (p *ProofD) VerifyKeyshareContribution(contribution *KeyshareContribution) bool {
+	return p.C.Cmp(contribution.C) == 0 && p.AResponses[0].Cmp(contribution.S) == 0
 }
 
 func (p *ProofD) HasNonRevocationProof() bool {
@@ -239,8 +278,8 @@ func (p *ProofD) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.
 
 // ChallengeContribution returns the contribution of this proof to the
 // challenge.
-func (p *ProofD) ChallengeContribution(pk *PublicKey) ([]*big.Int, error) {
-	l := []*big.Int{p.A, p.reconstructZ(pk)}
+func (p *ProofD) ChallengeContribution(pk *PublicKey, keyshareW *big.Int) ([]*big.Int, error) {
+	l := []*big.Int{p.A, p.reconstructZ(pk, keyshareW)}
 	if p.NonRevocationProof != nil {
 		revPk, err := pk.RevocationKey()
 		if err != nil {

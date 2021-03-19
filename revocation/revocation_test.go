@@ -106,7 +106,7 @@ func testProof(t *testing.T, grp qrGroup, p, q *big.Int, valid bool) bool {
 	require.Equal(t, valid, proofstructure.isTrue((*witness)(witn), acc.Nu, grp.N), "statement to prove ")
 
 	list, commit := proofstructure.commitmentsFromSecrets(&grp, []*big.Int{}, &bases, (*witness)(witn))
-	challenge := common.HashCommit(list, false)
+	challenge := common.HashCommit(list, false, false)
 	sacc, err := acc.Sign(&privKey)
 	require.NoError(t, err)
 	prf := (*ProofCommit)(&commit).BuildProof(challenge)

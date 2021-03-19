@@ -159,7 +159,7 @@ func (s *ValidKeyProofStructure) BuildProof(Pprime *big.Int, Qprime *big.Int) Va
 
 	Follower.StepStart("Generating proof", 0)
 	// Calculate challenge
-	challenge := common.HashCommit(list, false)
+	challenge := common.HashCommit(list, false, false)
 
 	// Calculate proofs
 	proof := ValidKeyProof{
@@ -251,7 +251,7 @@ func (s *ValidKeyProofStructure) VerifyProof(proof ValidKeyProof) bool {
 	Follower.StepStart("Verifying proof", 0)
 
 	// Check challenge
-	if proof.Challenge.Cmp(common.HashCommit(list, false)) != 0 {
+	if proof.Challenge.Cmp(common.HashCommit(list, false, false)) != 0 {
 		return false
 	}
 

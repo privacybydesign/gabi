@@ -28,7 +28,7 @@ func TestQuasiSafePrimeProductFullCycle(t *testing.T) {
 	const p = 13451
 	const q = 13901
 	listBefore, commit := quasiSafePrimeProductBuildCommitments([]*big.Int{}, big.NewInt(p), big.NewInt(q))
-	challengeBefore := common.HashCommit(listBefore, false)
+	challengeBefore := common.HashCommit(listBefore, false, false)
 	proofBefore := quasiSafePrimeProductBuildProof(big.NewInt(p), big.NewInt(q), challengeBefore, commit)
 	proofJSON, err := json.Marshal(proofBefore)
 	require.NoError(t, err, "error during json marshal")
@@ -38,7 +38,7 @@ func TestQuasiSafePrimeProductFullCycle(t *testing.T) {
 	err = json.Unmarshal(proofJSON, &proofAfter)
 	require.NoError(t, err, "error during json unmarshal")
 	listAfter := quasiSafePrimeProductExtractCommitments([]*big.Int{}, proofAfter)
-	challengeAfter := common.HashCommit(listAfter, false)
+	challengeAfter := common.HashCommit(listAfter, false, false)
 	ok := quasiSafePrimeProductVerifyProof(big.NewInt((2*p+1)*(2*q+1)), challengeAfter, proofAfter)
 	assert.True(t, ok, "JSON proof rejected")
 }

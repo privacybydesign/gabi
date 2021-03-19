@@ -5,6 +5,8 @@
 package gabi
 
 import (
+	"sort"
+
 	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
@@ -15,6 +17,7 @@ import (
 type ProofBuilder interface {
 	Commit(randomizers map[string]*big.Int) []*big.Int
 	CreateProof(challenge *big.Int) Proof
+	MergeKeyshareP(keyshareP *big.Int)
 	PublicKey() *PublicKey
 	MergeProofPCommitment(commitment *ProofPCommitment)
 }
@@ -51,18 +54,46 @@ func (pl ProofList) GetFirstProofU() (*ProofU, error) {
 	return pl.GetProofU(0)
 }
 
+// Compute the keyshare contribution array from the map of keyshare W values
+func prepareKeyshareContributions(keyshareWs map[string]*big.Int) []*big.Int {
+	// Keyshare contributions are the Ws, ordered alphabetically on their issuer ids
+	// note that it is allowed to have unused keyshare contributions, so we dont
+	// need to check for that
+	keyshareIssuerIds := make([]string, 0, len(keyshareWs))
+	for k := range keyshareWs {
+		keyshareIssuerIds = append(keyshareIssuerIds, k)
+	}
+	sort.Strings(keyshareIssuerIds)
+	keyshareContributions := make([]*big.Int, len(keyshareWs))
+	for i, k := range keyshareIssuerIds {
+		keyshareContributions[i] = keyshareWs[k]
+	}
+	return keyshareContributions
+}
+
 // challengeContributions collects and returns all the challenge contributions
-// of the proofs contained in the proof list.
-func (pl ProofList) challengeContributions(publicKeys []*PublicKey, context, nonce *big.Int) ([]*big.Int, error) {
+// of the proofs contained in the proof list, including those of the keyshare server
+func (pl ProofList) challengeContributions(
+	publicKeys []*PublicKey,
+	context *big.Int,
+	nonce *big.Int,
+	hasKeyshareContribution []bool,
+	keyshareWs map[string]*big.Int) ([]*big.Int, []*big.Int, error) {
+	// Calculate proof contributions
 	contributions := make([]*big.Int, 0, len(pl)*2)
 	for i, proof := range pl {
-		contrib, err := proof.ChallengeContribution(publicKeys[i])
+		var keyshareW *big.Int = nil
+		if len(keyshareWs) != 0 && hasKeyshareContribution[i] {
+			keyshareW = keyshareWs[publicKeys[i].KeyID]
+		}
+		contrib, err := proof.ChallengeContribution(publicKeys[i], keyshareW)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		contributions = append(contributions, contrib...)
 	}
-	return contributions, nil
+
+	return contributions, prepareKeyshareContributions(keyshareWs), nil
 }
 
 // Verify returns true when all the proofs inside verify.
@@ -73,10 +104,21 @@ func (pl ProofList) challengeContributions(publicKeys []*PublicKey, context, non
 // the same secret key (i.e. it should be verified that all proofs use either none,
 // or one and the same keyshare server).
 // An empty ProofList is not considered valid.
-func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, issig bool, keyshareServers []string) bool {
+func (pl ProofList) Verify(
+	publicKeys []*PublicKey,
+	context *big.Int,
+	nonce *big.Int,
+	issig bool,
+	hasKeyshareContribution []bool,
+	keyshareWs map[string]*big.Int,
+	keyshareContribution *KeyshareContribution) bool {
+	// Note that, because of the legacy protocol, it is perfectly valid to have hasKeyshareContribution, but not have keyshareWs or a keyshareContribution
 	if len(pl) == 0 ||
 		len(pl) != len(publicKeys) ||
-		len(keyshareServers) > 0 && len(pl) != len(keyshareServers) {
+		(len(hasKeyshareContribution) > 0 && len(pl) != len(hasKeyshareContribution)) ||
+		(len(keyshareWs) != 0 && len(hasKeyshareContribution) == 0) ||
+		(len(keyshareWs) != 0 && keyshareContribution == nil) ||
+		(len(keyshareWs) == 0 && keyshareContribution != nil) {
 		return false
 	}
 
@@ -84,25 +126,30 @@ func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, iss
 	// then the secretkey = userpart + keysharepart.
 	// So, we can only expect two secret key responses to be equal if their credentials
 	// are both associated to either no keyshare server, or the same keyshare server.
+	// Since we only support a single keyshare server during a session, we need to keep two
+	// responses in mind, one with keysharepart, one without.
 	// During verification of the proofs we keep track of their secret key responses in this map.
-	secretkeyResponses := make(map[string]*big.Int)
+	secretkeyResponses := make(map[bool]*big.Int)
 
-	contributions, err := pl.challengeContributions(publicKeys, context, nonce)
+	contributions, keyshareContributions, err := pl.challengeContributions(publicKeys, context, nonce, hasKeyshareContribution, keyshareWs)
 	if err != nil {
 		return false
 	}
-	expectedChallenge := createChallenge(context, nonce, contributions, issig)
+	expectedChallenge := createChallenge(context, nonce, contributions, keyshareContributions, issig)
 
 	// If keyshareServers == nil then we never update this variable,
 	// so the check below verifies that all creds share the same secret key.
-	kss := ""
+	kss := false
 
 	for i, proof := range pl {
 		if !proof.VerifyWithChallenge(publicKeys[i], expectedChallenge) {
 			return false
 		}
-		if len(keyshareServers) > 0 {
-			kss = keyshareServers[i]
+		if len(hasKeyshareContribution) > 0 {
+			kss = hasKeyshareContribution[i]
+		}
+		if kss && keyshareContribution != nil && !proof.VerifyKeyshareContribution(keyshareContribution) {
+			return false
 		}
 		if response, contains := secretkeyResponses[kss]; !contains {
 			// First time we see this keyshare server
@@ -118,7 +165,7 @@ func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, iss
 	return true
 }
 
-func (builders ProofBuilderList) Challenge(context, nonce *big.Int, issig bool) *big.Int {
+func (builders ProofBuilderList) Challenge(context, nonce *big.Int, keyshareWs map[string]*big.Int, issig bool) *big.Int {
 	// The secret key may be used across credentials supporting different attribute sizes.
 	// So we should take it, and hence also its commitment, to fit within the smallest size -
 	// otherwise it will be too big so that we cannot perform the range proof showing
@@ -131,7 +178,7 @@ func (builders ProofBuilderList) Challenge(context, nonce *big.Int, issig bool) 
 	}
 
 	// Create a shared challenge
-	return createChallenge(context, nonce, commitmentValues, issig)
+	return createChallenge(context, nonce, commitmentValues, prepareKeyshareContributions(keyshareWs), issig)
 }
 
 func (builders ProofBuilderList) BuildDistributedProofList(
@@ -155,8 +202,8 @@ func (builders ProofBuilderList) BuildDistributedProofList(
 // BuildProofList builds a list of bounded proofs. For this it is given a list
 // of ProofBuilders. Examples of proof builders are CredentialBuilder and
 // DisclosureProofBuilder.
-func (builders ProofBuilderList) BuildProofList(context, nonce *big.Int, issig bool) ProofList {
-	challenge := builders.Challenge(context, nonce, issig)
+func (builders ProofBuilderList) BuildProofList(context, nonce *big.Int, keyshareWs map[string]*big.Int, issig bool) ProofList {
+	challenge := builders.Challenge(context, nonce, keyshareWs, issig)
 	list, _ := builders.BuildDistributedProofList(challenge, nil)
 	return list
 }
