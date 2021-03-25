@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/internal/common"
 )
 
 type SquaresTable [][]int64
@@ -33,4 +34,9 @@ func (t_ *SquaresTable) Split(delta *big.Int) ([]*big.Int, error) {
 	}
 
 	return []*big.Int{big.NewInt(t[v][0]), big.NewInt(t[v][1]), big.NewInt(t[v][2])}, nil
+}
+
+func FourSquareSplit(delta *big.Int) ([]*big.Int, error) {
+	a, b, c, d := common.SumFourSquare(delta)
+	return []*big.Int{a, b, c, d}, nil
 }

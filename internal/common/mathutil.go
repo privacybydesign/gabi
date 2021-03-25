@@ -6,6 +6,7 @@ package common
 
 import (
 	"crypto/rand"
+	mathRand "math/rand"
 
 	"github.com/privacybydesign/gabi/big"
 )
@@ -142,6 +143,148 @@ func Crt(a *big.Int, pa *big.Int, b *big.Int, pb *big.Int) *big.Int {
 	n := new(big.Int).Mul(pa, pb)
 	result.Mod(result, n)
 	return result
+}
+
+// Express a number as sum of four squares
+// algorithm from "Randomized algorithms in number theory" by M. Rabin and J. Shallit
+func SumFourSquare(n *big.Int) (*big.Int, *big.Int, *big.Int, *big.Int) {
+	if n.BitLen() == 0 {
+		return big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0)
+	}
+	temp := new(big.Int).And(n, bigTHREE)
+	if temp.Int64() == 2 {
+		return sumFourSquareSpecial(n)
+	} else if temp.Int64() == 0 {
+		// extract out 2^2k, then calculate subanswer and modify it by multiplying all values by 2^k
+		d := uint(1)
+		temp.Rsh(n, 1)
+		temp2 := new(big.Int).And(temp, bigTHREE)
+		for temp2.Int64() != 2 {
+			temp.Rsh(temp, 1)
+			d++
+			temp2.And(temp, bigTHREE)
+		}
+		if d%2 == 1 {
+			temp.Rsh(temp, 1)
+			d++
+		}
+		x, y, z, w := SumFourSquare(temp)
+		x.Lsh(x, d/2)
+		y.Lsh(y, d/2)
+		z.Lsh(z, d/2)
+		w.Lsh(w, d/2)
+		return x, y, z, w
+	} else {
+		temp.Lsh(n, 1)
+		x, y, z, w := sumFourSquareSpecial(temp)
+		temp.And(x, bigONE)
+		xOdd := temp.Int64()
+		temp.And(y, bigONE)
+		yOdd := temp.Int64()
+		if xOdd != yOdd {
+			temp.And(z, bigONE)
+			zOdd := temp.Int64()
+			if xOdd == zOdd {
+				y, z = z, y
+			} else {
+				y, w = w, y
+			}
+		}
+		if x.Cmp(y) < 0 {
+			x, y = y, x
+		}
+		if z.Cmp(w) < 0 {
+			z, w = w, z
+		}
+
+		temp.Sub(x, y)
+		x.Add(x, y)
+		x.Rsh(x, 1)
+		y.Rsh(temp, 1)
+		temp.Sub(z, w)
+		z.Add(z, w)
+		z.Rsh(z, 1)
+		w.Rsh(temp, 1)
+		return x, y, z, w
+	}
+}
+
+func sumFourSquareSpecial(n *big.Int) (*big.Int, *big.Int, *big.Int, *big.Int) {
+	if n.IsInt64() && n.Int64() < 4 {
+		return big.NewInt(1), big.NewInt(1), big.NewInt(0), big.NewInt(0)
+	}
+	rootN := new(big.Int).Sqrt(n)
+	x := new(big.Int)
+	y := new(big.Int)
+	z := new(big.Int)
+	w := new(big.Int)
+	p := new(big.Int)
+	t1 := new(big.Int)
+
+	// We do need randomness, but only because the polynomial time algorithm
+	// is randomized, so using mathRand is significantly faster and poses
+	// no security risks here
+	randomSource := mathRand.New(mathRand.NewSource(1))
+	for {
+		x.Rand(randomSource, rootN)
+		y.Rand(randomSource, rootN)
+
+		z.Mul(x, x)
+		z.Sub(n, z)
+		w.Mul(y, y)
+		z.Sub(z, w)
+
+		if z.IsInt64() && z.Int64() == 2 {
+			return x, y, big.NewInt(1), big.NewInt(1)
+		}
+
+		if z.BitLen() == 0 || z.Bits()[0]&3 != 1 {
+			continue // z unsuitable
+		}
+
+		if !z.ProbablyPrime(10) {
+			continue // z unsuitable
+		}
+
+		p.Set(z)
+
+		w.Sub(z, bigONE)
+		w.ModSqrt(w, z)
+
+		if 2*w.BitLen()-1 <= p.BitLen() {
+			t1.Mul(w, w)
+			if p.Cmp(t1) > 0 {
+				z.Mod(z, w)
+				return x, y, z, w
+			}
+		}
+
+		for {
+			z.Mod(z, w)
+			if z.BitLen() == 0 {
+				break
+			}
+			if 2*z.BitLen()-1 <= p.BitLen() {
+				t1.Mul(z, z)
+				if p.Cmp(t1) > 0 {
+					w.Mod(w, z)
+					return x, y, z, w
+				}
+			}
+
+			w.Mod(w, z)
+			if w.BitLen() == 0 {
+				break
+			}
+			if 2*w.BitLen()-1 <= p.BitLen() {
+				t1.Mul(w, w)
+				if p.Cmp(t1) > 0 {
+					z.Mod(z, w)
+					return x, y, z, w
+				}
+			}
+		}
+	}
 }
 
 // Calculate sqrt modulo a prime
