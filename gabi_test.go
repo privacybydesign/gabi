@@ -567,7 +567,7 @@ func TestShowingWithRangeproof(t *testing.T) {
 
 	// Definition of range proof structure
 	table := rangeproof.GenerateSquaresTable(65535)
-	s := rangeproof.New(table.Split, 3, 1, new(big.Int).Sub(testAttributes1[0], big.NewInt(253)), 8, testPubK1.Params.Lh, testPubK1.Params.Lstatzk, testPubK1.Params.Lm)
+	s := rangeproof.New(1, new(big.Int).Sub(testAttributes1[0], big.NewInt(253)), &table, testPubK1.Params.Lh, testPubK1.Params.Lstatzk, testPubK1.Params.Lm)
 
 	// Disclosure with rangeproof
 	builder, err := cred.CreateDisclosureProofBuilder([]int{2}, false)

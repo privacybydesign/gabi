@@ -90,20 +90,18 @@ import (
 // the rest of the proof then needs e to be replaced with E, the product of all used e_i's.
 
 type (
-	SplitFunction func(delta *big.Int) ([]*big.Int, error)
-
 	ProofStructure struct {
 		cRep     []qrRepresentationProofStructure
 		mCorrect qrRepresentationProofStructure
 
-		split SplitFunction
-		a     int
-		k     *big.Int
+		a int
+		k *big.Int
 
-		ld      uint
-		lm      uint
-		lh      uint
-		lstatzk uint
+		splitter Splitter
+		ld       uint
+		lm       uint
+		lh       uint
+		lstatzk  uint
 	}
 
 	Proof struct {
@@ -136,13 +134,12 @@ type (
 )
 
 // Create a new proof structure for proving a statement of form a*m - k >= 0
-//  split can be left nil if this structure will only be used for verification
-//  2*ld is the maximum number of bits allowed for the difference
+//  splitter describes the method used for splitting numbers into sum of squares
 //  lh is the size of the challenge
 //  lm the size of m, and also used as the number of bits for computational hiding
 //  lstatzk the number of bits of statistical hiding to use
-func New(split SplitFunction, nSplit, a int, k *big.Int, ld, lh, lstatzk, lm uint) *ProofStructure {
-	if nSplit > 4 {
+func New(a int, k *big.Int, split Splitter, lh, lstatzk, lm uint) *ProofStructure {
+	if split.Nsplit() > 4 {
 		panic("No support for range proofs with delta split in more than 4 squares")
 	}
 
@@ -157,17 +154,17 @@ func New(split SplitFunction, nSplit, a int, k *big.Int, ld, lh, lstatzk, lm uin
 			},
 		},
 
-		split: split,
-		a:     a,
-		k:     new(big.Int).Set(k),
+		a: a,
+		k: new(big.Int).Set(k),
 
-		ld:      ld,
-		lm:      lm,
-		lh:      lh,
-		lstatzk: lstatzk,
+		splitter: split,
+		ld:       split.Ld(),
+		lm:       lm,
+		lh:       lh,
+		lstatzk:  lstatzk,
 	}
 
-	for i := 0; i < nSplit; i++ {
+	for i := 0; i < split.Nsplit(); i++ {
 		result.cRep = append(result.cRep, qrRepresentationProofStructure{
 			Lhs: []keyproof.LhsContribution{
 				{Base: fmt.Sprintf("C%d", i), Power: big.NewInt(1)},
@@ -203,7 +200,7 @@ func (s *ProofStructure) CommitmentsFromSecrets(g *QrGroup, m, mRandomizer *big.
 		mRandomizer: mRandomizer,
 	}
 
-	commit.d, err = s.split(d)
+	commit.d, err = s.splitter.Split(d)
 	if err != nil {
 		return nil, nil, err
 	}
