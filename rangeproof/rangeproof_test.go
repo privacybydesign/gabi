@@ -28,7 +28,9 @@ func TestGroup(t *testing.T) {
 	assert.False(t, g.Exp(ret, "R1234", big.NewInt(11), g.N))
 }
 
-func bruteForceSplit3(delta *big.Int) ([]*big.Int, error) {
+type bruteForce3 struct{}
+
+func (_ *bruteForce3) Split(delta *big.Int) ([]*big.Int, error) {
 	if !delta.IsInt64() {
 		panic("too big")
 	}
@@ -52,7 +54,17 @@ func bruteForceSplit3(delta *big.Int) ([]*big.Int, error) {
 	panic("Not found")
 }
 
-func bruteForceSplit4(delta *big.Int) ([]*big.Int, error) {
+func (_ *bruteForce3) Nsplit() int {
+	return 3
+}
+
+func (_ *bruteForce3) Ld() uint {
+	return 8
+}
+
+type bruteForce4 struct{}
+
+func (_ *bruteForce4) Split(delta *big.Int) ([]*big.Int, error) {
 	if !delta.IsInt64() {
 		panic("too big")
 	}
@@ -78,6 +90,14 @@ func bruteForceSplit4(delta *big.Int) ([]*big.Int, error) {
 	panic("Not found")
 }
 
+func (_ *bruteForce4) Nsplit() int {
+	return 4
+}
+
+func (_ *bruteForce4) Ld() uint {
+	return 8
+}
+
 func TestRangeProofBasic(t *testing.T) {
 	p, ok := new(big.Int).SetString("137638811993558195206420328357073658091105450134788808980204514105755078006531089565424872264423706112211603473814961517434905870865504591672559685691792489986134468104546337570949069664216234978690144943134866212103184925841701142837749906961652202656280177667215409099503103170243548357516953064641207916007", 10)
 	require.True(t, ok, "failed to parse p")
@@ -88,7 +108,7 @@ func TestRangeProofBasic(t *testing.T) {
 
 	g := NewQrGroup(N, common.RandomQR(N), common.RandomQR(N))
 
-	s := New(bruteForceSplit3, 3, 1, big.NewInt(45), 8, 256, 128, 256)
+	s := New(1, big.NewInt(45), &bruteForce3{}, 256, 128, 256)
 
 	m := big.NewInt(112)
 	mRandomizer := common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), s.lm+s.lh+s.lstatzk))
@@ -113,7 +133,7 @@ func TestRangeProofUsingTable(t *testing.T) {
 
 	g := NewQrGroup(N, common.RandomQR(N), common.RandomQR(N))
 
-	s := New(table.Split, 3, 1, big.NewInt(45), 8, 256, 128, 256)
+	s := New(1, big.NewInt(45), &table, 256, 128, 256)
 
 	m := big.NewInt(112)
 	mRandomizer := common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), s.lm+s.lh+s.lstatzk))
@@ -136,7 +156,7 @@ func TestRangeProofUsingSumFourSquareAlg(t *testing.T) {
 
 	g := NewQrGroup(N, common.RandomQR(N), common.RandomQR(N))
 
-	s := New(FourSquareSplit, 4, 1, big.NewInt(45), 8, 256, 128, 256)
+	s := New(1, big.NewInt(45), &FourSquareSplitter{}, 256, 128, 256)
 
 	m := big.NewInt(112)
 	mRandomizer := common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), s.lm+s.lh+s.lstatzk))
@@ -159,7 +179,7 @@ func TestRangeProofInvalidStatement(t *testing.T) {
 
 	g := NewQrGroup(N, common.RandomQR(N), common.RandomQR(N))
 
-	s := New(bruteForceSplit3, 3, 1, big.NewInt(113), 8, 256, 128, 256)
+	s := New(1, big.NewInt(113), &bruteForce3{}, 256, 128, 256)
 
 	m := big.NewInt(112)
 	mRandomizer := common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), s.lm+s.lh+s.lstatzk))
@@ -178,7 +198,7 @@ func TestRangeProofBasic4(t *testing.T) {
 
 	g := NewQrGroup(N, common.RandomQR(N), common.RandomQR(N))
 
-	s := New(bruteForceSplit4, 4, 1, big.NewInt(45), 8, 256, 128, 256)
+	s := New(1, big.NewInt(45), &bruteForce4{}, 256, 128, 256)
 
 	m := big.NewInt(112)
 	mRandomizer := common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), s.lm+s.lh+s.lstatzk))
@@ -191,23 +211,23 @@ func TestRangeProofBasic4(t *testing.T) {
 	assert.Equal(t, secretList, proofList)
 }
 
-func TestRangeProofMismatchingSplit(t *testing.T) {
-	p, ok := new(big.Int).SetString("137638811993558195206420328357073658091105450134788808980204514105755078006531089565424872264423706112211603473814961517434905870865504591672559685691792489986134468104546337570949069664216234978690144943134866212103184925841701142837749906961652202656280177667215409099503103170243548357516953064641207916007", 10)
-	require.True(t, ok, "failed to parse p")
-	q, ok := new(big.Int).SetString("161568850263671082708797642691138038443080533253276097248590507678645648170870472664501153166861026407778587004276645109302937591955229881186233151561419055453812743980662387119394543989953096207398047305729607795030698835363986813674377580220752360344952636913024495263497458333887018979316817606614095137583", 10)
-	require.True(t, ok, "failed to parse q")
+type testSplit struct {
+	val []*big.Int
+	e   error
+	n   int
+	ld  uint
+}
 
-	N := new(big.Int).Mul(p, q)
+func (t *testSplit) Split(_ *big.Int) ([]*big.Int, error) {
+	return t.val, t.e
+}
 
-	g := NewQrGroup(N, common.RandomQR(N), common.RandomQR(N))
+func (t *testSplit) Nsplit() int {
+	return t.n
+}
 
-	s := New(bruteForceSplit3, 4, 1, big.NewInt(45), 8, 256, 128, 256)
-
-	m := big.NewInt(112)
-	mRandomizer := common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), s.lm+s.lh+s.lstatzk))
-
-	_, _, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
-	assert.Error(t, err)
+func (t *testSplit) Ld() uint {
+	return t.ld
 }
 
 func TestRangeProofMisbehavingSplit(t *testing.T) {
@@ -220,7 +240,7 @@ func TestRangeProofMisbehavingSplit(t *testing.T) {
 
 	g := NewQrGroup(N, common.RandomQR(N), common.RandomQR(N))
 
-	s := New(func(_ *big.Int) ([]*big.Int, error) { return nil, errors.New("test") }, 4, 1, big.NewInt(45), 8, 256, 128, 256)
+	s := New(1, big.NewInt(45), &testSplit{val: nil, e: errors.New("test"), n: 4, ld: 8}, 256, 128, 256)
 
 	m := big.NewInt(112)
 	mRandomizer := common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), s.lm+s.lh+s.lstatzk))
@@ -228,15 +248,15 @@ func TestRangeProofMisbehavingSplit(t *testing.T) {
 	_, _, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
 	assert.Error(t, err)
 
-	s = New(func(_ *big.Int) ([]*big.Int, error) {
-		return []*big.Int{big.NewInt(512), big.NewInt(512), big.NewInt(512)}, nil
-	}, 3, 1, big.NewInt(45), 8, 256, 128, 256)
+	s = New(1, big.NewInt(45), &testSplit{val: []*big.Int{big.NewInt(512), big.NewInt(512), big.NewInt(512)}, e: nil, n: 3, ld: 8}, 256, 128, 256)
 	_, _, err = s.CommitmentsFromSecrets(&g, m, mRandomizer)
 	assert.Error(t, err)
 
-	s = New(func(_ *big.Int) ([]*big.Int, error) {
-		return []*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)}, nil
-	}, 3, 1, big.NewInt(45), 8, 256, 128, 256)
+	s = New(1, big.NewInt(45), &testSplit{val: []*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)}, e: nil, n: 4, ld: 8}, 256, 128, 256)
+	_, _, err = s.CommitmentsFromSecrets(&g, m, mRandomizer)
+	assert.Error(t, err)
+
+	s = New(1, big.NewInt(45), &testSplit{val: []*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)}, e: nil, n: 3, ld: 8}, 256, 128, 256)
 	secretList, commit, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
 	require.NoError(t, err)
 	proof := s.BuildProof(commit, big.NewInt(1234567))
@@ -255,7 +275,7 @@ func TestProofKeyproofInterfaces(t *testing.T) {
 
 	g := NewQrGroup(N, common.RandomQR(N), common.RandomQR(N))
 
-	s := New(bruteForceSplit3, 3, 1, big.NewInt(45), 8, 256, 128, 256)
+	s := New(1, big.NewInt(45), &bruteForce3{}, 256, 128, 256)
 
 	m := big.NewInt(112)
 	mRandomizer := common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), s.lm+s.lh+s.lstatzk))
@@ -313,7 +333,7 @@ func TestCommitKeyproofInterfaces(t *testing.T) {
 
 	g := NewQrGroup(N, common.RandomQR(N), common.RandomQR(N))
 
-	s := New(bruteForceSplit3, 3, 1, big.NewInt(45), 8, 256, 128, 256)
+	s := New(1, big.NewInt(45), &bruteForce3{}, 256, 128, 256)
 
 	m := big.NewInt(112)
 	mRandomizer := common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), s.lm+s.lh+s.lstatzk))
@@ -389,7 +409,7 @@ func TestVerifyProofStructure(t *testing.T) {
 
 	g := NewQrGroup(N, common.RandomQR(N), common.RandomQR(N))
 
-	s := New(bruteForceSplit3, 3, 1, big.NewInt(45), 8, 256, 128, 256)
+	s := New(1, big.NewInt(45), &bruteForce3{}, 256, 128, 256)
 
 	m := big.NewInt(112)
 	mRandomizer := common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), s.lm+s.lh+s.lstatzk))
