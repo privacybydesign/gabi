@@ -11,6 +11,7 @@ import (
 
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
+	"github.com/privacybydesign/gabi/rangeproof"
 	"github.com/privacybydesign/gabi/revocation"
 	"github.com/privacybydesign/gabi/safeprime"
 	"github.com/stretchr/testify/require"
@@ -235,11 +236,11 @@ func TestProofU(t *testing.T) {
 	secret, _ := common.RandomBigInt(DefaultSystemParameters[keylength].Lm)
 
 	b := NewCredentialBuilder(testPubK, context, secret, nonce2, nil)
-	proofU := b.CreateProof(createChallenge(context, nonce1, b.Commit(map[string]*big.Int{"secretkey": secret}), false))
+	proofU := b.CreateProof(CreateChallenge(context, nonce1, b.Commit(map[string]*big.Int{"secretkey": secret}), false))
 
 	contrib, err := proofU.ChallengeContribution(testPubK)
 	require.NoError(t, err)
-	assert.True(t, proofU.VerifyWithChallenge(testPubK, createChallenge(context, nonce1, contrib, false)), "ProofU does not verify, whereas it should.")
+	assert.True(t, proofU.VerifyWithChallenge(testPubK, CreateChallenge(context, nonce1, contrib, false)), "ProofU does not verify, whereas it should.")
 }
 
 func TestProofULogged(t *testing.T) {
@@ -555,6 +556,43 @@ func createCredential(t *testing.T, context, secret *big.Int, issuer *Issuer) *C
 	return cred
 }
 
+func TestShowingWithRangeproof(t *testing.T) {
+	context, _ := common.RandomBigInt(testPubK1.Params.Lh)
+	nonce, _ := common.RandomBigInt(testPubK1.Params.Lstatzk)
+	secret, _ := common.RandomBigInt(testPubK1.Params.Lm)
+
+	// Issuance
+	issuer := NewIssuer(testPrivK1, testPubK1, context)
+	cred := createCredential(t, context, secret, issuer)
+
+	// Definition of range proof structure
+	table := rangeproof.GenerateSquaresTable(65535)
+	s := rangeproof.New(table.Split, 3, 1, new(big.Int).Sub(testAttributes1[0], big.NewInt(253)), 8, testPubK1.Params.Lh, testPubK1.Params.Lstatzk, testPubK1.Params.Lm)
+
+	// Disclosure with rangeproof
+	builder, err := cred.CreateDisclosureProofBuilder([]int{2}, false)
+	require.NoError(t, err)
+	builderlist := ProofBuilderList([]ProofBuilder{builder})
+	qrGroup := rangeproof.NewQrGroup(testPubK1.N, testPubK1.R[1], testPubK1.S) // R index is index of attribute on which we do range proof
+
+	contributions := builderlist.ChallengeContribution()
+	rpM, rpMRandomizer := builder.GetAttributeValueAndRandomizer(1)
+	rpContributions, rpCommit, err := s.CommitmentsFromSecrets(&qrGroup, rpM, rpMRandomizer)
+	contributions = append(contributions, rpContributions...)
+	challenge := CreateChallenge(context, nonce, contributions, false)
+	proofs, err := builderlist.BuildDistributedProofList(challenge, nil)
+	require.NoError(t, err)
+	rangeProof := s.BuildProof(rpCommit, challenge)
+
+	// Verification
+	rangeProof.MResponse.Set(proofs[0].(*ProofD).AResponses[1])  // Ensure these are equal
+	assert.True(t, s.VerifyProofStructure(&qrGroup, rangeProof)) // Ensure structure of range proof
+	contributions, err = proofs.ChallengeContributions([]*PublicKey{testPubK1})
+	require.NoError(t, err)
+	contributions = append(contributions, s.CommitmentsFromProof(&qrGroup, rangeProof, proofs[0].(*ProofD).Challenge())...)
+	assert.True(t, proofs.VerifyWithChallenge([]*PublicKey{testPubK1}, CreateChallenge(context, nonce, contributions, false), nil)) // Ensure correctness of disclosure proof
+}
+
 func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 	keylength := 1024
 	context, _ := common.RandomBigInt(DefaultSystemParameters[keylength].Lh)
@@ -790,7 +828,7 @@ func TestRandomBlindProofU(t *testing.T) {
 
 	c, err := proofU.ChallengeContribution(testPubK)
 	assert.NoError(t, err)
-	assert.True(t, proofU.VerifyWithChallenge(testPubK, createChallenge(context, nonce1, c, false)))
+	assert.True(t, proofU.VerifyWithChallenge(testPubK, CreateChallenge(context, nonce1, c, false)))
 }
 
 // Tests CreateProof() and Commit()
@@ -802,10 +840,10 @@ func TestRandomBlindCreateProofUandCommit(t *testing.T) {
 	secret, _ := common.RandomBigInt(DefaultSystemParameters[keylength].Lm)
 
 	b := NewCredentialBuilder(testPubK, context, secret, nonce2, []int{2})
-	proofU := b.CreateProof(createChallenge(context, nonce1, b.Commit(map[string]*big.Int{"secretkey": secret}), false))
+	proofU := b.CreateProof(CreateChallenge(context, nonce1, b.Commit(map[string]*big.Int{"secretkey": secret}), false))
 	c, err := proofU.ChallengeContribution(testPubK)
 	assert.NoError(t, err)
-	assert.True(t, proofU.VerifyWithChallenge(testPubK, createChallenge(context, nonce1, c, false)), "ProofU does not verify, whereas it should.")
+	assert.True(t, proofU.VerifyWithChallenge(testPubK, CreateChallenge(context, nonce1, c, false)), "ProofU does not verify, whereas it should.")
 }
 
 func TestRandomBlindIssuance(t *testing.T) {

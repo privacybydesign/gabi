@@ -51,9 +51,9 @@ func (pl ProofList) GetFirstProofU() (*ProofU, error) {
 	return pl.GetProofU(0)
 }
 
-// challengeContributions collects and returns all the challenge contributions
+// ChallengeContributions collects and returns all the challenge contributions
 // of the proofs contained in the proof list.
-func (pl ProofList) challengeContributions(publicKeys []*PublicKey, context, nonce *big.Int) ([]*big.Int, error) {
+func (pl ProofList) ChallengeContributions(publicKeys []*PublicKey) ([]*big.Int, error) {
 	contributions := make([]*big.Int, 0, len(pl)*2)
 	for i, proof := range pl {
 		contrib, err := proof.ChallengeContribution(publicKeys[i])
@@ -74,6 +74,24 @@ func (pl ProofList) challengeContributions(publicKeys []*PublicKey, context, non
 // or one and the same keyshare server).
 // An empty ProofList is not considered valid.
 func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, issig bool, keyshareServers []string) bool {
+	contributions, err := pl.ChallengeContributions(publicKeys)
+	if err != nil {
+		return false
+	}
+	expectedChallenge := CreateChallenge(context, nonce, contributions, issig)
+
+	return pl.VerifyWithChallenge(publicKeys, expectedChallenge, keyshareServers)
+}
+
+// VerifyWithChallenge returns true when all the proofs inside verify on the given challenge.
+// The keyshareServers parameter is used to indicate which proofs should be
+// verified to share the same secret key: when two proofs share the same keyshare
+// server (or none), so that they should have the same secret key, they should have
+// identical entries (index-wise) in keyshareServers. Pass nil if all proofs should have
+// the same secret key (i.e. it should be verified that all proofs use either none,
+// or one and the same keyshare server).
+// An empty ProofList is not considered valid.
+func (pl ProofList) VerifyWithChallenge(publicKeys []*PublicKey, expectedChallenge *big.Int, keyshareServers []string) bool {
 	if len(pl) == 0 ||
 		len(pl) != len(publicKeys) ||
 		len(keyshareServers) > 0 && len(pl) != len(keyshareServers) {
@@ -86,12 +104,6 @@ func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, iss
 	// are both associated to either no keyshare server, or the same keyshare server.
 	// During verification of the proofs we keep track of their secret key responses in this map.
 	secretkeyResponses := make(map[string]*big.Int)
-
-	contributions, err := pl.challengeContributions(publicKeys, context, nonce)
-	if err != nil {
-		return false
-	}
-	expectedChallenge := createChallenge(context, nonce, contributions, issig)
 
 	// If keyshareServers == nil then we never update this variable,
 	// so the check below verifies that all creds share the same secret key.
@@ -119,6 +131,13 @@ func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, iss
 }
 
 func (builders ProofBuilderList) Challenge(context, nonce *big.Int, issig bool) *big.Int {
+	commitmentValues := builders.ChallengeContribution()
+
+	// Create a shared challenge
+	return CreateChallenge(context, nonce, commitmentValues, issig)
+}
+
+func (builders ProofBuilderList) ChallengeContribution() []*big.Int {
 	// The secret key may be used across credentials supporting different attribute sizes.
 	// So we should take it, and hence also its commitment, to fit within the smallest size -
 	// otherwise it will be too big so that we cannot perform the range proof showing
@@ -130,8 +149,7 @@ func (builders ProofBuilderList) Challenge(context, nonce *big.Int, issig bool) 
 		commitmentValues = append(commitmentValues, pb.Commit(map[string]*big.Int{"secretkey": skCommitment})...)
 	}
 
-	// Create a shared challenge
-	return createChallenge(context, nonce, commitmentValues, issig)
+	return commitmentValues
 }
 
 func (builders ProofBuilderList) BuildDistributedProofList(

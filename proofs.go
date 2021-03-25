@@ -20,9 +20,9 @@ type Proof interface {
 	MergeProofP(proofP *ProofP, pk *PublicKey)
 }
 
-// createChallenge creates a challenge based on context, nonce and the
+// CreateChallenge creates a challenge based on context, nonce and the
 // contributions.
-func createChallenge(context, nonce *big.Int, contributions []*big.Int, issig bool) *big.Int {
+func CreateChallenge(context, nonce *big.Int, contributions []*big.Int, issig bool) *big.Int {
 	// Basically, sandwich the contributions between context and nonce
 	input := make([]*big.Int, 2+len(contributions))
 	input[0] = context
@@ -55,7 +55,7 @@ func (p *ProofU) Verify(pk *PublicKey, context, nonce *big.Int) bool {
 	if err != nil {
 		return false
 	}
-	return p.VerifyWithChallenge(pk, createChallenge(context, nonce, contrib, false))
+	return p.VerifyWithChallenge(pk, CreateChallenge(context, nonce, contrib, false))
 }
 
 // correctResponseSizes checks the sizes of the elements in the ProofU proof.
@@ -207,7 +207,7 @@ func (p *ProofD) Verify(pk *PublicKey, context, nonce1 *big.Int, issig bool) boo
 	if err != nil {
 		return false
 	}
-	return p.VerifyWithChallenge(pk, createChallenge(context, nonce1, contrib, issig))
+	return p.VerifyWithChallenge(pk, CreateChallenge(context, nonce1, contrib, issig))
 }
 
 func (p *ProofD) HasNonRevocationProof() bool {

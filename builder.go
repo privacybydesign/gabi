@@ -188,7 +188,7 @@ func (b *CredentialBuilder) ConstructCredential(msg *IssueSignatureMessage, attr
 func (b *CredentialBuilder) proveCommitment(nonce1 *big.Int) Proof {
 	sCommit, _ := common.RandomBigInt(b.pk.Params.LsCommit)
 	contrib := b.Commit(map[string]*big.Int{"secretkey": sCommit})
-	c := createChallenge(b.context, nonce1, contrib, false)
+	c := CreateChallenge(b.context, nonce1, contrib, false)
 	return b.CreateProof(c)
 }
 
