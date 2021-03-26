@@ -143,6 +143,14 @@ func New(a int, k *big.Int, split Splitter, lh, lstatzk, lm uint) *ProofStructur
 		panic("No support for range proofs with delta split in more than 4 squares")
 	}
 
+	if split.Nsplit() == 3 {
+		// Not all numbers can be written as sum of 3 squares, but n for which n == 2 (mod 4) can
+		// so ensure that a*m-k falls into that category
+		a *= 4
+		k = new(big.Int).Mul(k, big.NewInt(4)) // ensure we dont overwrite callers copy of k
+		k.Sub(k, big.NewInt(2))
+	}
+
 	result := &ProofStructure{
 		mCorrect: qrRepresentationProofStructure{
 			Lhs: []keyproof.LhsContribution{
