@@ -111,6 +111,11 @@ type (
 		VResponse         []*big.Int `json:"v"`
 		VCombinedResponse *big.Int   `json:"v5"`
 		MResponse         *big.Int   `json:"m"`
+
+		// Proof structure description
+		Ld uint     `json:"l_d"`
+		A  int      `json:"a"`
+		K  *big.Int `json:"k"`
 	}
 
 	ProofCommit struct {
@@ -139,7 +144,11 @@ type (
 //  lm the size of m, and also used as the number of bits for computational hiding
 //  lstatzk the number of bits of statistical hiding to use
 func New(a int, k *big.Int, split Splitter, lh, lstatzk, lm uint) *ProofStructure {
-	if split.Nsplit() > 4 {
+	return newWithParams(a, k, split, split.Nsplit(), split.Ld(), lh, lstatzk, lm)
+}
+
+func newWithParams(a int, k *big.Int, split Splitter, nSplit int, ld, lh, lstatzk, lm uint) *ProofStructure {
+	if nSplit > 4 {
 		panic("No support for range proofs with delta split in more than 4 squares")
 	}
 
@@ -158,13 +167,13 @@ func New(a int, k *big.Int, split Splitter, lh, lstatzk, lm uint) *ProofStructur
 		k: new(big.Int).Set(k),
 
 		splitter: split,
-		ld:       split.Ld(),
+		ld:       ld,
 		lm:       lm,
 		lh:       lh,
 		lstatzk:  lstatzk,
 	}
 
-	for i := 0; i < split.Nsplit(); i++ {
+	for i := 0; i < nSplit; i++ {
 		result.cRep = append(result.cRep, qrRepresentationProofStructure{
 			Lhs: []keyproof.LhsContribution{
 				{Base: fmt.Sprintf("C%d", i), Power: big.NewInt(1)},
@@ -262,6 +271,10 @@ func (s *ProofStructure) BuildProof(commit *ProofCommit, challenge *big.Int) *Pr
 		VResponse:         make([]*big.Int, len(commit.v)),
 		VCombinedResponse: new(big.Int).Add(new(big.Int).Mul(challenge, commit.v5), commit.v5Randomizer),
 		MResponse:         new(big.Int).Add(new(big.Int).Mul(challenge, commit.m), commit.mRandomizer),
+
+		Ld: s.ld,
+		A:  s.a,
+		K:  new(big.Int).Set(s.k),
 	}
 
 	for i := range commit.c {
@@ -316,6 +329,19 @@ func (s *ProofStructure) CommitmentsFromProof(g *QrGroup, p *Proof, challenge *b
 	}
 
 	return contributions
+}
+
+// Check whether proof makes required statement
+func (p *Proof) MakesStatement(a int, k *big.Int) bool {
+	return a == p.A && k.Cmp(p.K) == 0
+}
+
+// Extract proof structure from proof
+func (p *Proof) ExtractStructure(lh, lstatzk, lm uint) (*ProofStructure, error) {
+	if p.K == nil || p.Ld > lm || len(p.C) < 3 || len(p.C) > 4 {
+		return nil, errors.New("Invalid proof")
+	}
+	return newWithParams(p.A, p.K, nil, len(p.C), p.Ld, lh, lstatzk, lm), nil
 }
 
 // ---

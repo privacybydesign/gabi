@@ -11,6 +11,7 @@ import (
 
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
+	"github.com/privacybydesign/gabi/rangeproof"
 	"github.com/privacybydesign/gabi/revocation"
 	"github.com/privacybydesign/gabi/safeprime"
 	"github.com/stretchr/testify/require"
@@ -235,7 +236,8 @@ func TestProofU(t *testing.T) {
 	secret, _ := common.RandomBigInt(DefaultSystemParameters[keylength].Lm)
 
 	b := NewCredentialBuilder(testPubK, context, secret, nonce2, nil)
-	proofU := b.CreateProof(createChallenge(context, nonce1, b.Commit(map[string]*big.Int{"secretkey": secret}), false))
+	contributions, _ := b.Commit(map[string]*big.Int{"secretkey": secret}) // returns error only for interface, never errors
+	proofU := b.CreateProof(createChallenge(context, nonce1, contributions, false))
 
 	contrib, err := proofU.ChallengeContribution(testPubK)
 	require.NoError(t, err)
@@ -352,7 +354,7 @@ func TestShowingProof(t *testing.T) {
 	context, _ := common.RandomBigInt(testPubK.Params.Lh)
 	nonce1, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
 
-	proof, err := cred.CreateDisclosureProof(disclosed, false, context, nonce1)
+	proof, err := cred.CreateDisclosureProof(disclosed, nil, false, context, nonce1)
 	require.NoError(t, err)
 
 	assert.True(t, proof.Verify(testPubK, context, nonce1, false), "Proof of disclosure did not verify, whereas it should.")
@@ -369,12 +371,13 @@ func TestCombinedShowingProof(t *testing.T) {
 	issuer2 := NewIssuer(testPrivK2, testPubK2, context)
 	cred2 := createCredential(t, context, secret, issuer2)
 
-	b1, err := cred1.CreateDisclosureProofBuilder([]int{1, 2}, false)
+	b1, err := cred1.CreateDisclosureProofBuilder([]int{1, 2}, nil, false)
 	require.NoError(t, err)
-	b2, err := cred2.CreateDisclosureProofBuilder([]int{1, 3}, false)
+	b2, err := cred2.CreateDisclosureProofBuilder([]int{1, 3}, nil, false)
 	require.NoError(t, err)
 	builders := ProofBuilderList([]ProofBuilder{b1, b2})
-	prooflist := builders.BuildProofList(context, nonce1, false)
+	prooflist, err := builders.BuildProofList(context, nonce1, false)
+	require.NoError(t, err)
 
 	assert.True(t, prooflist.Verify([]*PublicKey{issuer1.Pk, issuer2.Pk}, context, nonce1, false, nil), "Prooflist does not verify whereas it should!")
 }
@@ -434,7 +437,7 @@ func TestFullIssuanceAndShowing(t *testing.T) {
 	n1, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
 	disclosed := []int{1, 2}
 
-	proof, err := cred.CreateDisclosureProof(disclosed, false, context, n1)
+	proof, err := cred.CreateDisclosureProof(disclosed, nil, false, context, n1)
 	require.NoError(t, err)
 	assert.True(t, proof.Verify(testPubK, context, n1, false), "Proof of disclosure does not verify, whereas it should.")
 }
@@ -461,10 +464,11 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 	cb2 := NewCredentialBuilder(testPubK, context, secret, nonce2, nil)
 	issuer2 := NewIssuer(testPrivK, testPubK, context)
 
-	db, err := cred1.CreateDisclosureProofBuilder([]int{1, 2}, false)
+	db, err := cred1.CreateDisclosureProofBuilder([]int{1, 2}, nil, false)
 	require.NoError(t, err)
 	builders := ProofBuilderList([]ProofBuilder{db, cb2})
-	prooflist := builders.BuildProofList(context, nonce1, false)
+	prooflist, err := builders.BuildProofList(context, nonce1, false)
+	require.NoError(t, err)
 
 	commitMsg2 := cb2.CreateIssueCommitmentMessage(prooflist)
 
@@ -478,7 +482,7 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 	// Showing
 	nonce1s, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
 	disclosedAttributes := []int{1, 3}
-	proof, err := cred2.CreateDisclosureProof(disclosedAttributes, false, context, nonce1s)
+	proof, err := cred2.CreateDisclosureProof(disclosedAttributes, nil, false, context, nonce1s)
 	require.NoError(t, err)
 	assert.True(t, proof.Verify(testPubK, context, nonce1s, false), "Proof of disclosure did not verify, whereas it should.")
 }
@@ -555,6 +559,28 @@ func createCredential(t *testing.T, context, secret *big.Int, issuer *Issuer) *C
 	return cred
 }
 
+func TestRangeProof(t *testing.T) {
+	context, _ := common.RandomBigInt(testPubK1.Params.Lh)
+	nonce, _ := common.RandomBigInt(testPubK1.Params.Lstatzk)
+	secret, _ := common.RandomBigInt(testPubK1.Params.Lm)
+
+	table := rangeproof.GenerateSquaresTable(65535)
+
+	rangeStatement := RangeStatement{
+		a:     1,
+		k:     new(big.Int).Sub(testAttributes1[0], big.NewInt(62)),
+		split: &table,
+	}
+
+	issuer := NewIssuer(testPrivK1, testPubK1, context)
+	cred := createCredential(t, context, secret, issuer)
+
+	proof, err := cred.CreateDisclosureProof([]int{2}, map[int][]*RangeStatement{1: {&rangeStatement}}, false, context, nonce)
+	require.NoError(t, err)
+	assert.True(t, proof.Verify(testPubK1, context, nonce, false))
+	assert.True(t, proof.RangeProofs[1][0].MakesStatement(1, new(big.Int).Sub(testAttributes1[0], big.NewInt(62))))
+}
+
 func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 	keylength := 1024
 	context, _ := common.RandomBigInt(DefaultSystemParameters[keylength].Lh)
@@ -571,10 +597,11 @@ func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 	cb2 := NewCredentialBuilder(issuer2.Pk, context, secret, nonce2, nil)
 
 	nonce1, _ := common.RandomBigInt(DefaultSystemParameters[keylength].Lstatzk)
-	db, err := cred1.CreateDisclosureProofBuilder([]int{1, 2}, false)
+	db, err := cred1.CreateDisclosureProofBuilder([]int{1, 2}, nil, false)
 	require.NoError(t, err)
 	builders := ProofBuilderList([]ProofBuilder{db, cb2})
-	prooflist := builders.BuildProofList(context, nonce1, false)
+	prooflist, err := builders.BuildProofList(context, nonce1, false)
+	require.NoError(t, err)
 
 	commitMsg := cb2.CreateIssueCommitmentMessage(prooflist)
 
@@ -588,7 +615,7 @@ func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 	// Showing
 	nonce1s, _ := common.RandomBigInt(issuer2.Pk.Params.Lstatzk)
 	disclosedAttributes := []int{1, 3}
-	proof, err := cred2.CreateDisclosureProof(disclosedAttributes, false, context, nonce1s)
+	proof, err := cred2.CreateDisclosureProof(disclosedAttributes, nil, false, context, nonce1s)
 	require.NoError(t, err)
 	assert.True(t, proof.Verify(issuer2.Pk, context, nonce1s, false), "Proof of disclosure did not verify, whereas it should.")
 }
@@ -611,10 +638,11 @@ func TestWronglyBoundIssuanceAndShowingWithDifferentIssuers(t *testing.T) {
 	cb2 := NewCredentialBuilder(issuer2.Pk, context, secret2, nonce2, nil)
 
 	nonce1, _ := common.RandomBigInt(DefaultSystemParameters[keylength].Lstatzk)
-	db, err := cred1.CreateDisclosureProofBuilder([]int{1, 2}, false)
+	db, err := cred1.CreateDisclosureProofBuilder([]int{1, 2}, nil, false)
 	require.NoError(t, err)
 	builders := ProofBuilderList([]ProofBuilder{db, cb2})
-	prooflist := builders.BuildProofList(context, nonce1, false)
+	prooflist, err := builders.BuildProofList(context, nonce1, false)
+	require.NoError(t, err)
 
 	commitMsg := cb2.CreateIssueCommitmentMessage(prooflist)
 
@@ -636,11 +664,11 @@ func TestBigAttribute(t *testing.T) {
 	nonce1, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
 
 	// Don't disclose large attribute
-	proof, err := cred.CreateDisclosureProof([]int{1}, false, context, nonce1)
+	proof, err := cred.CreateDisclosureProof([]int{1}, nil, false, context, nonce1)
 	require.NoError(t, err)
 	assert.True(t, proof.Verify(testPubK, context, nonce1, false), "Failed to verify ProofD with large undisclosed attribute")
 	// Disclose large attribute
-	proof, err = cred.CreateDisclosureProof([]int{2}, false, context, nonce1)
+	proof, err = cred.CreateDisclosureProof([]int{2}, nil, false, context, nonce1)
 	require.NoError(t, err)
 	assert.True(t, proof.Verify(testPubK, context, nonce1, false), "Failed to verify ProofD with large undisclosed attribute")
 }
@@ -692,7 +720,7 @@ func TestNotRevoked(t *testing.T) {
 	context, _ := common.RandomBigInt(testPubK.Params.Lh)
 	nonce, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
 
-	proofd, err := cred.CreateDisclosureProof([]int{1, 2}, true, context, nonce)
+	proofd, err := cred.CreateDisclosureProof([]int{1, 2}, nil, true, context, nonce)
 	require.NoError(t, err)
 	require.NotNil(t, proofd.NonRevocationProof)
 	require.True(t, ProofList{proofd}.Verify([]*PublicKey{testPubK}, context, nonce, false, nil))
@@ -732,7 +760,7 @@ func TestFullIssueAndShowWithRevocation(t *testing.T) {
 	nonce1s, _ := common.RandomBigInt(testPubK.Params.Lstatzk)
 	disclosedAttributes := []int{1, 3}
 	require.Len(t, cred.nonrevCache, 0)
-	proofd, err := cred.CreateDisclosureProof(disclosedAttributes, true, context, nonce1s)
+	proofd, err := cred.CreateDisclosureProof(disclosedAttributes, nil, true, context, nonce1s)
 	require.NoError(t, err)
 	require.True(t, proofd.HasNonRevocationProof())
 	assert.True(t, proofd.Verify(testPubK, context, nonce1s, false), "Proof of disclosure did not verify, whereas it should.")
@@ -745,7 +773,7 @@ func TestFullIssueAndShowWithRevocation(t *testing.T) {
 	cred.nonrevCache <- cache
 
 	// show again, using the nonrevocation proof cache
-	proofd, err = cred.CreateDisclosureProof(disclosedAttributes, true, context, nonce1s)
+	proofd, err = cred.CreateDisclosureProof(disclosedAttributes, nil, true, context, nonce1s)
 	require.NoError(t, err)
 	require.True(t, proofd.HasNonRevocationProof())
 	assert.True(t, proofd.Verify(testPubK, context, nonce1s, false), "Proof of disclosure did not verify, whereas it should.")
@@ -802,7 +830,9 @@ func TestRandomBlindCreateProofUandCommit(t *testing.T) {
 	secret, _ := common.RandomBigInt(DefaultSystemParameters[keylength].Lm)
 
 	b := NewCredentialBuilder(testPubK, context, secret, nonce2, []int{2})
-	proofU := b.CreateProof(createChallenge(context, nonce1, b.Commit(map[string]*big.Int{"secretkey": secret}), false))
+	contributions, err := b.Commit(map[string]*big.Int{"secretkey": secret})
+	require.NoError(t, err)
+	proofU := b.CreateProof(createChallenge(context, nonce1, contributions, false))
 	c, err := proofU.ChallengeContribution(testPubK)
 	assert.NoError(t, err)
 	assert.True(t, proofU.VerifyWithChallenge(testPubK, createChallenge(context, nonce1, c, false)), "ProofU does not verify, whereas it should.")

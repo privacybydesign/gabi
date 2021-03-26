@@ -13,7 +13,7 @@ import (
 // ProofBuilder is an interface for a proof builder. That is, an object to hold
 // the state to build a list of bounded proofs (see ProofList).
 type ProofBuilder interface {
-	Commit(randomizers map[string]*big.Int) []*big.Int
+	Commit(randomizers map[string]*big.Int) ([]*big.Int, error)
 	CreateProof(challenge *big.Int) Proof
 	PublicKey() *PublicKey
 	MergeProofPCommitment(commitment *ProofPCommitment)
@@ -118,7 +118,7 @@ func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, iss
 	return true
 }
 
-func (builders ProofBuilderList) Challenge(context, nonce *big.Int, issig bool) *big.Int {
+func (builders ProofBuilderList) Challenge(context, nonce *big.Int, issig bool) (*big.Int, error) {
 	// The secret key may be used across credentials supporting different attribute sizes.
 	// So we should take it, and hence also its commitment, to fit within the smallest size -
 	// otherwise it will be too big so that we cannot perform the range proof showing
@@ -127,11 +127,15 @@ func (builders ProofBuilderList) Challenge(context, nonce *big.Int, issig bool) 
 
 	commitmentValues := make([]*big.Int, 0, len(builders)*2)
 	for _, pb := range builders {
-		commitmentValues = append(commitmentValues, pb.Commit(map[string]*big.Int{"secretkey": skCommitment})...)
+		contributions, err := pb.Commit(map[string]*big.Int{"secretkey": skCommitment})
+		if err != nil {
+			return nil, err
+		}
+		commitmentValues = append(commitmentValues, contributions...)
 	}
 
 	// Create a shared challenge
-	return createChallenge(context, nonce, commitmentValues, issig)
+	return createChallenge(context, nonce, commitmentValues, issig), nil
 }
 
 func (builders ProofBuilderList) BuildDistributedProofList(
@@ -155,8 +159,11 @@ func (builders ProofBuilderList) BuildDistributedProofList(
 // BuildProofList builds a list of bounded proofs. For this it is given a list
 // of ProofBuilders. Examples of proof builders are CredentialBuilder and
 // DisclosureProofBuilder.
-func (builders ProofBuilderList) BuildProofList(context, nonce *big.Int, issig bool) ProofList {
-	challenge := builders.Challenge(context, nonce, issig)
+func (builders ProofBuilderList) BuildProofList(context, nonce *big.Int, issig bool) (ProofList, error) {
+	challenge, err := builders.Challenge(context, nonce, issig)
+	if err != nil {
+		return nil, err
+	}
 	list, _ := builders.BuildDistributedProofList(challenge, nil)
-	return list
+	return list, nil
 }

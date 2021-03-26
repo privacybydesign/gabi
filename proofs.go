@@ -7,6 +7,7 @@ package gabi
 import (
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
+	"github.com/privacybydesign/gabi/rangeproof"
 	"github.com/privacybydesign/gabi/revocation"
 
 	"github.com/go-errors/errors"
@@ -134,17 +135,35 @@ func (p *ProofS) Verify(pk *PublicKey, signature *CLSignature, context, nonce *b
 
 // ProofD represents a proof in the showing protocol.
 type ProofD struct {
-	C                  *big.Int          `json:"c"`
-	A                  *big.Int          `json:"A"`
-	EResponse          *big.Int          `json:"e_response"`
-	VResponse          *big.Int          `json:"v_response"`
-	AResponses         map[int]*big.Int  `json:"a_responses"`
-	ADisclosed         map[int]*big.Int  `json:"a_disclosed"`
-	NonRevocationProof *revocation.Proof `json:"nonrev_proof,omitempty"`
+	C                  *big.Int                    `json:"c"`
+	A                  *big.Int                    `json:"A"`
+	EResponse          *big.Int                    `json:"e_response"`
+	VResponse          *big.Int                    `json:"v_response"`
+	AResponses         map[int]*big.Int            `json:"a_responses"`
+	ADisclosed         map[int]*big.Int            `json:"a_disclosed"`
+	NonRevocationProof *revocation.Proof           `json:"nonrev_proof,omitempty"`
+	RangeProofs        map[int][]*rangeproof.Proof `json:"rangeproofs"`
+
+	cachedRangeStructures map[int][]*rangeproof.ProofStructure
 }
 
 func (p *ProofD) MergeProofP(proofP *ProofP, pk *PublicKey) {
 	p.SecretKeyResponse().Add(p.SecretKeyResponse(), proofP.SResponse)
+}
+
+func (p *ProofD) reconstituteRangeProofStructures(pk *PublicKey) error {
+	p.cachedRangeStructures = make(map[int][]*rangeproof.ProofStructure)
+	for index, proofs := range p.RangeProofs {
+		p.cachedRangeStructures[index] = []*rangeproof.ProofStructure{}
+		for _, proof := range proofs {
+			s, err := proof.ExtractStructure(pk.Params.Lh, pk.Params.Lstatzk, pk.Params.Lm)
+			if err != nil {
+				return err
+			}
+			p.cachedRangeStructures[index] = append(p.cachedRangeStructures[index], s)
+		}
+	}
+	return nil
 }
 
 // correctResponseSizes checks the sizes of the elements in the ProofD proof.
@@ -218,6 +237,7 @@ func (p *ProofD) HasNonRevocationProof() bool {
 // reconstruted challenge.
 func (p *ProofD) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.Int) bool {
 	var notrevoked bool
+	// Validate non-revocation
 	if p.HasNonRevocationProof() {
 		rpk, err := pk.RevocationKey()
 		if err != nil {
@@ -232,6 +252,7 @@ func (p *ProofD) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.
 	} else {
 		notrevoked = true
 	}
+	// Range proofs were already validated during challenge reconstruction
 	return notrevoked &&
 		p.correctResponseSizes(pk) &&
 		p.C.Cmp(reconstructedChallenge) == 0
@@ -256,6 +277,33 @@ func (p *ProofD) ChallengeContribution(pk *PublicKey) ([]*big.Int, error) {
 		contrib := p.NonRevocationProof.ChallengeContributions(revPk.Group)
 		l = append(l, contrib...)
 	}
+
+	if p.RangeProofs != nil {
+		if p.cachedRangeStructures == nil {
+			p.reconstituteRangeProofStructures(pk)
+		}
+		// need stable attribute order for rangeproof contributions, so determine max undisclosed attribute
+		maxAttribute := 0
+		for k := range p.AResponses {
+			if k > maxAttribute {
+				maxAttribute = k
+			}
+		}
+		for index := 0; index <= maxAttribute; index++ {
+			structures, ok := p.cachedRangeStructures[index]
+			if !ok {
+				continue
+			}
+			g := rangeproof.NewQrGroup(pk.N, pk.R[index], pk.S)
+			for i, s := range structures {
+				if !s.VerifyProofStructure(&g, p.RangeProofs[index][i]) {
+					return nil, errors.New("Invalid range proof")
+				}
+				l = append(l, s.CommitmentsFromProof(&g, p.RangeProofs[index][i], p.C)...)
+			}
+		}
+	}
+
 	return l, nil
 }
 

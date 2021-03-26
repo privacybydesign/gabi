@@ -117,8 +117,51 @@ func TestRangeProofBasic(t *testing.T) {
 	require.NoError(t, err)
 	proof := s.BuildProof(commit, big.NewInt(1234567))
 	assert.True(t, s.VerifyProofStructure(&g, proof))
+	assert.True(t, proof.MakesStatement(1, big.NewInt(45)))
 	proofList := s.CommitmentsFromProof(&g, proof, big.NewInt(1234567))
 	assert.Equal(t, secretList, proofList)
+}
+
+func TestRangeProofExtractStructure(t *testing.T) {
+	p, ok := new(big.Int).SetString("137638811993558195206420328357073658091105450134788808980204514105755078006531089565424872264423706112211603473814961517434905870865504591672559685691792489986134468104546337570949069664216234978690144943134866212103184925841701142837749906961652202656280177667215409099503103170243548357516953064641207916007", 10)
+	require.True(t, ok, "failed to parse p")
+	q, ok := new(big.Int).SetString("161568850263671082708797642691138038443080533253276097248590507678645648170870472664501153166861026407778587004276645109302937591955229881186233151561419055453812743980662387119394543989953096207398047305729607795030698835363986813674377580220752360344952636913024495263497458333887018979316817606614095137583", 10)
+	require.True(t, ok, "failed to parse q")
+
+	N := new(big.Int).Mul(p, q)
+
+	g := NewQrGroup(N, common.RandomQR(N), common.RandomQR(N))
+
+	s := New(1, big.NewInt(45), &bruteForce3{}, 256, 128, 256)
+
+	m := big.NewInt(112)
+	mRandomizer := common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), s.lm+s.lh+s.lstatzk))
+
+	secretList, commit, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
+	require.NoError(t, err)
+	proof := s.BuildProof(commit, big.NewInt(1234567))
+
+	s, err = proof.ExtractStructure(256, 128, 256)
+	require.NoError(t, err)
+	assert.True(t, s.VerifyProofStructure(&g, proof))
+	assert.True(t, proof.MakesStatement(1, big.NewInt(45)))
+	proofList := s.CommitmentsFromProof(&g, proof, big.NewInt(1234567))
+	assert.Equal(t, secretList, proofList)
+
+	proof.C = append(proof.C, big.NewInt(1), big.NewInt(1))
+	_, err = proof.ExtractStructure(256, 128, 256)
+	assert.Error(t, err)
+	proof.C = proof.C[:2]
+	_, err = proof.ExtractStructure(256, 128, 256)
+	assert.Error(t, err)
+	proof.C = append(proof.C, big.NewInt(1))
+	proof.Ld = 300
+	_, err = proof.ExtractStructure(256, 128, 256)
+	assert.Error(t, err)
+	proof.Ld = 8
+	proof.K = nil
+	_, err = proof.ExtractStructure(256, 128, 256)
+	assert.Error(t, err)
 }
 
 func TestRangeProofUsingTable(t *testing.T) {
@@ -142,6 +185,7 @@ func TestRangeProofUsingTable(t *testing.T) {
 	require.NoError(t, err)
 	proof := s.BuildProof(commit, big.NewInt(1234567))
 	assert.True(t, s.VerifyProofStructure(&g, proof))
+	assert.True(t, proof.MakesStatement(1, big.NewInt(45)))
 	proofList := s.CommitmentsFromProof(&g, proof, big.NewInt(1234567))
 	assert.Equal(t, secretList, proofList)
 }
@@ -165,6 +209,7 @@ func TestRangeProofUsingSumFourSquareAlg(t *testing.T) {
 	require.NoError(t, err)
 	proof := s.BuildProof(commit, big.NewInt(1234567))
 	assert.True(t, s.VerifyProofStructure(&g, proof))
+	assert.True(t, proof.MakesStatement(1, big.NewInt(45)))
 	proofList := s.CommitmentsFromProof(&g, proof, big.NewInt(1234567))
 	assert.Equal(t, secretList, proofList)
 }
@@ -207,6 +252,7 @@ func TestRangeProofBasic4(t *testing.T) {
 	require.NoError(t, err)
 	proof := s.BuildProof(commit, big.NewInt(1234567))
 	assert.True(t, s.VerifyProofStructure(&g, proof))
+	assert.True(t, proof.MakesStatement(1, big.NewInt(45)))
 	proofList := s.CommitmentsFromProof(&g, proof, big.NewInt(1234567))
 	assert.Equal(t, secretList, proofList)
 }

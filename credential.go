@@ -8,6 +8,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
+	"github.com/privacybydesign/gabi/rangeproof"
 	"github.com/privacybydesign/gabi/revocation"
 )
 
@@ -19,6 +20,13 @@ type Credential struct {
 	NonRevocationWitness *revocation.Witness `json:"nonrevWitness,omitempty"`
 
 	nonrevCache chan *NonRevocationProofBuilder
+}
+
+// Statement that relevant attribute satisfies a*m-k > 0, and that a*m-k can be split into squares with given splitter
+type RangeStatement struct {
+	a     int
+	k     *big.Int
+	split rangeproof.Splitter
 }
 
 // DisclosureProofBuilder is an object that holds the state for the protocol to
@@ -33,6 +41,9 @@ type DisclosureProofBuilder struct {
 	pk                    *PublicKey
 	attributes            []*big.Int
 	nonrevBuilder         *NonRevocationProofBuilder
+
+	rpStructures map[int][]*rangeproof.ProofStructure
+	rpCommits    map[int][]*rangeproof.ProofCommit
 }
 
 type NonRevocationProofBuilder struct {
@@ -92,21 +103,35 @@ func getUndisclosedAttributes(disclosedAttributes []int, numAttributes int) []in
 	return r
 }
 
+// isUndisclosedAttribute computes, given the list of disclosed attributes, whether
+// attribute stays hidden
+func isUndisclosedAttribute(disclosedAttributes []int, attribute int) bool {
+	for _, v := range disclosedAttributes {
+		if v == attribute {
+			return false
+		}
+	}
+	return true
+}
+
 // CreateDisclosureProof creates a disclosure proof (ProofD) voor the provided
 // indices of disclosed attributes.
-func (ic *Credential) CreateDisclosureProof(disclosedAttributes []int, nonrev bool, context, nonce1 *big.Int) (*ProofD, error) {
-	builder, err := ic.CreateDisclosureProofBuilder(disclosedAttributes, nonrev)
+func (ic *Credential) CreateDisclosureProof(disclosedAttributes []int, rangeStatements map[int][]*RangeStatement, nonrev bool, context, nonce1 *big.Int) (*ProofD, error) {
+	builder, err := ic.CreateDisclosureProofBuilder(disclosedAttributes, rangeStatements, nonrev)
 	if err != nil {
 		return nil, err
 	}
-	challenge := ProofBuilderList{builder}.Challenge(context, nonce1, false)
+	challenge, err := ProofBuilderList{builder}.Challenge(context, nonce1, false)
+	if err != nil {
+		return nil, err
+	}
 	return builder.CreateProof(challenge).(*ProofD), nil
 }
 
 // CreateDisclosureProofBuilder produces a DisclosureProofBuilder, an object to
 // hold the state in the protocol for producing a disclosure proof that is
 // linked to other proofs.
-func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int, nonrev bool) (*DisclosureProofBuilder, error) {
+func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int, rangeStatements map[int][]*RangeStatement, nonrev bool) (*DisclosureProofBuilder, error) {
 	d := &DisclosureProofBuilder{}
 	d.z = big.NewInt(1)
 	d.pk = ic.Pk
@@ -120,6 +145,20 @@ func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int, no
 	d.attributes = ic.Attributes
 	for _, v := range d.undisclosedAttributes {
 		d.attrRandomizers[v], _ = common.RandomBigInt(ic.Pk.Params.LmCommit)
+	}
+
+	if rangeStatements != nil {
+		d.rpStructures = make(map[int][]*rangeproof.ProofStructure)
+		for index, statements := range rangeStatements {
+			if !isUndisclosedAttribute(disclosedAttributes, index) {
+				return nil, errors.New("Range statements on revealed attributes are not supported")
+			}
+			d.rpStructures[index] = nil
+			for _, statement := range statements {
+				d.rpStructures[index] = append(d.rpStructures[index],
+					rangeproof.New(statement.a, statement.k, statement.split, d.pk.Params.Lh, d.pk.Params.Lstatzk, d.pk.Params.Lm))
+			}
+		}
 	}
 
 	if !nonrev {
@@ -138,6 +177,7 @@ func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int, no
 		return nil, err
 	}
 	d.attrRandomizers[revIdx] = d.nonrevBuilder.randomizer
+
 	return d, nil
 }
 
@@ -231,7 +271,7 @@ func (d *DisclosureProofBuilder) PublicKey() *PublicKey {
 
 // Commit commits to the first attribute (the secret) using the provided
 // randomizer.
-func (d *DisclosureProofBuilder) Commit(randomizers map[string]*big.Int) []*big.Int {
+func (d *DisclosureProofBuilder) Commit(randomizers map[string]*big.Int) ([]*big.Int, error) {
 	d.attrRandomizers[0] = randomizers["secretkey"]
 
 	// Z = A^{e_commit} * S^{v_commit}
@@ -254,7 +294,29 @@ func (d *DisclosureProofBuilder) Commit(randomizers map[string]*big.Int) []*big.
 		}
 		list = append(list, l...)
 	}
-	return list
+
+	if d.rpStructures != nil {
+		d.rpCommits = make(map[int][]*rangeproof.ProofCommit)
+		// we need guaranteed order on index
+		for index := 0; index < len(d.attributes); index++ {
+			structures, ok := d.rpStructures[index]
+			if !ok {
+				continue
+			}
+			g := rangeproof.NewQrGroup(d.pk.N, d.pk.R[index], d.pk.S)
+			d.rpCommits[index] = nil
+			for _, s := range structures {
+				contributions, commit, err := s.CommitmentsFromSecrets(&g, d.attributes[index], d.attrRandomizers[index])
+				if err != nil {
+					return nil, err
+				}
+				list = append(list, contributions...)
+				d.rpCommits[index] = append(d.rpCommits[index], commit)
+			}
+		}
+	}
+
+	return list, nil
 }
 
 // CreateProof creates a (disclosure) proof with the provided challenge.
@@ -286,6 +348,18 @@ func (d *DisclosureProofBuilder) CreateProof(challenge *big.Int) Proof {
 		delete(nonrevProof.Responses, "alpha") // reset from NonRevocationResponse during verification
 	}
 
+	var rangeProofs map[int][]*rangeproof.Proof
+	if d.rpStructures != nil {
+		rangeProofs = make(map[int][]*rangeproof.Proof)
+		for index, structures := range d.rpStructures {
+			rangeProofs[index] = nil
+			for i, s := range structures {
+				rangeProofs[index] = append(rangeProofs[index],
+					s.BuildProof(d.rpCommits[index][i], challenge))
+			}
+		}
+	}
+
 	return &ProofD{
 		C:                  challenge,
 		A:                  d.randomizedSignature.A,
@@ -294,6 +368,7 @@ func (d *DisclosureProofBuilder) CreateProof(challenge *big.Int) Proof {
 		AResponses:         aResponses,
 		ADisclosed:         aDisclosed,
 		NonRevocationProof: nonrevProof,
+		RangeProofs:        rangeProofs,
 	}
 }
 

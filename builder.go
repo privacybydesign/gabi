@@ -187,7 +187,7 @@ func (b *CredentialBuilder) ConstructCredential(msg *IssueSignatureMessage, attr
 // Creates a proofU using a provided nonce
 func (b *CredentialBuilder) proveCommitment(nonce1 *big.Int) Proof {
 	sCommit, _ := common.RandomBigInt(b.pk.Params.LsCommit)
-	contrib := b.Commit(map[string]*big.Int{"secretkey": sCommit})
+	contrib, _ := b.Commit(map[string]*big.Int{"secretkey": sCommit}) // never errors, returns error to comply with interface
 	c := createChallenge(b.context, nonce1, contrib, false)
 	return b.CreateProof(c)
 }
@@ -227,7 +227,7 @@ func (b *CredentialBuilder) PublicKey() *PublicKey {
 
 // Commit commits to the secret (first attribute) using the provided randomizer.
 // Optionally commits to the user shares of random blind attributes if any are present.
-func (b *CredentialBuilder) Commit(randomizers map[string]*big.Int) []*big.Int {
+func (b *CredentialBuilder) Commit(randomizers map[string]*big.Int) ([]*big.Int, error) {
 	b.skRandomizer = randomizers["secretkey"]
 	b.vPrimeCommit, _ = common.RandomBigInt(b.pk.Params.LvPrimeCommit)
 	b.mUserCommit = make(map[int]*big.Int)
@@ -252,7 +252,7 @@ func (b *CredentialBuilder) Commit(randomizers map[string]*big.Int) []*big.Int {
 		ucomm.Mul(ucomm, b.proofPcomm.P).Mod(ucomm, b.pk.N)
 	}
 
-	return []*big.Int{ucomm, b.uCommit}
+	return []*big.Int{ucomm, b.uCommit}, nil
 }
 
 // CreateProof creates a (ProofU) Proof using the provided challenge.
