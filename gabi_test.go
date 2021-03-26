@@ -568,7 +568,7 @@ func TestRangeProof(t *testing.T) {
 
 	rangeStatement := RangeStatement{
 		a:     1,
-		k:     new(big.Int).Sub(testAttributes1[0], big.NewInt(62)),
+		k:     new(big.Int).Sub(testAttributes1[0], big.NewInt(63)),
 		split: &table,
 	}
 
@@ -578,7 +578,7 @@ func TestRangeProof(t *testing.T) {
 	proof, err := cred.CreateDisclosureProof([]int{2}, map[int][]*RangeStatement{1: {&rangeStatement}}, false, context, nonce)
 	require.NoError(t, err)
 	assert.True(t, proof.Verify(testPubK1, context, nonce, false))
-	assert.True(t, proof.RangeProofs[1][0].MakesStatement(1, new(big.Int).Sub(testAttributes1[0], big.NewInt(62))))
+	assert.True(t, proof.RangeProofs[1][0].MakesStatement(1, new(big.Int).Sub(testAttributes1[0], big.NewInt(63))))
 }
 
 func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {

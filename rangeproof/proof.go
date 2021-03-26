@@ -144,6 +144,14 @@ type (
 //  lm the size of m, and also used as the number of bits for computational hiding
 //  lstatzk the number of bits of statistical hiding to use
 func New(a int, k *big.Int, split Splitter, lh, lstatzk, lm uint) *ProofStructure {
+	if split.Nsplit() == 3 {
+		// Not all numbers can be written as sum of 3 squares, but n for which n == 2 (mod 4) can
+		// so ensure that a*m-k falls into that category
+		a *= 4
+		k = new(big.Int).Mul(k, big.NewInt(4)) // ensure we dont overwrite callers copy of k
+		k.Sub(k, big.NewInt(2))
+	}
+
 	return newWithParams(a, k, split, split.Nsplit(), split.Ld(), lh, lstatzk, lm)
 }
 
@@ -333,6 +341,11 @@ func (s *ProofStructure) CommitmentsFromProof(g *QrGroup, p *Proof, challenge *b
 
 // Check whether proof makes required statement
 func (p *Proof) MakesStatement(a int, k *big.Int) bool {
+	if len(p.C) == 3 {
+		a *= 4
+		k = new(big.Int).Mul(k, big.NewInt(4))
+		k.Sub(k, big.NewInt(2))
+	}
 	return a == p.A && k.Cmp(p.K) == 0
 }
 
