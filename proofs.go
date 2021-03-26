@@ -296,6 +296,7 @@ func (p *ProofD) ChallengeContribution(pk *PublicKey) ([]*big.Int, error) {
 			}
 			g := rangeproof.NewQrGroup(pk.N, pk.R[index], pk.S)
 			for i, s := range structures {
+				p.RangeProofs[index][i].MResponse = new(big.Int).Set(p.AResponses[index])
 				if !s.VerifyProofStructure(&g, p.RangeProofs[index][i]) {
 					return nil, errors.New("Invalid range proof")
 				}
