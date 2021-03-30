@@ -351,7 +351,7 @@ func (s *ProofStructure) CommitmentsFromProof(g *QrGroup, p *Proof, challenge *b
 }
 
 // Check whether proof makes required statement
-func (p *Proof) MakesStatement(a int, k *big.Int) bool {
+func (p *Proof) ProvesStatement(a int, k *big.Int) bool {
 	if len(p.Cs) == 3 {
 		a *= 4
 		k = new(big.Int).Mul(k, big.NewInt(4))

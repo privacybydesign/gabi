@@ -118,7 +118,7 @@ func TestRangeProofBasic(t *testing.T) {
 	require.NoError(t, err)
 	proof := s.BuildProof(commit, big.NewInt(1234567))
 	assert.True(t, s.VerifyProofStructure(&g, proof))
-	assert.True(t, proof.MakesStatement(1, big.NewInt(45)))
+	assert.True(t, proof.ProvesStatement(1, big.NewInt(45)))
 	proofList := s.CommitmentsFromProof(&g, proof, big.NewInt(1234567))
 	assert.Equal(t, secretList, proofList)
 }
@@ -145,7 +145,7 @@ func TestRangeProofExtractStructure(t *testing.T) {
 	s, err = proof.ExtractStructure(256, 128, 256)
 	require.NoError(t, err)
 	assert.True(t, s.VerifyProofStructure(&g, proof))
-	assert.True(t, proof.MakesStatement(1, big.NewInt(45)))
+	assert.True(t, proof.ProvesStatement(1, big.NewInt(45)))
 	proofList := s.CommitmentsFromProof(&g, proof, big.NewInt(1234567))
 	assert.Equal(t, secretList, proofList)
 
@@ -187,7 +187,7 @@ func TestRangeProofUsingTable(t *testing.T) {
 	require.NoError(t, err)
 	proof := s.BuildProof(commit, big.NewInt(1234567))
 	assert.True(t, s.VerifyProofStructure(&g, proof))
-	assert.True(t, proof.MakesStatement(1, big.NewInt(45)))
+	assert.True(t, proof.ProvesStatement(1, big.NewInt(45)))
 	proofList := s.CommitmentsFromProof(&g, proof, big.NewInt(1234567))
 	assert.Equal(t, secretList, proofList)
 }
@@ -212,7 +212,7 @@ func TestRangeProofUsingSumFourSquareAlg(t *testing.T) {
 	require.NoError(t, err)
 	proof := s.BuildProof(commit, big.NewInt(1234567))
 	assert.True(t, s.VerifyProofStructure(&g, proof))
-	assert.True(t, proof.MakesStatement(1, big.NewInt(45)))
+	assert.True(t, proof.ProvesStatement(1, big.NewInt(45)))
 	proofList := s.CommitmentsFromProof(&g, proof, big.NewInt(1234567))
 	assert.Equal(t, secretList, proofList)
 }
@@ -257,7 +257,7 @@ func TestRangeProofBasic4(t *testing.T) {
 	require.NoError(t, err)
 	proof := s.BuildProof(commit, big.NewInt(1234567))
 	assert.True(t, s.VerifyProofStructure(&g, proof))
-	assert.True(t, proof.MakesStatement(1, big.NewInt(45)))
+	assert.True(t, proof.ProvesStatement(1, big.NewInt(45)))
 	proofList := s.CommitmentsFromProof(&g, proof, big.NewInt(1234567))
 	assert.Equal(t, secretList, proofList)
 }
