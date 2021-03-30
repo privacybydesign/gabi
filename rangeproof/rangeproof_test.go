@@ -54,7 +54,7 @@ func (_ *bruteForce3) Split(delta *big.Int) ([]*big.Int, error) {
 	panic("Not found")
 }
 
-func (_ *bruteForce3) Nsplit() int {
+func (_ *bruteForce3) SquareCount() int {
 	return 3
 }
 
@@ -90,7 +90,7 @@ func (_ *bruteForce4) Split(delta *big.Int) ([]*big.Int, error) {
 	panic("Not found")
 }
 
-func (_ *bruteForce4) Nsplit() int {
+func (_ *bruteForce4) SquareCount() int {
 	return 4
 }
 
@@ -111,7 +111,8 @@ func TestRangeProofBasic(t *testing.T) {
 	s := New(1, big.NewInt(45), &bruteForce3{}, 256, 128, 256)
 
 	m := big.NewInt(112)
-	mRandomizer := common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), s.lm+s.lh+s.lstatzk))
+	mRandomizer, err := common.RandomBigInt(s.lm + s.lh + s.lstatzk)
+	require.NoError(t, err)
 
 	secretList, commit, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
 	require.NoError(t, err)
@@ -136,7 +137,8 @@ func TestRangeProofUsingTable(t *testing.T) {
 	s := New(1, big.NewInt(45), &table, 256, 128, 256)
 
 	m := big.NewInt(112)
-	mRandomizer := common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), s.lm+s.lh+s.lstatzk))
+	mRandomizer, err := common.RandomBigInt(s.lm + s.lh + s.lstatzk)
+	require.NoError(t, err)
 
 	secretList, commit, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
 	require.NoError(t, err)
@@ -156,10 +158,11 @@ func TestRangeProofUsingSumFourSquareAlg(t *testing.T) {
 
 	g := NewQrGroup(N, common.RandomQR(N), common.RandomQR(N))
 
-	s := New(1, big.NewInt(45), &FourSquareSplitter{}, 256, 128, 256)
+	s := New(1, big.NewInt(45), &FourSquaresSplitter{}, 256, 128, 256)
 
 	m := big.NewInt(112)
-	mRandomizer := common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), s.lm+s.lh+s.lstatzk))
+	mRandomizer, err := common.RandomBigInt(s.lm + s.lh + s.lstatzk)
+	require.NoError(t, err)
 
 	secretList, commit, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
 	require.NoError(t, err)
@@ -182,9 +185,10 @@ func TestRangeProofInvalidStatement(t *testing.T) {
 	s := New(1, big.NewInt(113), &bruteForce3{}, 256, 128, 256)
 
 	m := big.NewInt(112)
-	mRandomizer := common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), s.lm+s.lh+s.lstatzk))
+	mRandomizer, err := common.RandomBigInt(s.lm + s.lh + s.lstatzk)
+	require.NoError(t, err)
 
-	_, _, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
+	_, _, err = s.CommitmentsFromSecrets(&g, m, mRandomizer)
 	assert.Error(t, err)
 }
 
@@ -201,7 +205,8 @@ func TestRangeProofBasic4(t *testing.T) {
 	s := New(1, big.NewInt(45), &bruteForce4{}, 256, 128, 256)
 
 	m := big.NewInt(112)
-	mRandomizer := common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), s.lm+s.lh+s.lstatzk))
+	mRandomizer, err := common.RandomBigInt(s.lm + s.lh + s.lstatzk)
+	require.NoError(t, err)
 
 	secretList, commit, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
 	require.NoError(t, err)
@@ -222,7 +227,7 @@ func (t *testSplit) Split(_ *big.Int) ([]*big.Int, error) {
 	return t.val, t.e
 }
 
-func (t *testSplit) Nsplit() int {
+func (t *testSplit) SquareCount() int {
 	return t.n
 }
 
@@ -243,9 +248,9 @@ func TestRangeProofMisbehavingSplit(t *testing.T) {
 	s := New(1, big.NewInt(45), &testSplit{val: nil, e: errors.New("test"), n: 4, ld: 8}, 256, 128, 256)
 
 	m := big.NewInt(112)
-	mRandomizer := common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), s.lm+s.lh+s.lstatzk))
+	mRandomizer, err := common.RandomBigInt(s.lm + s.lh + s.lstatzk)
 
-	_, _, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
+	_, _, err = s.CommitmentsFromSecrets(&g, m, mRandomizer)
 	assert.Error(t, err)
 
 	s = New(1, big.NewInt(45), &testSplit{val: []*big.Int{big.NewInt(512), big.NewInt(512), big.NewInt(512)}, e: nil, n: 3, ld: 8}, 256, 128, 256)
@@ -278,16 +283,17 @@ func TestProofKeyproofInterfaces(t *testing.T) {
 	s := New(1, big.NewInt(45), &bruteForce3{}, 256, 128, 256)
 
 	m := big.NewInt(112)
-	mRandomizer := common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), s.lm+s.lh+s.lstatzk))
+	mRandomizer, err := common.RandomBigInt(s.lm + s.lh + s.lstatzk)
+	require.NoError(t, err)
 
 	_, commit, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
 	require.NoError(t, err)
 	proof := (*proof)(s.BuildProof(commit, big.NewInt(1234567)))
 
 	assert.ElementsMatch(t, proof.Names(), []string{"C0", "C1", "C2"})
-	assert.Equal(t, proof.Base("C0"), proof.C[0])
-	assert.Equal(t, proof.Base("C1"), proof.C[1])
-	assert.Equal(t, proof.Base("C2"), proof.C[2])
+	assert.Equal(t, proof.Base("C0"), proof.Cs[0])
+	assert.Equal(t, proof.Base("C1"), proof.Cs[1])
+	assert.Equal(t, proof.Base("C2"), proof.Cs[2])
 	assert.Equal(t, proof.Base("C-1"), (*big.Int)(nil))
 	assert.Equal(t, proof.Base("C3"), (*big.Int)(nil))
 	assert.Equal(t, proof.Base("Cabcd"), (*big.Int)(nil))
@@ -305,15 +311,15 @@ func TestProofKeyproofInterfaces(t *testing.T) {
 	assert.False(t, proof.Exp(ret, "Cadfsdf", big.NewInt(25), g.N))
 	assert.False(t, proof.Exp(ret, "jdsdfj", big.NewInt(27), g.N))
 
-	assert.Equal(t, proof.ProofResult("v0"), proof.VResponse[0])
-	assert.Equal(t, proof.ProofResult("v1"), proof.VResponse[1])
-	assert.Equal(t, proof.ProofResult("v2"), proof.VResponse[2])
+	assert.Equal(t, proof.ProofResult("v0"), proof.VResponses[0])
+	assert.Equal(t, proof.ProofResult("v1"), proof.VResponses[1])
+	assert.Equal(t, proof.ProofResult("v2"), proof.VResponses[2])
 	assert.Equal(t, proof.ProofResult("v-1"), (*big.Int)(nil))
 	assert.Equal(t, proof.ProofResult("v3"), (*big.Int)(nil))
 	assert.Equal(t, proof.ProofResult("vajdfsk"), (*big.Int)(nil))
-	assert.Equal(t, proof.ProofResult("d0"), proof.DResponse[0])
-	assert.Equal(t, proof.ProofResult("d1"), proof.DResponse[1])
-	assert.Equal(t, proof.ProofResult("d2"), proof.DResponse[2])
+	assert.Equal(t, proof.ProofResult("d0"), proof.DResponses[0])
+	assert.Equal(t, proof.ProofResult("d1"), proof.DResponses[1])
+	assert.Equal(t, proof.ProofResult("d2"), proof.DResponses[2])
 	assert.Equal(t, proof.ProofResult("d-1"), (*big.Int)(nil))
 	assert.Equal(t, proof.ProofResult("d3"), (*big.Int)(nil))
 	assert.Equal(t, proof.ProofResult("dalsdf"), (*big.Int)(nil))
@@ -336,7 +342,8 @@ func TestCommitKeyproofInterfaces(t *testing.T) {
 	s := New(1, big.NewInt(45), &bruteForce3{}, 256, 128, 256)
 
 	m := big.NewInt(112)
-	mRandomizer := common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), s.lm+s.lh+s.lstatzk))
+	mRandomizer, err := common.RandomBigInt(s.lm + s.lh + s.lstatzk)
+	require.NoError(t, err)
 
 	_, commit_, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
 	require.NoError(t, err)
@@ -382,15 +389,15 @@ func TestCommitKeyproofInterfaces(t *testing.T) {
 	assert.Equal(t, commit.Secret("alsdkjf"), (*big.Int)(nil))
 
 	assert.Equal(t, commit.Randomizer("v5"), commit.v5Randomizer)
-	assert.Equal(t, commit.Randomizer("v0"), commit.vRandomizer[0])
-	assert.Equal(t, commit.Randomizer("v1"), commit.vRandomizer[1])
-	assert.Equal(t, commit.Randomizer("v2"), commit.vRandomizer[2])
+	assert.Equal(t, commit.Randomizer("v0"), commit.vRandomizers[0])
+	assert.Equal(t, commit.Randomizer("v1"), commit.vRandomizers[1])
+	assert.Equal(t, commit.Randomizer("v2"), commit.vRandomizers[2])
 	assert.Equal(t, commit.Randomizer("v3"), (*big.Int)(nil))
 	assert.Equal(t, commit.Randomizer("v-1"), (*big.Int)(nil))
 	assert.Equal(t, commit.Randomizer("vasjdfl"), (*big.Int)(nil))
-	assert.Equal(t, commit.Randomizer("d0"), commit.dRandomizer[0])
-	assert.Equal(t, commit.Randomizer("d1"), commit.dRandomizer[1])
-	assert.Equal(t, commit.Randomizer("d2"), commit.dRandomizer[2])
+	assert.Equal(t, commit.Randomizer("d0"), commit.dRandomizers[0])
+	assert.Equal(t, commit.Randomizer("d1"), commit.dRandomizers[1])
+	assert.Equal(t, commit.Randomizer("d2"), commit.dRandomizers[2])
 	assert.Equal(t, commit.Randomizer("d-1"), (*big.Int)(nil))
 	assert.Equal(t, commit.Randomizer("d3"), (*big.Int)(nil))
 	assert.Equal(t, commit.Randomizer("dasdlkfj"), (*big.Int)(nil))
@@ -412,7 +419,8 @@ func TestVerifyProofStructure(t *testing.T) {
 	s := New(1, big.NewInt(45), &bruteForce3{}, 256, 128, 256)
 
 	m := big.NewInt(112)
-	mRandomizer := common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), s.lm+s.lh+s.lstatzk))
+	mRandomizer, err := common.RandomBigInt(s.lm + s.lh + s.lstatzk)
+	require.NoError(t, err)
 
 	_, commit, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
 	require.NoError(t, err)
@@ -426,65 +434,65 @@ func TestVerifyProofStructure(t *testing.T) {
 	proof.MResponse = backup
 	assert.True(t, s.VerifyProofStructure(&g, proof))
 
-	backup = new(big.Int).Set(proof.VCombinedResponse)
-	proof.VCombinedResponse.Lsh(proof.VCombinedResponse, 2049)
+	backup = new(big.Int).Set(proof.V5Response)
+	proof.V5Response.Lsh(proof.V5Response, 2049)
 	assert.False(t, s.VerifyProofStructure(&g, proof))
-	proof.VCombinedResponse = nil
+	proof.V5Response = nil
 	assert.False(t, s.VerifyProofStructure(&g, proof))
-	proof.VCombinedResponse = backup
+	proof.V5Response = backup
 	assert.True(t, s.VerifyProofStructure(&g, proof))
 
-	for i := range proof.C {
-		backup = new(big.Int).Set(proof.C[i])
-		proof.C[i].Lsh(proof.C[i], 2049)
+	for i := range proof.Cs {
+		backup = new(big.Int).Set(proof.Cs[i])
+		proof.Cs[i].Lsh(proof.Cs[i], 2049)
 		assert.False(t, s.VerifyProofStructure(&g, proof))
-		proof.C[i] = nil
+		proof.Cs[i] = nil
 		assert.False(t, s.VerifyProofStructure(&g, proof))
-		proof.C[i] = backup
+		proof.Cs[i] = backup
 		assert.True(t, s.VerifyProofStructure(&g, proof))
 	}
 
-	for i := range proof.DResponse {
-		backup = new(big.Int).Set(proof.DResponse[i])
-		proof.DResponse[i].Lsh(proof.DResponse[i], 2049)
+	for i := range proof.DResponses {
+		backup = new(big.Int).Set(proof.DResponses[i])
+		proof.DResponses[i].Lsh(proof.DResponses[i], 2049)
 		assert.False(t, s.VerifyProofStructure(&g, proof))
-		proof.DResponse[i] = nil
+		proof.DResponses[i] = nil
 		assert.False(t, s.VerifyProofStructure(&g, proof))
-		proof.DResponse[i] = backup
+		proof.DResponses[i] = backup
 		assert.True(t, s.VerifyProofStructure(&g, proof))
 	}
 
-	for i := range proof.VResponse {
-		backup = new(big.Int).Set(proof.VResponse[i])
-		proof.VResponse[i].Lsh(proof.VResponse[i], 2049)
+	for i := range proof.VResponses {
+		backup = new(big.Int).Set(proof.VResponses[i])
+		proof.VResponses[i].Lsh(proof.VResponses[i], 2049)
 		assert.False(t, s.VerifyProofStructure(&g, proof))
-		proof.VResponse[i] = nil
+		proof.VResponses[i] = nil
 		assert.False(t, s.VerifyProofStructure(&g, proof))
-		proof.VResponse[i] = backup
+		proof.VResponses[i] = backup
 		assert.True(t, s.VerifyProofStructure(&g, proof))
 	}
 
-	backup = new(big.Int).Set(proof.C[len(proof.C)-1])
-	proof.C = append(proof.C, big.NewInt(15))
+	backup = new(big.Int).Set(proof.Cs[len(proof.Cs)-1])
+	proof.Cs = append(proof.Cs, big.NewInt(15))
 	assert.False(t, s.VerifyProofStructure(&g, proof))
-	proof.C = proof.C[:len(proof.C)-2]
+	proof.Cs = proof.Cs[:len(proof.Cs)-2]
 	assert.False(t, s.VerifyProofStructure(&g, proof))
-	proof.C = append(proof.C, backup)
+	proof.Cs = append(proof.Cs, backup)
 	assert.True(t, s.VerifyProofStructure(&g, proof))
 
-	backup = new(big.Int).Set(proof.DResponse[len(proof.DResponse)-1])
-	proof.DResponse = append(proof.DResponse, big.NewInt(15))
+	backup = new(big.Int).Set(proof.DResponses[len(proof.DResponses)-1])
+	proof.DResponses = append(proof.DResponses, big.NewInt(15))
 	assert.False(t, s.VerifyProofStructure(&g, proof))
-	proof.DResponse = proof.DResponse[:len(proof.DResponse)-2]
+	proof.DResponses = proof.DResponses[:len(proof.DResponses)-2]
 	assert.False(t, s.VerifyProofStructure(&g, proof))
-	proof.DResponse = append(proof.DResponse, backup)
+	proof.DResponses = append(proof.DResponses, backup)
 	assert.True(t, s.VerifyProofStructure(&g, proof))
 
-	backup = new(big.Int).Set(proof.VResponse[len(proof.VResponse)-1])
-	proof.VResponse = append(proof.VResponse, big.NewInt(15))
+	backup = new(big.Int).Set(proof.VResponses[len(proof.VResponses)-1])
+	proof.VResponses = append(proof.VResponses, big.NewInt(15))
 	assert.False(t, s.VerifyProofStructure(&g, proof))
-	proof.VResponse = proof.VResponse[:len(proof.VResponse)-2]
+	proof.VResponses = proof.VResponses[:len(proof.VResponses)-2]
 	assert.False(t, s.VerifyProofStructure(&g, proof))
-	proof.VResponse = append(proof.VResponse, backup)
+	proof.VResponses = append(proof.VResponses, backup)
 	assert.True(t, s.VerifyProofStructure(&g, proof))
 }

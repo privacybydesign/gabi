@@ -147,13 +147,13 @@ func Crt(a *big.Int, pa *big.Int, b *big.Int, pb *big.Int) *big.Int {
 
 // Express a number as sum of four squares
 // algorithm from "Randomized algorithms in number theory" by M. Rabin and J. Shallit
-func SumFourSquare(n *big.Int) (*big.Int, *big.Int, *big.Int, *big.Int) {
+func SumFourSquares(n *big.Int) (*big.Int, *big.Int, *big.Int, *big.Int) {
 	if n.BitLen() == 0 {
 		return big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0)
 	}
 	temp := new(big.Int).And(n, bigTHREE)
 	if temp.Int64() == 2 {
-		return sumFourSquareSpecial(n)
+		return sumFourSquaresSpecial(n)
 	} else if temp.Int64() == 0 {
 		// extract out 2^2k, then calculate subanswer and modify it by multiplying all values by 2^k
 		d := uint(1)
@@ -168,7 +168,7 @@ func SumFourSquare(n *big.Int) (*big.Int, *big.Int, *big.Int, *big.Int) {
 			temp.Rsh(temp, 1)
 			d++
 		}
-		x, y, z, w := SumFourSquare(temp)
+		x, y, z, w := SumFourSquares(temp)
 		x.Lsh(x, d/2)
 		y.Lsh(y, d/2)
 		z.Lsh(z, d/2)
@@ -176,7 +176,7 @@ func SumFourSquare(n *big.Int) (*big.Int, *big.Int, *big.Int, *big.Int) {
 		return x, y, z, w
 	} else {
 		temp.Lsh(n, 1)
-		x, y, z, w := sumFourSquareSpecial(temp)
+		x, y, z, w := sumFourSquaresSpecial(temp)
 		temp.And(x, bigONE)
 		xOdd := temp.Int64()
 		temp.And(y, bigONE)
@@ -209,7 +209,7 @@ func SumFourSquare(n *big.Int) (*big.Int, *big.Int, *big.Int, *big.Int) {
 	}
 }
 
-func sumFourSquareSpecial(n *big.Int) (*big.Int, *big.Int, *big.Int, *big.Int) {
+func sumFourSquaresSpecial(n *big.Int) (*big.Int, *big.Int, *big.Int, *big.Int) {
 	if n.IsInt64() && n.Int64() < 4 {
 		return big.NewInt(1), big.NewInt(1), big.NewInt(0), big.NewInt(0)
 	}
