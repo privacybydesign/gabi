@@ -26,7 +26,7 @@ type Credential struct {
 type RangeStatement struct {
 	a     int
 	k     *big.Int
-	split rangeproof.Splitter
+	split rangeproof.SquareSplitter
 }
 
 // DisclosureProofBuilder is an object that holds the state for the protocol to

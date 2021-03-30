@@ -21,7 +21,7 @@ import (
 //
 // This results in that our code proves the following substatement:
 // C_i = R^d_i S^v_i
-// R^k\product_i C_i^d_i = R^mS^v_5
+// R^k \product_i C_i^d_i = R^a*m S^v_5
 //
 // where k, a are fixed constants specified in the proof structure
 // d_i are values such that a*m-k = \sum_i d_i^2
@@ -33,6 +33,8 @@ import (
 // The proof of soundness for this protocol is relatively straightforward, but as we are not aware of its occurence in literature,
 // we provide it here for completeness:
 // ----
+//
+// First note that we can assume a=1 without loss of generality. Then we define:
 //
 // Adversary A: Turing machine taking as starting input S, R, Z, n, and k, then participates as receiver in an issuance protocol to
 // obtain a CL signature on m < k, then participates as prover in a proving protocol showing a CL-signature on m', as well as
@@ -97,7 +99,7 @@ type (
 		a int
 		k *big.Int
 
-		splitter Splitter
+		splitter SquareSplitter
 		ld       uint
 		lm       uint
 		lh       uint
@@ -106,11 +108,11 @@ type (
 
 	Proof struct {
 		// Actual proof responses
-		C                 []*big.Int `json:"C"`
-		DResponse         []*big.Int `json:"d"`
-		VResponse         []*big.Int `json:"v"`
-		VCombinedResponse *big.Int   `json:"v5"`
-		MResponse         *big.Int   `json:"m"`
+		Cs         []*big.Int `json:"C"`
+		DResponses []*big.Int `json:"d"`
+		VResponses []*big.Int `json:"v"`
+		V5Response *big.Int   `json:"v5"`
+		MResponse  *big.Int   `json:"m"`
 
 		// Proof structure description
 		Ld uint     `json:"l_d"`
@@ -124,9 +126,9 @@ type (
 
 		// Secrets
 		d            []*big.Int
-		dRandomizer  []*big.Int
+		dRandomizers []*big.Int
 		v            []*big.Int
-		vRandomizer  []*big.Int
+		vRandomizers []*big.Int
 		v5           *big.Int
 		v5Randomizer *big.Int
 		m            *big.Int
@@ -143,8 +145,8 @@ type (
 //  lh is the size of the challenge
 //  lm the size of m, and also used as the number of bits for computational hiding
 //  lstatzk the number of bits of statistical hiding to use
-func New(a int, k *big.Int, split Splitter, lh, lstatzk, lm uint) *ProofStructure {
-	if split.Nsplit() == 3 {
+func New(a int, k *big.Int, split SquareSplitter, lh, lstatzk, lm uint) *ProofStructure {
+	if split.SquareCount() == 3 {
 		// Not all numbers can be written as sum of 3 squares, but n for which n == 2 (mod 4) can
 		// so ensure that a*m-k falls into that category
 		a *= 4
@@ -152,10 +154,10 @@ func New(a int, k *big.Int, split Splitter, lh, lstatzk, lm uint) *ProofStructur
 		k.Sub(k, big.NewInt(2))
 	}
 
-	return newWithParams(a, k, split, split.Nsplit(), split.Ld(), lh, lstatzk, lm)
+	return newWithParams(a, k, split, split.SquareCount(), split.Ld(), lh, lstatzk, lm)
 }
 
-func newWithParams(a int, k *big.Int, split Splitter, nSplit int, ld, lh, lstatzk, lm uint) *ProofStructure {
+func newWithParams(a int, k *big.Int, split SquareSplitter, nSplit int, ld, lh, lstatzk, lm uint) *ProofStructure {
 	if nSplit > 4 {
 		panic("No support for range proofs with delta split in more than 4 squares")
 	}
@@ -226,23 +228,29 @@ func (s *ProofStructure) CommitmentsFromSecrets(g *QrGroup, m, mRandomizer *big.
 	}
 
 	// Check d values and generate randomizers for them
-	dRandomizerLimit := new(big.Int).Lsh(big.NewInt(1), s.ld+s.lh+s.lstatzk)
-	commit.dRandomizer = make([]*big.Int, len(commit.d))
+	commit.dRandomizers = make([]*big.Int, len(commit.d))
 	for i, v := range commit.d {
 		if v.BitLen() > int(s.ld) {
 			return nil, nil, errors.New("Split function returned oversized d")
 		}
-		commit.dRandomizer[i] = common.FastRandomBigInt(dRandomizerLimit)
+		commit.dRandomizers[i], err = common.RandomBigInt(s.ld + s.lh + s.lstatzk)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	// Generate v and vRandomizers
 	commit.v = make([]*big.Int, len(commit.d))
-	commit.vRandomizer = make([]*big.Int, len(commit.d))
-	vLimit := new(big.Int).Lsh(big.NewInt(1), s.lm)
-	vRandomizerLimit := new(big.Int).Lsh(big.NewInt(1), s.lm+s.lh+s.lstatzk)
+	commit.vRandomizers = make([]*big.Int, len(commit.d))
 	for i := range commit.d {
-		commit.v[i] = common.FastRandomBigInt(vLimit)
-		commit.vRandomizer[i] = common.FastRandomBigInt(vRandomizerLimit)
+		commit.v[i], err = common.RandomBigInt(s.lm)
+		if err != nil {
+			return nil, nil, err
+		}
+		commit.vRandomizers[i], err = common.RandomBigInt(s.lm + s.lh + s.lstatzk)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	// Generate v5 and its randomizer
@@ -251,7 +259,10 @@ func (s *ProofStructure) CommitmentsFromSecrets(g *QrGroup, m, mRandomizer *big.
 		contrib := new(big.Int).Mul(commit.d[i], commit.v[i])
 		commit.v5.Add(commit.v5, contrib)
 	}
-	commit.v5Randomizer = common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), s.lm+s.ld+2+s.lh+s.lstatzk))
+	commit.v5Randomizer, err = common.RandomBigInt(s.lm + s.ld + 2 + s.lh + s.lstatzk)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// Calculate the bases
 	commit.c = make([]*big.Int, len(commit.d))
@@ -274,11 +285,11 @@ func (s *ProofStructure) CommitmentsFromSecrets(g *QrGroup, m, mRandomizer *big.
 
 func (s *ProofStructure) BuildProof(commit *ProofCommit, challenge *big.Int) *Proof {
 	result := &Proof{
-		C:                 make([]*big.Int, len(commit.c)),
-		DResponse:         make([]*big.Int, len(commit.d)),
-		VResponse:         make([]*big.Int, len(commit.v)),
-		VCombinedResponse: new(big.Int).Add(new(big.Int).Mul(challenge, commit.v5), commit.v5Randomizer),
-		MResponse:         new(big.Int).Add(new(big.Int).Mul(challenge, commit.m), commit.mRandomizer),
+		Cs:         make([]*big.Int, len(commit.c)),
+		DResponses: make([]*big.Int, len(commit.d)),
+		VResponses: make([]*big.Int, len(commit.v)),
+		V5Response: new(big.Int).Add(new(big.Int).Mul(challenge, commit.v5), commit.v5Randomizer),
+		MResponse:  new(big.Int).Add(new(big.Int).Mul(challenge, commit.m), commit.mRandomizer),
 
 		Ld: s.ld,
 		A:  s.a,
@@ -286,40 +297,40 @@ func (s *ProofStructure) BuildProof(commit *ProofCommit, challenge *big.Int) *Pr
 	}
 
 	for i := range commit.c {
-		result.C[i] = new(big.Int).Set(commit.c[i])
+		result.Cs[i] = new(big.Int).Set(commit.c[i])
 	}
 	for i := range commit.d {
-		result.DResponse[i] = new(big.Int).Add(new(big.Int).Mul(challenge, commit.d[i]), commit.dRandomizer[i])
+		result.DResponses[i] = new(big.Int).Add(new(big.Int).Mul(challenge, commit.d[i]), commit.dRandomizers[i])
 	}
 	for i := range commit.v {
-		result.VResponse[i] = new(big.Int).Add(new(big.Int).Mul(challenge, commit.v[i]), commit.vRandomizer[i])
+		result.VResponses[i] = new(big.Int).Add(new(big.Int).Mul(challenge, commit.v[i]), commit.vRandomizers[i])
 	}
 
 	return result
 }
 
 func (s *ProofStructure) VerifyProofStructure(g *QrGroup, p *Proof) bool {
-	if len(s.cRep) != len(p.C) || len(s.cRep) != len(p.DResponse) || len(s.cRep) != len(p.VResponse) {
+	if len(s.cRep) != len(p.Cs) || len(s.cRep) != len(p.DResponses) || len(s.cRep) != len(p.VResponses) {
 		return false
 	}
 
-	if p.VCombinedResponse == nil || p.MResponse == nil {
+	if p.V5Response == nil || p.MResponse == nil {
 		return false
 	}
 
-	if uint(p.VCombinedResponse.BitLen()) > s.lm+s.ld+2+s.lh+s.lstatzk+1 ||
+	if uint(p.V5Response.BitLen()) > s.lm+s.ld+2+s.lh+s.lstatzk+1 ||
 		uint(p.MResponse.BitLen()) > s.lm+s.lh+s.lstatzk+1 {
 		return false
 	}
 
 	for i := range s.cRep {
-		if p.C[i] == nil || p.DResponse[i] == nil || p.VResponse[i] == nil {
+		if p.Cs[i] == nil || p.DResponses[i] == nil || p.VResponses[i] == nil {
 			return false
 		}
 
-		if p.C[i].BitLen() > g.N.BitLen() ||
-			uint(p.DResponse[i].BitLen()) > s.ld+s.lh+s.lstatzk+1 ||
-			uint(p.VResponse[i].BitLen()) > s.lm+s.lh+s.lstatzk+1 {
+		if p.Cs[i].BitLen() > g.N.BitLen() ||
+			uint(p.DResponses[i].BitLen()) > s.ld+s.lh+s.lstatzk+1 ||
+			uint(p.VResponses[i].BitLen()) > s.lm+s.lh+s.lstatzk+1 {
 			return false
 		}
 	}
@@ -341,7 +352,7 @@ func (s *ProofStructure) CommitmentsFromProof(g *QrGroup, p *Proof, challenge *b
 
 // Check whether proof makes required statement
 func (p *Proof) MakesStatement(a int, k *big.Int) bool {
-	if len(p.C) == 3 {
+	if len(p.Cs) == 3 {
 		a *= 4
 		k = new(big.Int).Mul(k, big.NewInt(4))
 		k.Sub(k, big.NewInt(2))
@@ -351,10 +362,10 @@ func (p *Proof) MakesStatement(a int, k *big.Int) bool {
 
 // Extract proof structure from proof
 func (p *Proof) ExtractStructure(lh, lstatzk, lm uint) (*ProofStructure, error) {
-	if p.K == nil || p.Ld > lm || len(p.C) < 3 || len(p.C) > 4 {
+	if p.K == nil || p.Ld > lm || len(p.Cs) < 3 || len(p.Cs) > 4 {
 		return nil, errors.New("Invalid proof")
 	}
-	return newWithParams(p.A, p.K, nil, len(p.C), p.Ld, lh, lstatzk, lm), nil
+	return newWithParams(p.A, p.K, nil, len(p.Cs), p.Ld, lh, lstatzk, lm), nil
 }
 
 // ---
@@ -393,17 +404,17 @@ func (c *proofCommit) Randomizer(name string) *big.Int {
 	}
 	if name[0] == 'v' {
 		i, err := strconv.Atoi(name[1:])
-		if err != nil || i < 0 || i >= len(c.vRandomizer) {
+		if err != nil || i < 0 || i >= len(c.vRandomizers) {
 			return nil
 		}
-		return c.vRandomizer[i]
+		return c.vRandomizers[i]
 	}
 	if name[0] == 'd' {
 		i, err := strconv.Atoi(name[1:])
-		if err != nil || i < 0 || i >= len(c.dRandomizer) {
+		if err != nil || i < 0 || i >= len(c.dRandomizers) {
 			return nil
 		}
-		return c.dRandomizer[i]
+		return c.dRandomizers[i]
 	}
 	return nil
 }
@@ -445,21 +456,21 @@ func (p *proof) ProofResult(name string) *big.Int {
 		return p.MResponse
 	}
 	if name == "v5" {
-		return p.VCombinedResponse
+		return p.V5Response
 	}
 	if name[0] == 'v' {
 		i, err := strconv.Atoi(name[1:])
-		if err != nil || i < 0 || i >= len(p.VResponse) {
+		if err != nil || i < 0 || i >= len(p.VResponses) {
 			return nil
 		}
-		return p.VResponse[i]
+		return p.VResponses[i]
 	}
 	if name[0] == 'd' {
 		i, err := strconv.Atoi(name[1:])
-		if err != nil || i < 0 || i >= len(p.DResponse) {
+		if err != nil || i < 0 || i >= len(p.DResponses) {
 			return nil
 		}
-		return p.DResponse[i]
+		return p.DResponses[i]
 	}
 	return nil
 }
@@ -467,10 +478,10 @@ func (p *proof) ProofResult(name string) *big.Int {
 func (p *proof) Base(name string) *big.Int {
 	if name[0] == 'C' {
 		i, err := strconv.Atoi(name[1:])
-		if err != nil || i < 0 || i >= len(p.C) {
+		if err != nil || i < 0 || i >= len(p.Cs) {
 			return nil
 		}
-		return p.C[i]
+		return p.Cs[i]
 	}
 	return nil
 }
@@ -485,8 +496,8 @@ func (p *proof) Exp(ret *big.Int, name string, exp, n *big.Int) bool {
 }
 
 func (p *proof) Names() []string {
-	result := make([]string, 0, len(p.C))
-	for i := range p.C {
+	result := make([]string, 0, len(p.Cs))
+	for i := range p.Cs {
 		result = append(result, fmt.Sprintf("C%d", i))
 	}
 

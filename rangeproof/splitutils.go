@@ -7,9 +7,13 @@ import (
 	"github.com/privacybydesign/gabi/internal/common"
 )
 
-type Splitter interface {
+// SquareSplitter provides a combined interface for all facets describing a method for spliting positive numbers into a sum of squares.
+type SquareSplitter interface {
+	// Number of bits per square
 	Ld() uint
-	Nsplit() int
+	// Number of squares in result
+	SquareCount() int
+	// Actual splitting function, on input delta, should return array x such that sum_i x_i^2 = delta and len(x) = SquareCount()
 	Split(*big.Int) ([]*big.Int, error)
 }
 
@@ -38,19 +42,19 @@ func GenerateSquaresTable(limit int64) SquaresTable {
 	return result
 }
 
-func (t_ *SquaresTable) Split(delta *big.Int) ([]*big.Int, error) {
-	t := [][]int64(*t_)
+func (t *SquaresTable) Split(delta *big.Int) ([]*big.Int, error) {
+	t_ := [][]int64(*t)
 	v := delta.Int64()
-	if !delta.IsInt64() || v < 0 || v >= int64(len(t)) || v%4 != 2 {
+	if !delta.IsInt64() || v < 0 || v >= int64(len(t_)) || v%4 != 2 {
 		return nil, errors.New("Value outside of table range")
 	}
 
 	v = (v - 2) / 4
 
-	return []*big.Int{big.NewInt(t[v][0]), big.NewInt(t[v][1]), big.NewInt(t[v][2])}, nil
+	return []*big.Int{big.NewInt(t_[v][0]), big.NewInt(t_[v][1]), big.NewInt(t_[v][2])}, nil
 }
 
-func (t *SquaresTable) Nsplit() int {
+func (t *SquaresTable) SquareCount() int {
 	return 3
 }
 
@@ -64,17 +68,17 @@ func (t *SquaresTable) Ld() uint {
 	return ld + 1 // compensate for extra bit due to 3-square correction
 }
 
-type FourSquareSplitter struct{}
+type FourSquaresSplitter struct{}
 
-func (_ *FourSquareSplitter) Split(delta *big.Int) ([]*big.Int, error) {
-	a, b, c, d := common.SumFourSquare(delta)
+func (_ *FourSquaresSplitter) Split(delta *big.Int) ([]*big.Int, error) {
+	a, b, c, d := common.SumFourSquares(delta)
 	return []*big.Int{a, b, c, d}, nil
 }
 
-func (_ *FourSquareSplitter) Nsplit() int {
+func (_ *FourSquaresSplitter) SquareCount() int {
 	return 4
 }
 
-func (_ *FourSquareSplitter) Ld() uint {
+func (_ *FourSquaresSplitter) Ld() uint {
 	return 128
 }
