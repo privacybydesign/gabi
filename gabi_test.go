@@ -5,12 +5,15 @@
 package gabi
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
+	"github.com/privacybydesign/gabi/keys"
 	"github.com/privacybydesign/gabi/rangeproof"
 	"github.com/privacybydesign/gabi/revocation"
 	"github.com/privacybydesign/gabi/safeprime"
@@ -509,14 +512,14 @@ func TestLegendreSymbol(t *testing.T) {
 
 func TestGenerateKeyPair(t *testing.T) {
 	// Insert toy parameters for speed
-	defaultBaseParameters[256] = BaseParameters{
+	defaultBaseParameters[256] = keys.BaseParameters{
 		LePrime: 120,
 		Lh:      256,
 		Lm:      256,
 		Ln:      256,
 		Lstatzk: 80,
 	}
-	DefaultSystemParameters[256] = &SystemParameters{
+	DefaultSystemParameters[256] = &keys.SystemParameters{
 		defaultBaseParameters[256],
 		MakeDerivedParameters(defaultBaseParameters[256]),
 	}
@@ -978,6 +981,10 @@ func TestConstructCredentialNonZeroRandomBlindAttributes(t *testing.T) {
 func TestMain(m *testing.M) {
 	err := setupParameters()
 	if err != nil {
+		if e, ok := err.(*errors.Error); ok {
+			fmt.Println(string(e.Stack()))
+		}
+		fmt.Println(err)
 		os.Exit(1)
 	}
 	os.Exit(m.Run())
