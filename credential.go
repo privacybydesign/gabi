@@ -260,7 +260,7 @@ func (d *DisclosureProofBuilder) Commit(randomizers map[string]*big.Int) []*big.
 // Return value and randomizer for attribute with given index, panics if index is part of the disclosed set
 //  or if Commit has not yet been called. This is an escape hatch needed to allow augmentation of disclosure
 //  proofs with additional statements such as range proofs.
-func (d *DisclosureProofBuilder) GetAttributeValueAndRandomizer(index int) (*big.Int, *big.Int) {
+func (d *DisclosureProofBuilder) AttributeValueAndRandomizer(index int) (*big.Int, *big.Int) {
 	return d.attributes[index], d.attrRandomizers[index]
 }
 

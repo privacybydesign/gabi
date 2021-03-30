@@ -576,7 +576,7 @@ func TestShowingWithRangeproof(t *testing.T) {
 	qrGroup := rangeproof.NewQrGroup(testPubK1.N, testPubK1.R[1], testPubK1.S) // R index is index of attribute on which we do range proof
 
 	contributions := builderlist.ChallengeContribution()
-	rpM, rpMRandomizer := builder.GetAttributeValueAndRandomizer(1)
+	rpM, rpMRandomizer := builder.AttributeValueAndRandomizer(1)
 	rpContributions, rpCommit, err := s.CommitmentsFromSecrets(&qrGroup, rpM, rpMRandomizer)
 	contributions = append(contributions, rpContributions...)
 	challenge := CreateChallenge(context, nonce, contributions, false)

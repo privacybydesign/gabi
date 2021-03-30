@@ -54,6 +54,10 @@ func (pl ProofList) GetFirstProofU() (*ProofU, error) {
 // ChallengeContributions collects and returns all the challenge contributions
 // of the proofs contained in the proof list.
 func (pl ProofList) ChallengeContributions(publicKeys []*PublicKey) ([]*big.Int, error) {
+	if len(pl) != len(publicKeys) {
+		return nil, errors.New("Incorrect number of public keys for given proofs")
+	}
+
 	contributions := make([]*big.Int, 0, len(pl)*2)
 	for i, proof := range pl {
 		contrib, err := proof.ChallengeContribution(publicKeys[i])
