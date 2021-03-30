@@ -6,34 +6,27 @@ package gabi
 
 import (
 	"sort"
+
+	"github.com/privacybydesign/gabi/keys"
 )
 
-// BaseParameters holds the base system parameters
-type BaseParameters struct {
-	LePrime uint
-	Lh      uint
-	Lm      uint
-	Ln      uint
-	Lstatzk uint
-}
-
 // defaultBaseParameters holds per keylength the base parameters.
-var defaultBaseParameters = map[int]BaseParameters{
-	1024: BaseParameters{
+var defaultBaseParameters = map[int]keys.BaseParameters{
+	1024: {
 		LePrime: 120,
 		Lh:      256,
 		Lm:      256,
 		Ln:      1024,
 		Lstatzk: 80,
 	},
-	2048: BaseParameters{
+	2048: {
 		LePrime: 120,
 		Lh:      256,
 		Lm:      256,
 		Ln:      2048,
 		Lstatzk: 128,
 	},
-	4096: BaseParameters{
+	4096: {
 		LePrime: 120,
 		Lh:      256,
 		Lm:      512,
@@ -42,24 +35,10 @@ var defaultBaseParameters = map[int]BaseParameters{
 	},
 }
 
-// DerivedParameters holds system parameters that can be drived from base
-// systemparameters (BaseParameters)
-type DerivedParameters struct {
-	Le            uint
-	LeCommit      uint
-	LmCommit      uint
-	LRA           uint
-	LsCommit      uint
-	Lv            uint
-	LvCommit      uint
-	LvPrime       uint
-	LvPrimeCommit uint
-}
-
 // MakeDerivedParameters computes the derived system parameters
-func MakeDerivedParameters(base BaseParameters) DerivedParameters {
+func MakeDerivedParameters(base keys.BaseParameters) keys.DerivedParameters {
 	Lv := base.Ln + 2*base.Lstatzk + base.Lh + base.Lm + 4
-	return DerivedParameters{
+	return keys.DerivedParameters{
 		Le:            base.Lstatzk + base.Lh + base.Lm + 5,
 		LeCommit:      base.LePrime + base.Lstatzk + base.Lh,
 		LmCommit:      base.Lm + base.Lstatzk + base.Lh,
@@ -72,24 +51,18 @@ func MakeDerivedParameters(base BaseParameters) DerivedParameters {
 	}
 }
 
-// SystemParameters holds the system parameters of the IRMA system.
-type SystemParameters struct {
-	BaseParameters
-	DerivedParameters
-}
-
 // DefaultSystemParameters holds per keylength the default parameters as are
 // currently in use at the moment. This might (and probably will) change in the
 // future.
-var DefaultSystemParameters = map[int]*SystemParameters{
-	1024: &SystemParameters{defaultBaseParameters[1024], MakeDerivedParameters(defaultBaseParameters[1024])},
-	2048: &SystemParameters{defaultBaseParameters[2048], MakeDerivedParameters(defaultBaseParameters[2048])},
-	4096: &SystemParameters{defaultBaseParameters[4096], MakeDerivedParameters(defaultBaseParameters[4096])},
+var DefaultSystemParameters = map[int]*keys.SystemParameters{
+	1024: {defaultBaseParameters[1024], MakeDerivedParameters(defaultBaseParameters[1024])},
+	2048: {defaultBaseParameters[2048], MakeDerivedParameters(defaultBaseParameters[2048])},
+	4096: {defaultBaseParameters[4096], MakeDerivedParameters(defaultBaseParameters[4096])},
 }
 
 // getAvailableKeyLengths returns the keylengths for the provided map of system
 // parameters.
-func getAvailableKeyLengths(sysParamsMap map[int]*SystemParameters) []int {
+func getAvailableKeyLengths(sysParamsMap map[int]*keys.SystemParameters) []int {
 	lengths := make([]int, 0, len(sysParamsMap))
 	for k := range sysParamsMap {
 		lengths = append(lengths, k)
