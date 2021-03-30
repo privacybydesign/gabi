@@ -22,11 +22,13 @@ type Credential struct {
 	nonrevCache chan *NonRevocationProofBuilder
 }
 
-// Statement that relevant attribute satisfies a*m-k > 0, and that a*m-k can be split into squares with given splitter
+// Statement that relevant attribute satisfies factor*m-bound > 0, and that
+// factor*m-bound can be split into squares with given splitter
+// Defaults to four square splitter when splitter not specified
 type RangeStatement struct {
-	a     int
-	k     *big.Int
-	split rangeproof.SquareSplitter
+	Factor int
+	Bound  *big.Int
+	Split  rangeproof.SquareSplitter
 }
 
 // DisclosureProofBuilder is an object that holds the state for the protocol to
@@ -153,10 +155,13 @@ func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int, ra
 			if !isUndisclosedAttribute(disclosedAttributes, index) {
 				return nil, errors.New("Range statements on revealed attributes are not supported")
 			}
-			d.rpStructures[index] = nil
 			for _, statement := range statements {
+				split := statement.Split
+				if split == nil {
+					split = &rangeproof.FourSquaresSplitter{}
+				}
 				d.rpStructures[index] = append(d.rpStructures[index],
-					rangeproof.New(statement.a, statement.k, statement.split, d.pk.Params.Lh, d.pk.Params.Lstatzk, d.pk.Params.Lm))
+					rangeproof.New(statement.Factor, statement.Bound, split, d.pk.Params.Lh, d.pk.Params.Lstatzk, d.pk.Params.Lm))
 			}
 		}
 	}
@@ -304,7 +309,6 @@ func (d *DisclosureProofBuilder) Commit(randomizers map[string]*big.Int) ([]*big
 				continue
 			}
 			g := rangeproof.NewQrGroup(d.pk.N, d.pk.R[index], d.pk.S)
-			d.rpCommits[index] = nil
 			for _, s := range structures {
 				contributions, commit, err := s.CommitmentsFromSecrets(&g, d.attributes[index], d.attrRandomizers[index])
 				if err != nil {
@@ -352,7 +356,6 @@ func (d *DisclosureProofBuilder) CreateProof(challenge *big.Int) Proof {
 	if d.rpStructures != nil {
 		rangeProofs = make(map[int][]*rangeproof.Proof)
 		for index, structures := range d.rpStructures {
-			rangeProofs[index] = nil
 			for i, s := range structures {
 				rangeProofs[index] = append(rangeProofs[index],
 					s.BuildProof(d.rpCommits[index][i], challenge))
