@@ -136,7 +136,8 @@ func TestRangeProofExtractStructure(t *testing.T) {
 	s := New(1, big.NewInt(45), &bruteForce3{}, 256, 128, 256)
 
 	m := big.NewInt(112)
-	mRandomizer := common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), s.lm+s.lh+s.lstatzk))
+	mRandomizer, err := common.RandomBigInt(s.lm + s.lh + s.lstatzk)
+	require.NoError(t, err)
 
 	secretList, commit, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
 	require.NoError(t, err)
