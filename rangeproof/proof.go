@@ -362,7 +362,14 @@ func (p *Proof) ProvesStatement(a int, k *big.Int) bool {
 
 // Extract proof structure from proof
 func (p *Proof) ExtractStructure(lh, lstatzk, lm uint) (*ProofStructure, error) {
-	if p.K == nil || p.Ld > lm || len(p.Cs) < 3 || len(p.Cs) > 4 {
+	// Check that all values needed for the structure are present and reasonable
+	//
+	// ld > lm is never reasonable since that implies a difference greater than 2^(2*lm)
+	//  which is bigger than m*a
+	// p.K >= 2^lm+sizeof(a) is never reasonable since that makes |m*a| < |k|, making
+	//  the proof statement trivial (it either always or never holds)
+	if p.K == nil || p.Ld > lm || len(p.Cs) < 3 || len(p.Cs) > 4 ||
+		p.K.BitLen() > int(lm+strconv.IntSize) {
 		return nil, errors.New("Invalid proof")
 	}
 	return newWithParams(p.A, p.K, nil, len(p.Cs), p.Ld, lh, lstatzk, lm), nil
