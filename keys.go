@@ -298,12 +298,9 @@ func (pubk *PublicKey) RevocationKey() (*revocation.PublicKey, error) {
 		if err != nil {
 			return nil, err
 		}
-		g := revocation.NewQrGroup(pubk.N)
-		g.G = pubk.G
-		g.H = pubk.H
 		pubk.revocationKey = &revocation.PublicKey{
 			Counter: pubk.Counter,
-			Group:   &g,
+			Group:   &pubk.PublicKey,
 			ECDSA:   dsakey,
 		}
 	}

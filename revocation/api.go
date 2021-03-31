@@ -77,6 +77,7 @@ import (
 	"github.com/multiformats/go-multihash"
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
+	"github.com/privacybydesign/gabi/keys"
 	"github.com/privacybydesign/gabi/signed"
 	"github.com/sirupsen/logrus"
 )
@@ -160,7 +161,7 @@ type (
 	PublicKey struct {
 		Counter uint
 		ECDSA   *ecdsa.PublicKey
-		Group   *QrGroup
+		Group   *keys.PublicKey
 	}
 )
 
