@@ -1,31 +1,46 @@
-package rangeproof
+package rangeproof_test
 
 import (
 	"errors"
 	"testing"
 
+	"github.com/privacybydesign/gabi"
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
+	"github.com/privacybydesign/gabi/keys"
+	"github.com/privacybydesign/gabi/rangeproof"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestGroup(t *testing.T) {
-	g := (qrGroup)(NewQrGroup(big.NewInt(35), big.NewInt(3), big.NewInt(4)))
+const (
+	xmlPubKey1 = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<IssuerPublicKey xmlns="http://www.zurich.ibm.com/security/idemix">
+   <Counter>0</Counter>
+   <ExpiryDate>1700000000</ExpiryDate>
+   <Elements>
+      <n>164849270410462350104130325681247905590883554049096338805080434441472785625514686982133223499269392762578795730418568510961568211704176723141852210985181059718962898851826265731600544499072072429389241617421101776748772563983535569756524904424870652659455911012103327708213798899264261222168033763550010103177</n>
+      <Z>85612209073231549357971504917706448448632620481242156140921956689865243071517333286408980597347754869291449755693386875207418733579434926868804114639149514414312088911027338251870409643059636340634892197874721564672349336579075665489514404442681614964231517891268285775435774878821304200809336437001672124945</Z>
+      <S>95431387101397795194125116418957121488151703839429468857058760824105489778492929250965841783742048628875926892511288385484169300700205687919208898288594042075246841706909674758503593474606503299796011177189518412713004451163324915669592252022175131604797186534801966982736645522331999047305414834481507220892</S>
+      <Bases num="6">
+         <Base_0>15948796959221892486955992453179199515496923441128830967123361439118018661581037984810048354811434050038778558011395590650011565629310700360843433067202313291361609843998531962373969946197182940391414711398289105131565252299185121868561402842968555939684308560329951491463967030905495360286851791764439565922</Base_0>
+         <Base_1>119523438901119086528333705353116973341573129722743063979885442255495816390473126070276442804547475203517104656193873407665058481273192071865721910619056848142740067272069428460724210705091048104466624895000063564223095487133194907203681789863578060886235105842841954519189942453426975057803871974937309502784</Base_1>
+         <Base_2>21036812778930907905009726679774009067486097699134635274413938052367886222555608567065065339702690960558290977766511663461460906408225144877806673612081001465755091058944847078216758263034300782760502281865270151054157854728772298542643419836244547728225955304279190350362963560596454003412543292789187837679</Base_2>
+         <Base_3>2507221674373339204944916721547102290807064604358409729371715856726643784893285066715992395214052930640947278288383410209092118436778149456628267900567208684458410552361708506911626161349456189054709967676518205745736652492505957876189855916223094854626710186459345996698113370306994139940441752005221653088</Base_3>
+         <Base_4>43215325590379490852400435325847836613513274803460964568083232110934910151335113918829588414147781676586145312074043749201037447486205927144941119404243266454032858201713735324770837218773739346063812751896736791478531103409536739098007890723770126159814845238386299865793353073058783010002988453373168625327</Base_4>
+         <Base_5>61146634020942775692657595021461289090915429142715194304483397998858712705680675945417056124974172620475325240482216550923967273908399017396442709297466408094303826941548068001214817725191465207971123378222070812822903173820970991987799984521470178624084174451047081964996323127069438975310975798326710264763</Base_5>
+      </Bases>
+   </Elements>
+   <Features>
+      <Epoch length="432000"></Epoch>
+   </Features>
+</IssuerPublicKey>`
+)
 
-	assert.Equal(t, g.Base("R"), big.NewInt(3))
-	assert.Equal(t, g.Base("S"), big.NewInt(4))
-	assert.Equal(t, g.Base("N"), (*big.Int)(nil))
-	assert.Equal(t, g.Base("R1234"), (*big.Int)(nil))
-	assert.ElementsMatch(t, g.Names(), []string{"R", "S"})
-
-	ret := new(big.Int)
-	assert.True(t, g.Exp(ret, "R", big.NewInt(5), g.N))
-	assert.Equal(t, ret, new(big.Int).Exp(g.Base("R"), big.NewInt(5), g.N))
-	assert.True(t, g.Exp(ret, "S", big.NewInt(7), g.N))
-	assert.Equal(t, ret, new(big.Int).Exp(g.Base("S"), big.NewInt(7), g.N))
-	assert.False(t, g.Exp(ret, "N", big.NewInt(9), g.N))
-	assert.False(t, g.Exp(ret, "R1234", big.NewInt(11), g.N))
+func setupPubkey(t *testing.T) keys.PublicKey {
+	PubKey, err := gabi.NewPublicKeyFromXML(xmlPubKey1)
+	require.NoError(t, err)
+	return PubKey.PublicKey
 }
 
 type bruteForce3 struct{}
@@ -99,19 +114,12 @@ func (_ *bruteForce4) Ld() uint {
 }
 
 func TestRangeProofBasic(t *testing.T) {
-	p, ok := new(big.Int).SetString("137638811993558195206420328357073658091105450134788808980204514105755078006531089565424872264423706112211603473814961517434905870865504591672559685691792489986134468104546337570949069664216234978690144943134866212103184925841701142837749906961652202656280177667215409099503103170243548357516953064641207916007", 10)
-	require.True(t, ok, "failed to parse p")
-	q, ok := new(big.Int).SetString("161568850263671082708797642691138038443080533253276097248590507678645648170870472664501153166861026407778587004276645109302937591955229881186233151561419055453812743980662387119394543989953096207398047305729607795030698835363986813674377580220752360344952636913024495263497458333887018979316817606614095137583", 10)
-	require.True(t, ok, "failed to parse q")
+	g := setupPubkey(t)
 
-	N := new(big.Int).Mul(p, q)
-
-	g := NewQrGroup(N, common.RandomQR(N), common.RandomQR(N))
-
-	s := New(1, big.NewInt(45), &bruteForce3{}, 256, 128, 256)
+	s := rangeproof.New(1, 1, big.NewInt(45), &bruteForce3{})
 
 	m := big.NewInt(112)
-	mRandomizer, err := common.RandomBigInt(s.lm + s.lh + s.lstatzk)
+	mRandomizer, err := common.RandomBigInt(g.Params.Lm + g.Params.Lh + g.Params.Lstatzk)
 	require.NoError(t, err)
 
 	secretList, commit, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
@@ -124,26 +132,19 @@ func TestRangeProofBasic(t *testing.T) {
 }
 
 func TestRangeProofExtractStructure(t *testing.T) {
-	p, ok := new(big.Int).SetString("137638811993558195206420328357073658091105450134788808980204514105755078006531089565424872264423706112211603473814961517434905870865504591672559685691792489986134468104546337570949069664216234978690144943134866212103184925841701142837749906961652202656280177667215409099503103170243548357516953064641207916007", 10)
-	require.True(t, ok, "failed to parse p")
-	q, ok := new(big.Int).SetString("161568850263671082708797642691138038443080533253276097248590507678645648170870472664501153166861026407778587004276645109302937591955229881186233151561419055453812743980662387119394543989953096207398047305729607795030698835363986813674377580220752360344952636913024495263497458333887018979316817606614095137583", 10)
-	require.True(t, ok, "failed to parse q")
+	g := setupPubkey(t)
 
-	N := new(big.Int).Mul(p, q)
-
-	g := NewQrGroup(N, common.RandomQR(N), common.RandomQR(N))
-
-	s := New(1, big.NewInt(45), &bruteForce3{}, 256, 128, 256)
+	s := rangeproof.New(1, 1, big.NewInt(45), &bruteForce3{})
 
 	m := big.NewInt(112)
-	mRandomizer, err := common.RandomBigInt(s.lm + s.lh + s.lstatzk)
+	mRandomizer, err := common.RandomBigInt(g.Params.Lm + g.Params.Lh + g.Params.Lstatzk)
 	require.NoError(t, err)
 
 	secretList, commit, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
 	require.NoError(t, err)
 	proof := s.BuildProof(commit, big.NewInt(1234567))
 
-	s, err = proof.ExtractStructure(256, 128, 256)
+	s, err = proof.ExtractStructure(1, &g)
 	require.NoError(t, err)
 	assert.True(t, s.VerifyProofStructure(&g, proof))
 	assert.True(t, proof.ProvesStatement(1, big.NewInt(45)))
@@ -151,37 +152,30 @@ func TestRangeProofExtractStructure(t *testing.T) {
 	assert.Equal(t, secretList, proofList)
 
 	proof.Cs = append(proof.Cs, big.NewInt(1), big.NewInt(1))
-	_, err = proof.ExtractStructure(256, 128, 256)
+	_, err = proof.ExtractStructure(1, &g)
 	assert.Error(t, err)
 	proof.Cs = proof.Cs[:2]
-	_, err = proof.ExtractStructure(256, 128, 256)
+	_, err = proof.ExtractStructure(1, &g)
 	assert.Error(t, err)
 	proof.Cs = append(proof.Cs, big.NewInt(1))
 	proof.Ld = 300
-	_, err = proof.ExtractStructure(256, 128, 256)
+	_, err = proof.ExtractStructure(1, &g)
 	assert.Error(t, err)
 	proof.Ld = 8
 	proof.K = nil
-	_, err = proof.ExtractStructure(256, 128, 256)
+	_, err = proof.ExtractStructure(1, &g)
 	assert.Error(t, err)
 }
 
 func TestRangeProofUsingTable(t *testing.T) {
-	table := GenerateSquaresTable(65536)
+	table := rangeproof.GenerateSquaresTable(65536)
 
-	p, ok := new(big.Int).SetString("137638811993558195206420328357073658091105450134788808980204514105755078006531089565424872264423706112211603473814961517434905870865504591672559685691792489986134468104546337570949069664216234978690144943134866212103184925841701142837749906961652202656280177667215409099503103170243548357516953064641207916007", 10)
-	require.True(t, ok, "failed to parse p")
-	q, ok := new(big.Int).SetString("161568850263671082708797642691138038443080533253276097248590507678645648170870472664501153166861026407778587004276645109302937591955229881186233151561419055453812743980662387119394543989953096207398047305729607795030698835363986813674377580220752360344952636913024495263497458333887018979316817606614095137583", 10)
-	require.True(t, ok, "failed to parse q")
+	g := setupPubkey(t)
 
-	N := new(big.Int).Mul(p, q)
-
-	g := NewQrGroup(N, common.RandomQR(N), common.RandomQR(N))
-
-	s := New(1, big.NewInt(45), &table, 256, 128, 256)
+	s := rangeproof.New(1, 1, big.NewInt(45), &table)
 
 	m := big.NewInt(112)
-	mRandomizer, err := common.RandomBigInt(s.lm + s.lh + s.lstatzk)
+	mRandomizer, err := common.RandomBigInt(g.Params.Lm + g.Params.Lh + g.Params.Lstatzk)
 	require.NoError(t, err)
 
 	secretList, commit, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
@@ -194,19 +188,12 @@ func TestRangeProofUsingTable(t *testing.T) {
 }
 
 func TestRangeProofUsingSumFourSquareAlg(t *testing.T) {
-	p, ok := new(big.Int).SetString("137638811993558195206420328357073658091105450134788808980204514105755078006531089565424872264423706112211603473814961517434905870865504591672559685691792489986134468104546337570949069664216234978690144943134866212103184925841701142837749906961652202656280177667215409099503103170243548357516953064641207916007", 10)
-	require.True(t, ok, "failed to parse p")
-	q, ok := new(big.Int).SetString("161568850263671082708797642691138038443080533253276097248590507678645648170870472664501153166861026407778587004276645109302937591955229881186233151561419055453812743980662387119394543989953096207398047305729607795030698835363986813674377580220752360344952636913024495263497458333887018979316817606614095137583", 10)
-	require.True(t, ok, "failed to parse q")
+	g := setupPubkey(t)
 
-	N := new(big.Int).Mul(p, q)
-
-	g := NewQrGroup(N, common.RandomQR(N), common.RandomQR(N))
-
-	s := New(1, big.NewInt(45), &FourSquaresSplitter{}, 256, 128, 256)
+	s := rangeproof.New(2, 1, big.NewInt(45), &rangeproof.FourSquaresSplitter{})
 
 	m := big.NewInt(112)
-	mRandomizer, err := common.RandomBigInt(s.lm + s.lh + s.lstatzk)
+	mRandomizer, err := common.RandomBigInt(g.Params.Lm + g.Params.Lh + g.Params.Lstatzk)
 	require.NoError(t, err)
 
 	secretList, commit, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
@@ -219,19 +206,12 @@ func TestRangeProofUsingSumFourSquareAlg(t *testing.T) {
 }
 
 func TestRangeProofInvalidStatement(t *testing.T) {
-	p, ok := new(big.Int).SetString("137638811993558195206420328357073658091105450134788808980204514105755078006531089565424872264423706112211603473814961517434905870865504591672559685691792489986134468104546337570949069664216234978690144943134866212103184925841701142837749906961652202656280177667215409099503103170243548357516953064641207916007", 10)
-	require.True(t, ok, "failed to parse p")
-	q, ok := new(big.Int).SetString("161568850263671082708797642691138038443080533253276097248590507678645648170870472664501153166861026407778587004276645109302937591955229881186233151561419055453812743980662387119394543989953096207398047305729607795030698835363986813674377580220752360344952636913024495263497458333887018979316817606614095137583", 10)
-	require.True(t, ok, "failed to parse q")
+	g := setupPubkey(t)
 
-	N := new(big.Int).Mul(p, q)
-
-	g := NewQrGroup(N, common.RandomQR(N), common.RandomQR(N))
-
-	s := New(1, big.NewInt(113), &bruteForce3{}, 256, 128, 256)
+	s := rangeproof.New(1, 1, big.NewInt(113), &bruteForce3{})
 
 	m := big.NewInt(112)
-	mRandomizer, err := common.RandomBigInt(s.lm + s.lh + s.lstatzk)
+	mRandomizer, err := common.RandomBigInt(g.Params.Lm + g.Params.Lh + g.Params.Lstatzk)
 	require.NoError(t, err)
 
 	_, _, err = s.CommitmentsFromSecrets(&g, m, mRandomizer)
@@ -239,19 +219,12 @@ func TestRangeProofInvalidStatement(t *testing.T) {
 }
 
 func TestRangeProofBasic4(t *testing.T) {
-	p, ok := new(big.Int).SetString("137638811993558195206420328357073658091105450134788808980204514105755078006531089565424872264423706112211603473814961517434905870865504591672559685691792489986134468104546337570949069664216234978690144943134866212103184925841701142837749906961652202656280177667215409099503103170243548357516953064641207916007", 10)
-	require.True(t, ok, "failed to parse p")
-	q, ok := new(big.Int).SetString("161568850263671082708797642691138038443080533253276097248590507678645648170870472664501153166861026407778587004276645109302937591955229881186233151561419055453812743980662387119394543989953096207398047305729607795030698835363986813674377580220752360344952636913024495263497458333887018979316817606614095137583", 10)
-	require.True(t, ok, "failed to parse q")
+	g := setupPubkey(t)
 
-	N := new(big.Int).Mul(p, q)
-
-	g := NewQrGroup(N, common.RandomQR(N), common.RandomQR(N))
-
-	s := New(1, big.NewInt(45), &bruteForce4{}, 256, 128, 256)
+	s := rangeproof.New(2, 1, big.NewInt(45), &bruteForce4{})
 
 	m := big.NewInt(112)
-	mRandomizer, err := common.RandomBigInt(s.lm + s.lh + s.lstatzk)
+	mRandomizer, err := common.RandomBigInt(g.Params.Lm + g.Params.Lh + g.Params.Lstatzk)
 	require.NoError(t, err)
 
 	secretList, commit, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
@@ -283,32 +256,25 @@ func (t *testSplit) Ld() uint {
 }
 
 func TestRangeProofMisbehavingSplit(t *testing.T) {
-	p, ok := new(big.Int).SetString("137638811993558195206420328357073658091105450134788808980204514105755078006531089565424872264423706112211603473814961517434905870865504591672559685691792489986134468104546337570949069664216234978690144943134866212103184925841701142837749906961652202656280177667215409099503103170243548357516953064641207916007", 10)
-	require.True(t, ok, "failed to parse p")
-	q, ok := new(big.Int).SetString("161568850263671082708797642691138038443080533253276097248590507678645648170870472664501153166861026407778587004276645109302937591955229881186233151561419055453812743980662387119394543989953096207398047305729607795030698835363986813674377580220752360344952636913024495263497458333887018979316817606614095137583", 10)
-	require.True(t, ok, "failed to parse q")
+	g := setupPubkey(t)
 
-	N := new(big.Int).Mul(p, q)
-
-	g := NewQrGroup(N, common.RandomQR(N), common.RandomQR(N))
-
-	s := New(1, big.NewInt(45), &testSplit{val: nil, e: errors.New("test"), n: 4, ld: 8}, 256, 128, 256)
+	s := rangeproof.New(1, 1, big.NewInt(45), &testSplit{val: nil, e: errors.New("test"), n: 4, ld: 8})
 
 	m := big.NewInt(112)
-	mRandomizer, err := common.RandomBigInt(s.lm + s.lh + s.lstatzk)
+	mRandomizer, err := common.RandomBigInt(g.Params.Lm + g.Params.Lh + g.Params.Lstatzk)
 
 	_, _, err = s.CommitmentsFromSecrets(&g, m, mRandomizer)
 	assert.Error(t, err)
 
-	s = New(1, big.NewInt(45), &testSplit{val: []*big.Int{big.NewInt(512), big.NewInt(512), big.NewInt(512)}, e: nil, n: 3, ld: 8}, 256, 128, 256)
+	s = rangeproof.New(1, 1, big.NewInt(45), &testSplit{val: []*big.Int{big.NewInt(512), big.NewInt(512), big.NewInt(512)}, e: nil, n: 3, ld: 8})
 	_, _, err = s.CommitmentsFromSecrets(&g, m, mRandomizer)
 	assert.Error(t, err)
 
-	s = New(1, big.NewInt(45), &testSplit{val: []*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)}, e: nil, n: 4, ld: 8}, 256, 128, 256)
+	s = rangeproof.New(1, 1, big.NewInt(45), &testSplit{val: []*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)}, e: nil, n: 4, ld: 8})
 	_, _, err = s.CommitmentsFromSecrets(&g, m, mRandomizer)
 	assert.Error(t, err)
 
-	s = New(1, big.NewInt(45), &testSplit{val: []*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)}, e: nil, n: 3, ld: 8}, 256, 128, 256)
+	s = rangeproof.New(1, 1, big.NewInt(45), &testSplit{val: []*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)}, e: nil, n: 3, ld: 8})
 	secretList, commit, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
 	require.NoError(t, err)
 	proof := s.BuildProof(commit, big.NewInt(1234567))
@@ -317,156 +283,13 @@ func TestRangeProofMisbehavingSplit(t *testing.T) {
 	assert.NotEqual(t, secretList, proofList)
 }
 
-func TestProofKeyproofInterfaces(t *testing.T) {
-	p, ok := new(big.Int).SetString("137638811993558195206420328357073658091105450134788808980204514105755078006531089565424872264423706112211603473814961517434905870865504591672559685691792489986134468104546337570949069664216234978690144943134866212103184925841701142837749906961652202656280177667215409099503103170243548357516953064641207916007", 10)
-	require.True(t, ok, "failed to parse p")
-	q, ok := new(big.Int).SetString("161568850263671082708797642691138038443080533253276097248590507678645648170870472664501153166861026407778587004276645109302937591955229881186233151561419055453812743980662387119394543989953096207398047305729607795030698835363986813674377580220752360344952636913024495263497458333887018979316817606614095137583", 10)
-	require.True(t, ok, "failed to parse q")
-
-	N := new(big.Int).Mul(p, q)
-
-	g := NewQrGroup(N, common.RandomQR(N), common.RandomQR(N))
-
-	s := New(1, big.NewInt(45), &bruteForce3{}, 256, 128, 256)
-
-	m := big.NewInt(112)
-	mRandomizer, err := common.RandomBigInt(s.lm + s.lh + s.lstatzk)
-	require.NoError(t, err)
-
-	_, commit, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
-	require.NoError(t, err)
-	proof := (*proof)(s.BuildProof(commit, big.NewInt(1234567)))
-
-	assert.ElementsMatch(t, proof.Names(), []string{"C0", "C1", "C2"})
-	assert.Equal(t, proof.Base("C0"), proof.Cs[0])
-	assert.Equal(t, proof.Base("C1"), proof.Cs[1])
-	assert.Equal(t, proof.Base("C2"), proof.Cs[2])
-	assert.Equal(t, proof.Base("C-1"), (*big.Int)(nil))
-	assert.Equal(t, proof.Base("C3"), (*big.Int)(nil))
-	assert.Equal(t, proof.Base("Cabcd"), (*big.Int)(nil))
-	assert.Equal(t, proof.Base("djfdf"), (*big.Int)(nil))
-
-	ret := new(big.Int)
-	assert.True(t, proof.Exp(ret, "C0", big.NewInt(15), g.N))
-	assert.Equal(t, ret, new(big.Int).Exp(proof.Base("C0"), big.NewInt(15), g.N))
-	assert.True(t, proof.Exp(ret, "C1", big.NewInt(17), g.N))
-	assert.Equal(t, ret, new(big.Int).Exp(proof.Base("C1"), big.NewInt(17), g.N))
-	assert.True(t, proof.Exp(ret, "C2", big.NewInt(19), g.N))
-	assert.Equal(t, ret, new(big.Int).Exp(proof.Base("C2"), big.NewInt(19), g.N))
-	assert.False(t, proof.Exp(ret, "C3", big.NewInt(21), g.N))
-	assert.False(t, proof.Exp(ret, "C-1", big.NewInt(23), g.N))
-	assert.False(t, proof.Exp(ret, "Cadfsdf", big.NewInt(25), g.N))
-	assert.False(t, proof.Exp(ret, "jdsdfj", big.NewInt(27), g.N))
-
-	assert.Equal(t, proof.ProofResult("v0"), proof.VResponses[0])
-	assert.Equal(t, proof.ProofResult("v1"), proof.VResponses[1])
-	assert.Equal(t, proof.ProofResult("v2"), proof.VResponses[2])
-	assert.Equal(t, proof.ProofResult("v-1"), (*big.Int)(nil))
-	assert.Equal(t, proof.ProofResult("v3"), (*big.Int)(nil))
-	assert.Equal(t, proof.ProofResult("vajdfsk"), (*big.Int)(nil))
-	assert.Equal(t, proof.ProofResult("d0"), proof.DResponses[0])
-	assert.Equal(t, proof.ProofResult("d1"), proof.DResponses[1])
-	assert.Equal(t, proof.ProofResult("d2"), proof.DResponses[2])
-	assert.Equal(t, proof.ProofResult("d-1"), (*big.Int)(nil))
-	assert.Equal(t, proof.ProofResult("d3"), (*big.Int)(nil))
-	assert.Equal(t, proof.ProofResult("dalsdf"), (*big.Int)(nil))
-	assert.Equal(t, proof.ProofResult("m"), proof.MResponse)
-	assert.Equal(t, proof.ProofResult("msdfjk"), (*big.Int)(nil))
-	assert.Equal(t, proof.ProofResult("sjfd"), (*big.Int)(nil))
-
-}
-
-func TestCommitKeyproofInterfaces(t *testing.T) {
-	p, ok := new(big.Int).SetString("137638811993558195206420328357073658091105450134788808980204514105755078006531089565424872264423706112211603473814961517434905870865504591672559685691792489986134468104546337570949069664216234978690144943134866212103184925841701142837749906961652202656280177667215409099503103170243548357516953064641207916007", 10)
-	require.True(t, ok, "failed to parse p")
-	q, ok := new(big.Int).SetString("161568850263671082708797642691138038443080533253276097248590507678645648170870472664501153166861026407778587004276645109302937591955229881186233151561419055453812743980662387119394543989953096207398047305729607795030698835363986813674377580220752360344952636913024495263497458333887018979316817606614095137583", 10)
-	require.True(t, ok, "failed to parse q")
-
-	N := new(big.Int).Mul(p, q)
-
-	g := NewQrGroup(N, common.RandomQR(N), common.RandomQR(N))
-
-	s := New(1, big.NewInt(45), &bruteForce3{}, 256, 128, 256)
-
-	m := big.NewInt(112)
-	mRandomizer, err := common.RandomBigInt(s.lm + s.lh + s.lstatzk)
-	require.NoError(t, err)
-
-	_, commit_, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
-	require.NoError(t, err)
-
-	commit := (*proofCommit)(commit_)
-
-	assert.ElementsMatch(t, commit.Names(), []string{"C0", "C1", "C2"})
-	assert.Equal(t, commit.Base("C0"), commit.c[0])
-	assert.Equal(t, commit.Base("C1"), commit.c[1])
-	assert.Equal(t, commit.Base("C2"), commit.c[2])
-	assert.Equal(t, commit.Base("C3"), (*big.Int)(nil))
-	assert.Equal(t, commit.Base("C-1"), (*big.Int)(nil))
-	assert.Equal(t, commit.Base("Cadfsdf"), (*big.Int)(nil))
-	assert.Equal(t, commit.Base("jdsdfj"), (*big.Int)(nil))
-
-	ret := new(big.Int)
-	assert.True(t, commit.Exp(ret, "C0", big.NewInt(15), g.N))
-	assert.Equal(t, ret, new(big.Int).Exp(commit.Base("C0"), big.NewInt(15), g.N))
-	assert.True(t, commit.Exp(ret, "C1", big.NewInt(17), g.N))
-	assert.Equal(t, ret, new(big.Int).Exp(commit.Base("C1"), big.NewInt(17), g.N))
-	assert.True(t, commit.Exp(ret, "C2", big.NewInt(19), g.N))
-	assert.Equal(t, ret, new(big.Int).Exp(commit.Base("C2"), big.NewInt(19), g.N))
-	assert.False(t, commit.Exp(ret, "C3", big.NewInt(21), g.N))
-	assert.False(t, commit.Exp(ret, "C-1", big.NewInt(23), g.N))
-	assert.False(t, commit.Exp(ret, "Cadfsdf", big.NewInt(25), g.N))
-	assert.False(t, commit.Exp(ret, "jdsdfj", big.NewInt(27), g.N))
-
-	assert.Equal(t, commit.Secret("v5"), commit.v5)
-	assert.Equal(t, commit.Secret("v0"), commit.v[0])
-	assert.Equal(t, commit.Secret("v1"), commit.v[1])
-	assert.Equal(t, commit.Secret("v2"), commit.v[2])
-	assert.Equal(t, commit.Secret("v3"), (*big.Int)(nil))
-	assert.Equal(t, commit.Secret("v-1"), (*big.Int)(nil))
-	assert.Equal(t, commit.Secret("vasjdfl"), (*big.Int)(nil))
-	assert.Equal(t, commit.Secret("d0"), commit.d[0])
-	assert.Equal(t, commit.Secret("d1"), commit.d[1])
-	assert.Equal(t, commit.Secret("d2"), commit.d[2])
-	assert.Equal(t, commit.Secret("d-1"), (*big.Int)(nil))
-	assert.Equal(t, commit.Secret("d3"), (*big.Int)(nil))
-	assert.Equal(t, commit.Secret("dasdlkfj"), (*big.Int)(nil))
-	assert.Equal(t, commit.Secret("m"), m)
-	assert.Equal(t, commit.Secret("malsd"), (*big.Int)(nil))
-	assert.Equal(t, commit.Secret("alsdkjf"), (*big.Int)(nil))
-
-	assert.Equal(t, commit.Randomizer("v5"), commit.v5Randomizer)
-	assert.Equal(t, commit.Randomizer("v0"), commit.vRandomizers[0])
-	assert.Equal(t, commit.Randomizer("v1"), commit.vRandomizers[1])
-	assert.Equal(t, commit.Randomizer("v2"), commit.vRandomizers[2])
-	assert.Equal(t, commit.Randomizer("v3"), (*big.Int)(nil))
-	assert.Equal(t, commit.Randomizer("v-1"), (*big.Int)(nil))
-	assert.Equal(t, commit.Randomizer("vasjdfl"), (*big.Int)(nil))
-	assert.Equal(t, commit.Randomizer("d0"), commit.dRandomizers[0])
-	assert.Equal(t, commit.Randomizer("d1"), commit.dRandomizers[1])
-	assert.Equal(t, commit.Randomizer("d2"), commit.dRandomizers[2])
-	assert.Equal(t, commit.Randomizer("d-1"), (*big.Int)(nil))
-	assert.Equal(t, commit.Randomizer("d3"), (*big.Int)(nil))
-	assert.Equal(t, commit.Randomizer("dasdlkfj"), (*big.Int)(nil))
-	assert.Equal(t, commit.Randomizer("m"), mRandomizer)
-	assert.Equal(t, commit.Randomizer("malsd"), (*big.Int)(nil))
-	assert.Equal(t, commit.Randomizer("alsdkjf"), (*big.Int)(nil))
-}
-
 func TestVerifyProofStructure(t *testing.T) {
-	p, ok := new(big.Int).SetString("137638811993558195206420328357073658091105450134788808980204514105755078006531089565424872264423706112211603473814961517434905870865504591672559685691792489986134468104546337570949069664216234978690144943134866212103184925841701142837749906961652202656280177667215409099503103170243548357516953064641207916007", 10)
-	require.True(t, ok, "failed to parse p")
-	q, ok := new(big.Int).SetString("161568850263671082708797642691138038443080533253276097248590507678645648170870472664501153166861026407778587004276645109302937591955229881186233151561419055453812743980662387119394543989953096207398047305729607795030698835363986813674377580220752360344952636913024495263497458333887018979316817606614095137583", 10)
-	require.True(t, ok, "failed to parse q")
+	g := setupPubkey(t)
 
-	N := new(big.Int).Mul(p, q)
-
-	g := NewQrGroup(N, common.RandomQR(N), common.RandomQR(N))
-
-	s := New(1, big.NewInt(45), &bruteForce3{}, 256, 128, 256)
+	s := rangeproof.New(1, 1, big.NewInt(45), &bruteForce3{})
 
 	m := big.NewInt(112)
-	mRandomizer, err := common.RandomBigInt(s.lm + s.lh + s.lstatzk)
+	mRandomizer, err := common.RandomBigInt(g.Params.Lm + g.Params.Lh + g.Params.Lstatzk)
 	require.NoError(t, err)
 
 	_, commit, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)

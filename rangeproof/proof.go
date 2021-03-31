@@ -8,6 +8,8 @@ import (
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
 	"github.com/privacybydesign/gabi/keyproof"
+	"github.com/privacybydesign/gabi/keys"
+	"github.com/privacybydesign/gabi/prooftools"
 )
 
 // This subpackage of gabi implements a variation of the inequality/range proof protocol given in section 6.2.6/6.3.6 of "
@@ -93,17 +95,15 @@ import (
 
 type (
 	ProofStructure struct {
-		cRep     []qrRepresentationProofStructure
-		mCorrect qrRepresentationProofStructure
+		cRep     []prooftools.QrRepresentationProofStructure
+		mCorrect prooftools.QrRepresentationProofStructure
 
-		a int
-		k *big.Int
+		index int
+		a     int
+		k     *big.Int
 
 		splitter SquareSplitter
 		ld       uint
-		lm       uint
-		lh       uint
-		lstatzk  uint
 	}
 
 	Proof struct {
@@ -137,7 +137,6 @@ type (
 
 	proof       Proof
 	proofCommit ProofCommit
-	qrGroup     QrGroup
 )
 
 // Create a new proof structure for proving a statement of form a*m - k >= 0
@@ -145,7 +144,7 @@ type (
 //  lh is the size of the challenge
 //  lm the size of m, and also used as the number of bits for computational hiding
 //  lstatzk the number of bits of statistical hiding to use
-func New(a int, k *big.Int, split SquareSplitter, lh, lstatzk, lm uint) *ProofStructure {
+func New(index, a int, k *big.Int, split SquareSplitter) *ProofStructure {
 	if split.SquareCount() == 3 {
 		// Not all numbers can be written as sum of 3 squares, but n for which n == 2 (mod 4) can
 		// so ensure that a*m-k falls into that category
@@ -154,42 +153,40 @@ func New(a int, k *big.Int, split SquareSplitter, lh, lstatzk, lm uint) *ProofSt
 		k.Sub(k, big.NewInt(2))
 	}
 
-	return newWithParams(a, k, split, split.SquareCount(), split.Ld(), lh, lstatzk, lm)
+	return newWithParams(index, a, k, split, split.SquareCount(), split.Ld())
 }
 
-func newWithParams(a int, k *big.Int, split SquareSplitter, nSplit int, ld, lh, lstatzk, lm uint) *ProofStructure {
+func newWithParams(index, a int, k *big.Int, split SquareSplitter, nSplit int, ld uint) *ProofStructure {
 	if nSplit > 4 {
 		panic("No support for range proofs with delta split in more than 4 squares")
 	}
 
 	result := &ProofStructure{
-		mCorrect: qrRepresentationProofStructure{
+		mCorrect: prooftools.QrRepresentationProofStructure{
 			Lhs: []keyproof.LhsContribution{
-				{Base: "R", Power: new(big.Int).Neg(k)},
+				{Base: fmt.Sprintf("R%d", index), Power: new(big.Int).Neg(k)},
 			},
 			Rhs: []keyproof.RhsContribution{
 				{Base: "S", Secret: "v5", Power: -1},
-				{Base: "R", Secret: "m", Power: int64(-a)},
+				{Base: fmt.Sprintf("R%d", index), Secret: "m", Power: int64(-a)},
 			},
 		},
 
-		a: a,
-		k: new(big.Int).Set(k),
+		index: index,
+		a:     a,
+		k:     new(big.Int).Set(k),
 
 		splitter: split,
 		ld:       ld,
-		lm:       lm,
-		lh:       lh,
-		lstatzk:  lstatzk,
 	}
 
 	for i := 0; i < nSplit; i++ {
-		result.cRep = append(result.cRep, qrRepresentationProofStructure{
+		result.cRep = append(result.cRep, prooftools.QrRepresentationProofStructure{
 			Lhs: []keyproof.LhsContribution{
 				{Base: fmt.Sprintf("C%d", i), Power: big.NewInt(1)},
 			},
 			Rhs: []keyproof.RhsContribution{
-				{Base: "R", Secret: fmt.Sprintf("d%d", i), Power: 1},
+				{Base: fmt.Sprintf("R%d", index), Secret: fmt.Sprintf("d%d", i), Power: 1},
 				{Base: "S", Secret: fmt.Sprintf("v%d", i), Power: 1},
 			},
 		})
@@ -204,7 +201,7 @@ func newWithParams(a int, k *big.Int, split SquareSplitter, nSplit int, ld, lh, 
 	return result
 }
 
-func (s *ProofStructure) CommitmentsFromSecrets(g *QrGroup, m, mRandomizer *big.Int) ([]*big.Int, *ProofCommit, error) {
+func (s *ProofStructure) CommitmentsFromSecrets(g *keys.PublicKey, m, mRandomizer *big.Int) ([]*big.Int, *ProofCommit, error) {
 	var err error
 
 	d := new(big.Int).Mul(m, big.NewInt(int64(s.a)))
@@ -233,7 +230,7 @@ func (s *ProofStructure) CommitmentsFromSecrets(g *QrGroup, m, mRandomizer *big.
 		if v.BitLen() > int(s.ld) {
 			return nil, nil, errors.New("Split function returned oversized d")
 		}
-		commit.dRandomizers[i], err = common.RandomBigInt(s.ld + s.lh + s.lstatzk)
+		commit.dRandomizers[i], err = common.RandomBigInt(s.ld + g.Params.Lh + g.Params.Lstatzk)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -243,11 +240,11 @@ func (s *ProofStructure) CommitmentsFromSecrets(g *QrGroup, m, mRandomizer *big.
 	commit.v = make([]*big.Int, len(commit.d))
 	commit.vRandomizers = make([]*big.Int, len(commit.d))
 	for i := range commit.d {
-		commit.v[i], err = common.RandomBigInt(s.lm)
+		commit.v[i], err = common.RandomBigInt(g.Params.Lm)
 		if err != nil {
 			return nil, nil, err
 		}
-		commit.vRandomizers[i], err = common.RandomBigInt(s.lm + s.lh + s.lstatzk)
+		commit.vRandomizers[i], err = common.RandomBigInt(g.Params.Lm + g.Params.Lh + g.Params.Lstatzk)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -259,7 +256,7 @@ func (s *ProofStructure) CommitmentsFromSecrets(g *QrGroup, m, mRandomizer *big.
 		contrib := new(big.Int).Mul(commit.d[i], commit.v[i])
 		commit.v5.Add(commit.v5, contrib)
 	}
-	commit.v5Randomizer, err = common.RandomBigInt(s.lm + s.ld + 2 + s.lh + s.lstatzk)
+	commit.v5Randomizer, err = common.RandomBigInt(g.Params.Lm + s.ld + 2 + g.Params.Lh + g.Params.Lstatzk)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -267,17 +264,17 @@ func (s *ProofStructure) CommitmentsFromSecrets(g *QrGroup, m, mRandomizer *big.
 	// Calculate the bases
 	commit.c = make([]*big.Int, len(commit.d))
 	for i := range commit.d {
-		commit.c[i] = new(big.Int).Exp(g.R, commit.d[i], g.N)
+		commit.c[i] = new(big.Int).Exp(g.R[s.index], commit.d[i], g.N)
 		commit.c[i].Mul(commit.c[i], new(big.Int).Exp(g.S, commit.v[i], g.N))
 		commit.c[i].Mod(commit.c[i], g.N)
 	}
 
-	bases := keyproof.NewBaseMerge((*qrGroup)(g), commit)
+	bases := keyproof.NewBaseMerge((*prooftools.PublicKeyGroup)(g), commit)
 
 	contributions := []*big.Int{}
-	contributions = s.mCorrect.commitmentsFromSecrets((*qrGroup)(g), contributions, &bases, commit)
+	contributions = s.mCorrect.CommitmentsFromSecrets((*prooftools.PublicKeyGroup)(g), contributions, &bases, commit)
 	for i := range commit.d {
-		contributions = s.cRep[i].commitmentsFromSecrets((*qrGroup)(g), contributions, &bases, commit)
+		contributions = s.cRep[i].CommitmentsFromSecrets((*prooftools.PublicKeyGroup)(g), contributions, &bases, commit)
 	}
 
 	return contributions, (*ProofCommit)(commit), nil
@@ -309,7 +306,7 @@ func (s *ProofStructure) BuildProof(commit *ProofCommit, challenge *big.Int) *Pr
 	return result
 }
 
-func (s *ProofStructure) VerifyProofStructure(g *QrGroup, p *Proof) bool {
+func (s *ProofStructure) VerifyProofStructure(g *keys.PublicKey, p *Proof) bool {
 	if len(s.cRep) != len(p.Cs) || len(s.cRep) != len(p.DResponses) || len(s.cRep) != len(p.VResponses) {
 		return false
 	}
@@ -318,8 +315,8 @@ func (s *ProofStructure) VerifyProofStructure(g *QrGroup, p *Proof) bool {
 		return false
 	}
 
-	if uint(p.V5Response.BitLen()) > s.lm+s.ld+2+s.lh+s.lstatzk+1 ||
-		uint(p.MResponse.BitLen()) > s.lm+s.lh+s.lstatzk+1 {
+	if uint(p.V5Response.BitLen()) > g.Params.Lm+s.ld+2+g.Params.Lh+g.Params.Lstatzk+1 ||
+		uint(p.MResponse.BitLen()) > g.Params.Lm+g.Params.Lh+g.Params.Lstatzk+1 {
 		return false
 	}
 
@@ -329,8 +326,8 @@ func (s *ProofStructure) VerifyProofStructure(g *QrGroup, p *Proof) bool {
 		}
 
 		if p.Cs[i].BitLen() > g.N.BitLen() ||
-			uint(p.DResponses[i].BitLen()) > s.ld+s.lh+s.lstatzk+1 ||
-			uint(p.VResponses[i].BitLen()) > s.lm+s.lh+s.lstatzk+1 {
+			uint(p.DResponses[i].BitLen()) > s.ld+g.Params.Lh+g.Params.Lstatzk+1 ||
+			uint(p.VResponses[i].BitLen()) > g.Params.Lm+g.Params.Lh+g.Params.Lstatzk+1 {
 			return false
 		}
 	}
@@ -338,13 +335,13 @@ func (s *ProofStructure) VerifyProofStructure(g *QrGroup, p *Proof) bool {
 	return true
 }
 
-func (s *ProofStructure) CommitmentsFromProof(g *QrGroup, p *Proof, challenge *big.Int) []*big.Int {
-	bases := keyproof.NewBaseMerge((*qrGroup)(g), (*proof)(p))
+func (s *ProofStructure) CommitmentsFromProof(g *keys.PublicKey, p *Proof, challenge *big.Int) []*big.Int {
+	bases := keyproof.NewBaseMerge((*prooftools.PublicKeyGroup)(g), (*proof)(p))
 
 	contributions := []*big.Int{}
-	contributions = s.mCorrect.commitmentsFromProof((*qrGroup)(g), contributions, challenge, &bases, (*proof)(p))
+	contributions = s.mCorrect.CommitmentsFromProof((*prooftools.PublicKeyGroup)(g), contributions, challenge, &bases, (*proof)(p))
 	for i := range s.cRep {
-		contributions = s.cRep[i].commitmentsFromProof((*qrGroup)(g), contributions, challenge, &bases, (*proof)(p))
+		contributions = s.cRep[i].CommitmentsFromProof((*prooftools.PublicKeyGroup)(g), contributions, challenge, &bases, (*proof)(p))
 	}
 
 	return contributions
@@ -361,18 +358,18 @@ func (p *Proof) ProvesStatement(a int, k *big.Int) bool {
 }
 
 // Extract proof structure from proof
-func (p *Proof) ExtractStructure(lh, lstatzk, lm uint) (*ProofStructure, error) {
+func (p *Proof) ExtractStructure(index int, g *keys.PublicKey) (*ProofStructure, error) {
 	// Check that all values needed for the structure are present and reasonable
 	//
 	// ld > lm is never reasonable since that implies a difference greater than 2^(2*lm)
 	//  which is bigger than m*a
 	// p.K >= 2^lm+sizeof(a) is never reasonable since that makes |m*a| < |k|, making
 	//  the proof statement trivial (it either always or never holds)
-	if p.K == nil || p.Ld > lm || len(p.Cs) < 3 || len(p.Cs) > 4 ||
-		p.K.BitLen() > int(lm+strconv.IntSize) {
+	if p.K == nil || p.Ld > g.Params.Lm || len(p.Cs) < 3 || len(p.Cs) > 4 ||
+		p.K.BitLen() > int(g.Params.Lm+strconv.IntSize) {
 		return nil, errors.New("Invalid proof")
 	}
-	return newWithParams(p.A, p.K, nil, len(p.Cs), p.Ld, lh, lstatzk, lm), nil
+	return newWithParams(index, p.A, p.K, nil, len(p.Cs), p.Ld), nil
 }
 
 // ---

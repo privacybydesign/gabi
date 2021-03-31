@@ -161,7 +161,7 @@ func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int, ra
 					split = &rangeproof.FourSquaresSplitter{}
 				}
 				d.rpStructures[index] = append(d.rpStructures[index],
-					rangeproof.New(statement.Factor, statement.Bound, split, d.pk.Params.Lh, d.pk.Params.Lstatzk, d.pk.Params.Lm))
+					rangeproof.New(index, statement.Factor, statement.Bound, split))
 			}
 		}
 	}
@@ -308,9 +308,8 @@ func (d *DisclosureProofBuilder) Commit(randomizers map[string]*big.Int) ([]*big
 			if !ok {
 				continue
 			}
-			g := rangeproof.NewQrGroup(d.pk.N, d.pk.R[index], d.pk.S)
 			for _, s := range structures {
-				contributions, commit, err := s.CommitmentsFromSecrets(&g, d.attributes[index], d.attrRandomizers[index])
+				contributions, commit, err := s.CommitmentsFromSecrets(&d.pk.PublicKey, d.attributes[index], d.attrRandomizers[index])
 				if err != nil {
 					return nil, err
 				}

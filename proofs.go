@@ -156,7 +156,7 @@ func (p *ProofD) reconstituteRangeProofStructures(pk *PublicKey) error {
 	for index, proofs := range p.RangeProofs {
 		p.cachedRangeStructures[index] = []*rangeproof.ProofStructure{}
 		for _, proof := range proofs {
-			s, err := proof.ExtractStructure(pk.Params.Lh, pk.Params.Lstatzk, pk.Params.Lm)
+			s, err := proof.ExtractStructure(index, &pk.PublicKey)
 			if err != nil {
 				return err
 			}
@@ -294,13 +294,12 @@ func (p *ProofD) ChallengeContribution(pk *PublicKey) ([]*big.Int, error) {
 			if !ok {
 				continue
 			}
-			g := rangeproof.NewQrGroup(pk.N, pk.R[index], pk.S)
 			for i, s := range structures {
 				p.RangeProofs[index][i].MResponse = new(big.Int).Set(p.AResponses[index])
-				if !s.VerifyProofStructure(&g, p.RangeProofs[index][i]) {
+				if !s.VerifyProofStructure(&pk.PublicKey, p.RangeProofs[index][i]) {
 					return nil, errors.New("Invalid range proof")
 				}
-				l = append(l, s.CommitmentsFromProof(&g, p.RangeProofs[index][i], p.C)...)
+				l = append(l, s.CommitmentsFromProof(&pk.PublicKey, p.RangeProofs[index][i], p.C)...)
 			}
 		}
 	}
