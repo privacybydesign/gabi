@@ -573,7 +573,7 @@ func TestRangeProof(t *testing.T) {
 	rangeStatement := RangeStatement{
 		Factor: 1,
 		Bound:  new(big.Int).Sub(testAttributes1[0], big.NewInt(63)),
-		Split:  &table,
+		Split:  table,
 	}
 
 	issuer := NewIssuer(testPrivK1, testPubK1, context)

@@ -21,7 +21,7 @@ type SquaresTable [][]int64
 
 // Generate lookup table for splitting numbers into 3 squares containing entries up-to and including limit
 // takes O(n^3/2)
-func GenerateSquaresTable(limit int64) SquaresTable {
+func GenerateSquaresTable(limit int64) *SquaresTable {
 	result := make(SquaresTable, limit+1)
 
 	// 3 squares can't produce everything, but this is compensated for
@@ -39,11 +39,11 @@ func GenerateSquaresTable(limit int64) SquaresTable {
 		}
 	}
 
-	return result
+	return &result
 }
 
 func (t *SquaresTable) Split(delta *big.Int) ([]*big.Int, error) {
-	t_ := [][]int64(*t)
+	t_ := *t
 	v := delta.Int64()
 	if !delta.IsInt64() || v < 0 || v >= int64(len(t_)) || v%4 != 2 {
 		return nil, errors.New("Value outside of table range")
@@ -59,8 +59,12 @@ func (t *SquaresTable) SquareCount() int {
 }
 
 func (t *SquaresTable) Ld() uint {
-	l := len([][]int64(*t))
+	l := len(*t)
 	ld := uint(0)
+	// Ld is number of bits of root of maximum value this table support, which is
+	// Ceil(Log4(len(l)*4)). Below loop calculates this by simply dividing
+	// by 4 until l is 0, and counting number of times needed.
+	// then compensating for the extra factor 4.
 	for l > 0 {
 		l /= 4
 		ld++

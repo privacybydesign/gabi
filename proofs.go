@@ -151,7 +151,7 @@ func (p *ProofD) MergeProofP(proofP *ProofP, pk *PublicKey) {
 	p.SecretKeyResponse().Add(p.SecretKeyResponse(), proofP.SResponse)
 }
 
-func (p *ProofD) reconstituteRangeProofStructures(pk *PublicKey) error {
+func (p *ProofD) reconstructRangeProofStructures(pk *PublicKey) error {
 	p.cachedRangeStructures = make(map[int][]*rangeproof.ProofStructure)
 	for index, proofs := range p.RangeProofs {
 		p.cachedRangeStructures[index] = []*rangeproof.ProofStructure{}
@@ -280,7 +280,7 @@ func (p *ProofD) ChallengeContribution(pk *PublicKey) ([]*big.Int, error) {
 
 	if p.RangeProofs != nil {
 		if p.cachedRangeStructures == nil {
-			p.reconstituteRangeProofStructures(pk)
+			p.reconstructRangeProofStructures(pk)
 		}
 		// need stable attribute order for rangeproof contributions, so determine max undisclosed attribute
 		maxAttribute := 0

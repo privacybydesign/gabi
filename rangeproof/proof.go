@@ -112,7 +112,7 @@ type (
 		DResponses []*big.Int `json:"d"`
 		VResponses []*big.Int `json:"v"`
 		V5Response *big.Int   `json:"v5"`
-		MResponse  *big.Int   `json:"m"`
+		MResponse  *big.Int   `json:"-"`
 
 		// Proof structure description
 		Ld uint     `json:"l_d"`

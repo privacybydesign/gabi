@@ -164,6 +164,9 @@ func (builders ProofBuilderList) BuildProofList(context, nonce *big.Int, issig b
 	if err != nil {
 		return nil, err
 	}
-	list, _ := builders.BuildDistributedProofList(challenge, nil)
+	list, err := builders.BuildDistributedProofList(challenge, nil)
+	if err != nil {
+		return nil, err
+	}
 	return list, nil
 }

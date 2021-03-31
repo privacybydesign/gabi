@@ -172,7 +172,7 @@ func TestRangeProofUsingTable(t *testing.T) {
 
 	g := setupPubkey(t)
 
-	s := rangeproof.New(1, 1, big.NewInt(45), &table)
+	s := rangeproof.New(1, 1, big.NewInt(45), table)
 
 	m := big.NewInt(112)
 	mRandomizer, err := common.RandomBigInt(g.Params.Lm + g.Params.Lh + g.Params.Lstatzk)
