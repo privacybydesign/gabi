@@ -15,19 +15,11 @@ type RepTestSecret struct {
 }
 
 func (rs *RepTestSecret) Secret(name string) *big.Int {
-	res, ok := rs.secrets[name]
-	if ok {
-		return res
-	}
-	return nil
+	return rs.secrets[name]
 }
 
 func (rs *RepTestSecret) Randomizer(name string) *big.Int {
-	res, ok := rs.randomizers[name]
-	if ok {
-		return res
-	}
-	return nil
+	return rs.randomizers[name]
 }
 
 type RepTestProof struct {
@@ -35,11 +27,7 @@ type RepTestProof struct {
 }
 
 func (rp *RepTestProof) ProofResult(name string) *big.Int {
-	res, ok := rp.results[name]
-	if ok {
-		return res
-	}
-	return nil
+	return rp.results[name]
 }
 
 type RepTestCommit struct {
@@ -47,14 +35,13 @@ type RepTestCommit struct {
 }
 
 func (rc *RepTestCommit) Base(name string) *big.Int {
-	res, ok := rc.commits[name]
-	if ok {
-		return res
-	}
-	return nil
+	return rc.commits[name]
 }
 func (rc *RepTestCommit) Exp(ret *big.Int, name string, exp, P *big.Int) bool {
 	base := rc.Base(name)
+	if base == nil {
+		return false
+	}
 	ret.Exp(base, exp, P)
 	return true
 }
