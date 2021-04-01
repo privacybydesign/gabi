@@ -113,10 +113,10 @@ func (_ *bruteForce4) Ld() uint {
 	return 8
 }
 
-func TestRangeProofBasic(t *testing.T) {
+func testRangeProofWithSplitter(t *testing.T, split rangeproof.SquareSplitter) {
 	g := setupPubkey(t)
 
-	s := rangeproof.New(1, 1, big.NewInt(45), &bruteForce3{})
+	s := rangeproof.New(1, 1, big.NewInt(45), split)
 
 	m := big.NewInt(112)
 	mRandomizer, err := common.RandomBigInt(g.Params.Lm + g.Params.Lh + g.Params.Lstatzk)
@@ -129,6 +129,24 @@ func TestRangeProofBasic(t *testing.T) {
 	assert.True(t, proof.ProvesStatement(1, big.NewInt(45)))
 	proofList := s.CommitmentsFromProof(&g, proof, big.NewInt(1234567))
 	assert.Equal(t, secretList, proofList)
+}
+
+func TestRangeProofBasic(t *testing.T) {
+	testRangeProofWithSplitter(t, &bruteForce3{})
+}
+
+func TestRangeProofBasic4(t *testing.T) {
+	testRangeProofWithSplitter(t, &bruteForce4{})
+}
+
+func TestRangeProofUsingTable(t *testing.T) {
+	table := rangeproof.GenerateSquaresTable(65536)
+
+	testRangeProofWithSplitter(t, table)
+}
+
+func TestRangeProofUsingSumFourSquareAlg(t *testing.T) {
+	testRangeProofWithSplitter(t, &rangeproof.FourSquaresSplitter{})
 }
 
 func TestRangeProofExtractStructure(t *testing.T) {
@@ -167,44 +185,6 @@ func TestRangeProofExtractStructure(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestRangeProofUsingTable(t *testing.T) {
-	table := rangeproof.GenerateSquaresTable(65536)
-
-	g := setupPubkey(t)
-
-	s := rangeproof.New(1, 1, big.NewInt(45), table)
-
-	m := big.NewInt(112)
-	mRandomizer, err := common.RandomBigInt(g.Params.Lm + g.Params.Lh + g.Params.Lstatzk)
-	require.NoError(t, err)
-
-	secretList, commit, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
-	require.NoError(t, err)
-	proof := s.BuildProof(commit, big.NewInt(1234567))
-	assert.True(t, s.VerifyProofStructure(&g, proof))
-	assert.True(t, proof.ProvesStatement(1, big.NewInt(45)))
-	proofList := s.CommitmentsFromProof(&g, proof, big.NewInt(1234567))
-	assert.Equal(t, secretList, proofList)
-}
-
-func TestRangeProofUsingSumFourSquareAlg(t *testing.T) {
-	g := setupPubkey(t)
-
-	s := rangeproof.New(2, 1, big.NewInt(45), &rangeproof.FourSquaresSplitter{})
-
-	m := big.NewInt(112)
-	mRandomizer, err := common.RandomBigInt(g.Params.Lm + g.Params.Lh + g.Params.Lstatzk)
-	require.NoError(t, err)
-
-	secretList, commit, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
-	require.NoError(t, err)
-	proof := s.BuildProof(commit, big.NewInt(1234567))
-	assert.True(t, s.VerifyProofStructure(&g, proof))
-	assert.True(t, proof.ProvesStatement(1, big.NewInt(45)))
-	proofList := s.CommitmentsFromProof(&g, proof, big.NewInt(1234567))
-	assert.Equal(t, secretList, proofList)
-}
-
 func TestRangeProofInvalidStatement(t *testing.T) {
 	g := setupPubkey(t)
 
@@ -216,24 +196,6 @@ func TestRangeProofInvalidStatement(t *testing.T) {
 
 	_, _, err = s.CommitmentsFromSecrets(&g, m, mRandomizer)
 	assert.Error(t, err)
-}
-
-func TestRangeProofBasic4(t *testing.T) {
-	g := setupPubkey(t)
-
-	s := rangeproof.New(2, 1, big.NewInt(45), &bruteForce4{})
-
-	m := big.NewInt(112)
-	mRandomizer, err := common.RandomBigInt(g.Params.Lm + g.Params.Lh + g.Params.Lstatzk)
-	require.NoError(t, err)
-
-	secretList, commit, err := s.CommitmentsFromSecrets(&g, m, mRandomizer)
-	require.NoError(t, err)
-	proof := s.BuildProof(commit, big.NewInt(1234567))
-	assert.True(t, s.VerifyProofStructure(&g, proof))
-	assert.True(t, proof.ProvesStatement(1, big.NewInt(45)))
-	proofList := s.CommitmentsFromProof(&g, proof, big.NewInt(1234567))
-	assert.Equal(t, secretList, proofList)
 }
 
 type testSplit struct {
