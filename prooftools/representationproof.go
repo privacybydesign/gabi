@@ -3,11 +3,13 @@ package prooftools
 import (
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/keyproof"
+	"github.com/privacybydesign/gabi/keys"
 )
 
 type QrRepresentationProofStructure keyproof.RepresentationProofStructure
 
-func (s *QrRepresentationProofStructure) CommitmentsFromSecrets(g *PublicKeyGroup, list []*big.Int, bases keyproof.BaseLookup, secretdata keyproof.SecretLookup) []*big.Int {
+func (s *QrRepresentationProofStructure) CommitmentsFromSecrets(pk *keys.PublicKey, list []*big.Int, bases keyproof.BaseLookup, secretdata keyproof.SecretLookup) []*big.Int {
+	g := (*PublicKeyGroup)(pk)
 	commitment := big.NewInt(1)
 	var exp, contribution big.Int
 
@@ -20,7 +22,8 @@ func (s *QrRepresentationProofStructure) CommitmentsFromSecrets(g *PublicKeyGrou
 	return append(list, commitment)
 }
 
-func (s *QrRepresentationProofStructure) CommitmentsFromProof(g *PublicKeyGroup, list []*big.Int, challenge *big.Int, bases keyproof.BaseLookup, proofdata keyproof.ProofLookup) []*big.Int {
+func (s *QrRepresentationProofStructure) CommitmentsFromProof(pk *keys.PublicKey, list []*big.Int, challenge *big.Int, bases keyproof.BaseLookup, proofdata keyproof.ProofLookup) []*big.Int {
+	g := (*PublicKeyGroup)(pk)
 	var tmp, lhs big.Int
 	lhs.SetUint64(1)
 	for _, curLhs := range s.Lhs {

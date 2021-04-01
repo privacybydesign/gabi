@@ -272,9 +272,9 @@ func (s *ProofStructure) CommitmentsFromSecrets(g *keys.PublicKey, m, mRandomize
 	bases := keyproof.NewBaseMerge((*prooftools.PublicKeyGroup)(g), commit)
 
 	contributions := []*big.Int{}
-	contributions = s.mCorrect.CommitmentsFromSecrets((*prooftools.PublicKeyGroup)(g), contributions, &bases, commit)
+	contributions = s.mCorrect.CommitmentsFromSecrets(g, contributions, &bases, commit)
 	for i := range commit.d {
-		contributions = s.cRep[i].CommitmentsFromSecrets((*prooftools.PublicKeyGroup)(g), contributions, &bases, commit)
+		contributions = s.cRep[i].CommitmentsFromSecrets(g, contributions, &bases, commit)
 	}
 
 	return contributions, (*ProofCommit)(commit), nil
@@ -339,9 +339,9 @@ func (s *ProofStructure) CommitmentsFromProof(g *keys.PublicKey, p *Proof, chall
 	bases := keyproof.NewBaseMerge((*prooftools.PublicKeyGroup)(g), (*proof)(p))
 
 	contributions := []*big.Int{}
-	contributions = s.mCorrect.CommitmentsFromProof((*prooftools.PublicKeyGroup)(g), contributions, challenge, &bases, (*proof)(p))
+	contributions = s.mCorrect.CommitmentsFromProof(g, contributions, challenge, &bases, (*proof)(p))
 	for i := range s.cRep {
-		contributions = s.cRep[i].CommitmentsFromProof((*prooftools.PublicKeyGroup)(g), contributions, challenge, &bases, (*proof)(p))
+		contributions = s.cRep[i].CommitmentsFromProof(g, contributions, challenge, &bases, (*proof)(p))
 	}
 
 	return contributions

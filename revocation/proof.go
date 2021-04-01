@@ -88,7 +88,7 @@ type (
 		cu, cr, nu  *big.Int
 		secrets     map[string]*big.Int
 		randomizers map[string]*big.Int
-		g           *prooftools.PublicKeyGroup
+		g           *keys.PublicKey
 		sacc        *SignedAccumulator
 	}
 
@@ -185,9 +185,8 @@ func NewProofCommit(key *keys.PublicKey, witn *Witness, randomizer *big.Int) ([]
 		return nil, nil, errors.New("non-revocation relation does not hold")
 	}
 
-	grp := (*prooftools.PublicKeyGroup)(key)
-	bases := keyproof.NewBaseMerge(grp, &accumulator{Nu: witn.SignedAccumulator.Accumulator.Nu})
-	list, commit := proofstructure.commitmentsFromSecrets(grp, []*big.Int{}, &bases, (*witness)(witn))
+	bases := keyproof.NewBaseMerge((*prooftools.PublicKeyGroup)(key), &accumulator{Nu: witn.SignedAccumulator.Accumulator.Nu})
+	list, commit := proofstructure.commitmentsFromSecrets(key, []*big.Int{}, &bases, (*witness)(witn))
 	commit.sacc = witn.SignedAccumulator
 	return list, (*ProofCommit)(&commit), nil
 }
@@ -206,9 +205,8 @@ func (p *Proof) SetExpected(pk *PublicKey, challenge, response *big.Int) error {
 }
 
 func (p *Proof) ChallengeContributions(key *keys.PublicKey) []*big.Int {
-	grp := (*prooftools.PublicKeyGroup)(key)
-	return proofstructure.commitmentsFromProof(grp, []*big.Int{},
-		p.Challenge, grp, (*proof)(p), (*proof)(p))
+	return proofstructure.commitmentsFromProof(key, []*big.Int{},
+		p.Challenge, (*prooftools.PublicKeyGroup)(key), (*proof)(p), (*proof)(p))
 }
 
 func (p *Proof) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.Int) bool {
@@ -259,7 +257,7 @@ func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
 	c.sacc = witness.SignedAccumulator
 
 	commit := (*proofCommit)(c)
-	b := keyproof.NewBaseMerge(c.g, commit)
+	b := keyproof.NewBaseMerge((*prooftools.PublicKeyGroup)(c.g), commit)
 	l := proofstructure.nu.CommitmentsFromSecrets(c.g, []*big.Int{}, &b, commit)
 
 	commitments[1] = c.cu
@@ -374,12 +372,11 @@ func (p *proof) ProofResult(name string) *big.Int {
 }
 
 func (p *proof) verify(pk *PublicKey) bool {
-	grp := (*prooftools.PublicKeyGroup)(pk.Group)
-	commitments := proofstructure.commitmentsFromProof(grp, []*big.Int{}, p.Challenge, grp, p, p)
+	commitments := proofstructure.commitmentsFromProof(pk.Group, []*big.Int{}, p.Challenge, (*prooftools.PublicKeyGroup)(pk.Group), p, p)
 	return (*Proof)(p).VerifyWithChallenge(pk, common.HashCommit(commitments, false))
 }
 
-func (s *proofStructure) commitmentsFromSecrets(g *prooftools.PublicKeyGroup, list []*big.Int, bases keyproof.BaseLookup, secretdata keyproof.SecretLookup) ([]*big.Int, proofCommit) {
+func (s *proofStructure) commitmentsFromSecrets(g *keys.PublicKey, list []*big.Int, bases keyproof.BaseLookup, secretdata keyproof.SecretLookup) ([]*big.Int, proofCommit) {
 	commit := proofCommit{
 		g:           g,
 		secrets:     make(map[string]*big.Int, 5),
@@ -429,10 +426,10 @@ func (s *proofStructure) commitmentsFromSecrets(g *prooftools.PublicKeyGroup, li
 	return list, commit
 }
 
-func (s *proofStructure) commitmentsFromProof(g *prooftools.PublicKeyGroup, list []*big.Int, challenge *big.Int, bases keyproof.BaseLookup, proofdata keyproof.ProofLookup, proof *proof) []*big.Int {
+func (s *proofStructure) commitmentsFromProof(g *keys.PublicKey, list []*big.Int, challenge *big.Int, bases keyproof.BaseLookup, proofdata keyproof.ProofLookup, proof *proof) []*big.Int {
 	proofs := keyproof.NewProofMerge(proof, proofdata)
 
-	b := keyproof.NewBaseMerge(g, &proofCommit{cr: proof.Cr, cu: proof.Cu, nu: proof.Nu})
+	b := keyproof.NewBaseMerge((*prooftools.PublicKeyGroup)(g), &proofCommit{cr: proof.Cr, cu: proof.Cu, nu: proof.Nu})
 
 	list = append(list, proof.Cr, proof.Cu, proof.Nu)
 	list = s.cr.CommitmentsFromProof(g, list, challenge, &b, &proofs)
