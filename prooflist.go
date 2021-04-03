@@ -8,6 +8,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
+	"github.com/privacybydesign/gabi/keys"
 )
 
 // ProofBuilder is an interface for a proof builder. That is, an object to hold
@@ -15,7 +16,7 @@ import (
 type ProofBuilder interface {
 	Commit(randomizers map[string]*big.Int) ([]*big.Int, error)
 	CreateProof(challenge *big.Int) Proof
-	PublicKey() *PublicKey
+	PublicKey() *keys.PublicKey
 	MergeProofPCommitment(commitment *ProofPCommitment)
 }
 
@@ -53,7 +54,7 @@ func (pl ProofList) GetFirstProofU() (*ProofU, error) {
 
 // challengeContributions collects and returns all the challenge contributions
 // of the proofs contained in the proof list.
-func (pl ProofList) challengeContributions(publicKeys []*PublicKey, context, nonce *big.Int) ([]*big.Int, error) {
+func (pl ProofList) challengeContributions(publicKeys []*keys.PublicKey, context, nonce *big.Int) ([]*big.Int, error) {
 	contributions := make([]*big.Int, 0, len(pl)*2)
 	for i, proof := range pl {
 		contrib, err := proof.ChallengeContribution(publicKeys[i])
@@ -73,7 +74,7 @@ func (pl ProofList) challengeContributions(publicKeys []*PublicKey, context, non
 // the same secret key (i.e. it should be verified that all proofs use either none,
 // or one and the same keyshare server).
 // An empty ProofList is not considered valid.
-func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, issig bool, keyshareServers []string) bool {
+func (pl ProofList) Verify(publicKeys []*keys.PublicKey, context, nonce *big.Int, issig bool, keyshareServers []string) bool {
 	if len(pl) == 0 ||
 		len(pl) != len(publicKeys) ||
 		len(keyshareServers) > 0 && len(pl) != len(keyshareServers) {
@@ -123,7 +124,7 @@ func (builders ProofBuilderList) Challenge(context, nonce *big.Int, issig bool) 
 	// So we should take it, and hence also its commitment, to fit within the smallest size -
 	// otherwise it will be too big so that we cannot perform the range proof showing
 	// that it is not too big.
-	skCommitment, _ := common.RandomBigInt(DefaultSystemParameters[1024].LmCommit)
+	skCommitment, _ := common.RandomBigInt(keys.DefaultSystemParameters[1024].LmCommit)
 
 	commitmentValues := make([]*big.Int, 0, len(builders)*2)
 	for _, pb := range builders {

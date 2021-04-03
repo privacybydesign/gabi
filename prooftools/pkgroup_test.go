@@ -3,7 +3,6 @@ package prooftools_test
 import (
 	"testing"
 
-	"github.com/privacybydesign/gabi"
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/keys"
 	"github.com/privacybydesign/gabi/prooftools"
@@ -60,12 +59,11 @@ const (
 )
 
 func setupParameters(t *testing.T) {
-	pk1, err := gabi.NewPublicKeyFromXML(xmlPubKey1)
+	var err error
+	testPubK1, err = keys.NewPublicKeyFromXML(xmlPubKey1)
 	require.NoError(t, err)
-	pk2, err := gabi.NewPublicKeyFromXML(xmlPubKey2)
+	testPubK2, err = keys.NewPublicKeyFromXML(xmlPubKey2)
 	require.NoError(t, err)
-	testPubK1 = (*keys.PublicKey)(pk1)
-	testPubK2 = (*keys.PublicKey)(pk2)
 }
 
 func TestPkGroupBase(t *testing.T) {

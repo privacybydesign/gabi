@@ -9,6 +9,7 @@ import (
 
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
+	"github.com/privacybydesign/gabi/keys"
 )
 
 // RepresentToPublicKey returns a representation of the given exponents in terms of the R bases
@@ -16,7 +17,7 @@ import (
 //   R[1]^{exps[1]}*...*R[k]^{exps[k]} (mod N)
 // with R and N coming from the public key. The exponents are hashed if their length
 // exceeds the maximum message length from the public key.
-func RepresentToPublicKey(pk *PublicKey, exps []*big.Int) (*big.Int, error) {
+func RepresentToPublicKey(pk *keys.PublicKey, exps []*big.Int) (*big.Int, error) {
 	return common.RepresentToBases(pk.R, exps, pk.N, pk.Params.Lm), nil
 }
 
@@ -30,7 +31,7 @@ type CLSignature struct {
 
 // SignMessageBlock signs a message block (ms) and a commitment (U) using the
 // Camenisch-Lysyanskaya signature scheme as used in the IdeMix system.
-func signMessageBlockAndCommitment(sk *PrivateKey, pk *PublicKey, U *big.Int, ms []*big.Int) (
+func signMessageBlockAndCommitment(sk *keys.PrivateKey, pk *keys.PublicKey, U *big.Int, ms []*big.Int) (
 	*CLSignature, error) {
 	R, err := RepresentToPublicKey(pk, ms)
 	if err != nil {
@@ -65,13 +66,13 @@ func signMessageBlockAndCommitment(sk *PrivateKey, pk *PublicKey, U *big.Int, ms
 
 // SignMessageBlock signs a message block (ms) using the Camenisch-Lysyanskaya
 // signature scheme as used in the IdeMix system.
-func SignMessageBlock(sk *PrivateKey, pk *PublicKey, ms []*big.Int) (*CLSignature, error) {
+func SignMessageBlock(sk *keys.PrivateKey, pk *keys.PublicKey, ms []*big.Int) (*CLSignature, error) {
 	return signMessageBlockAndCommitment(sk, pk, big.NewInt(1), ms)
 }
 
 // Verify checks whether the signature is correct while being given a public key
 // and the messages.
-func (s *CLSignature) Verify(pk *PublicKey, ms []*big.Int) bool {
+func (s *CLSignature) Verify(pk *keys.PublicKey, ms []*big.Int) bool {
 	// First check that e is in the range [2^{l_e - 1}, 2^{l_e - 1} + 2^{l_e_prime - 1}]
 	start := new(big.Int).Lsh(big.NewInt(1), pk.Params.Le-1)
 	end := new(big.Int).Lsh(big.NewInt(1), pk.Params.LePrime-1)
@@ -98,7 +99,7 @@ func (s *CLSignature) Verify(pk *PublicKey, ms []*big.Int) bool {
 }
 
 // Randomize returns a randomized copy of the signature.
-func (s *CLSignature) Randomize(pk *PublicKey) *CLSignature {
+func (s *CLSignature) Randomize(pk *keys.PublicKey) *CLSignature {
 	r, _ := common.RandomBigInt(pk.Params.LRA)
 	APrime := new(big.Int).Mul(s.A, new(big.Int).Exp(pk.S, r, pk.N))
 	APrime.Mod(APrime, pk.N)

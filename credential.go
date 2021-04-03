@@ -16,7 +16,7 @@ import (
 // Credential represents an Idemix credential.
 type Credential struct {
 	Signature            *CLSignature        `json:"signature"`
-	Pk                   *PublicKey          `json:"-"`
+	Pk                   *keys.PublicKey     `json:"-"`
 	Attributes           []*big.Int          `json:"attributes"`
 	NonRevocationWitness *revocation.Witness `json:"nonrevWitness,omitempty"`
 
@@ -41,7 +41,7 @@ type DisclosureProofBuilder struct {
 	z                     *big.Int
 	disclosedAttributes   []int
 	undisclosedAttributes []int
-	pk                    *PublicKey
+	pk                    *keys.PublicKey
 	attributes            []*big.Int
 	nonrevBuilder         *NonRevocationProofBuilder
 
@@ -50,7 +50,7 @@ type DisclosureProofBuilder struct {
 }
 
 type NonRevocationProofBuilder struct {
-	pk          *PublicKey
+	pk          *keys.PublicKey
 	witness     *revocation.Witness
 	commit      *revocation.ProofCommit
 	commitments []*big.Int
@@ -75,7 +75,7 @@ func (b *NonRevocationProofBuilder) UpdateCommit(witness *revocation.Witness) er
 func (b *NonRevocationProofBuilder) Commit() ([]*big.Int, error) {
 	if b.commitments == nil {
 		var err error
-		b.commitments, b.commit, err = revocation.NewProofCommit((*keys.PublicKey)(b.pk), b.witness, b.randomizer)
+		b.commitments, b.commit, err = revocation.NewProofCommit(b.pk, b.witness, b.randomizer)
 		if err != nil {
 			return nil, err
 		}
@@ -268,7 +268,7 @@ func (d *DisclosureProofBuilder) MergeProofPCommitment(commitment *ProofPCommitm
 }
 
 // PublicKey returns the Idemix public key against which this disclosure proof will verify.
-func (d *DisclosureProofBuilder) PublicKey() *PublicKey {
+func (d *DisclosureProofBuilder) PublicKey() *keys.PublicKey {
 	return d.pk
 }
 
@@ -307,7 +307,7 @@ func (d *DisclosureProofBuilder) Commit(randomizers map[string]*big.Int) ([]*big
 				continue
 			}
 			for _, s := range structures {
-				contributions, commit, err := s.CommitmentsFromSecrets((*keys.PublicKey)(d.pk), d.attributes[index], d.attrRandomizers[index])
+				contributions, commit, err := s.CommitmentsFromSecrets(d.pk, d.attributes[index], d.attrRandomizers[index])
 				if err != nil {
 					return nil, err
 				}
@@ -390,5 +390,5 @@ func (d *DisclosureProofBuilder) TimestampRequestContributions() (*big.Int, []*b
 
 // Generate secret attribute used prove ownership and links between credentials from the same user.
 func GenerateSecretAttribute() (*big.Int, error) {
-	return common.RandomBigInt(DefaultSystemParameters[1024].Lm)
+	return common.RandomBigInt(keys.DefaultSystemParameters[1024].Lm)
 }

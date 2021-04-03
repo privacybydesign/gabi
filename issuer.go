@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 
 	"github.com/go-errors/errors"
+	"github.com/privacybydesign/gabi/keys"
 
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
@@ -16,13 +17,13 @@ import (
 
 // Issuer holds the key material for a credential issuer.
 type Issuer struct {
-	Sk      *PrivateKey
-	Pk      *PublicKey
+	Sk      *keys.PrivateKey
+	Pk      *keys.PublicKey
 	Context *big.Int
 }
 
 // NewIssuer creates a new credential issuer.
-func NewIssuer(sk *PrivateKey, pk *PublicKey, context *big.Int) *Issuer {
+func NewIssuer(sk *keys.PrivateKey, pk *keys.PublicKey, context *big.Int) *Issuer {
 	return &Issuer{Sk: sk, Pk: pk, Context: context}
 }
 

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/privacybydesign/gabi"
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
 	"github.com/privacybydesign/gabi/keys"
@@ -38,9 +37,9 @@ const (
 )
 
 func setupPubkey(t *testing.T) *keys.PublicKey {
-	PubKey, err := gabi.NewPublicKeyFromXML(xmlPubKey1)
+	PubKey, err := keys.NewPublicKeyFromXML(xmlPubKey1)
 	require.NoError(t, err)
-	return (*keys.PublicKey)(PubKey)
+	return PubKey
 }
 
 type bruteForce3 struct{}
