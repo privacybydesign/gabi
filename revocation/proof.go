@@ -165,7 +165,7 @@ func NewProofRandomizer() *big.Int {
 }
 
 // RandomWitness returns a new random Witness valid against the specified Accumulator.
-func RandomWitness(sk *PrivateKey, acc *Accumulator) (*Witness, error) {
+func RandomWitness(sk *keys.PrivateKey, acc *Accumulator) (*Witness, error) {
 	e, err := common.RandomPrimeInRange(rand.Reader, 3, Parameters.AttributeSize)
 	if err != nil {
 		return nil, err
@@ -193,7 +193,7 @@ func NewProofCommit(key *keys.PublicKey, witn *Witness, randomizer *big.Int) ([]
 
 // SetExpected sets certain values of the proof to expected values, inferred from the containing proofs,
 // before verification.
-func (p *Proof) SetExpected(pk *PublicKey, challenge, response *big.Int) error {
+func (p *Proof) SetExpected(pk *keys.PublicKey, challenge, response *big.Int) error {
 	acc, err := p.SignedAccumulator.UnmarshalVerify(pk)
 	if err != nil {
 		return err
@@ -209,7 +209,7 @@ func (p *Proof) ChallengeContributions(key *keys.PublicKey) []*big.Int {
 		p.Challenge, (*prooftools.PublicKeyGroup)(key), (*proof)(p), (*proof)(p))
 }
 
-func (p *Proof) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.Int) bool {
+func (p *Proof) VerifyWithChallenge(pk *keys.PublicKey, reconstructedChallenge *big.Int) bool {
 	if !proofstructure.verifyProofStructure((*proof)(p)) {
 		return false
 	}
@@ -268,7 +268,7 @@ func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
 // Update updates the witness using the specified update data from the issuer,
 // after which the witness can be used to prove nonrevocation against the latest Accumulator
 // (contained in the update message).
-func (w *Witness) Update(pk *PublicKey, update *Update) error {
+func (w *Witness) Update(pk *keys.PublicKey, update *Update) error {
 	Logger.Tracef("revocation.Witness.Update()")
 	defer Logger.Tracef("revocation.Witness.Update() done")
 
@@ -305,11 +305,11 @@ func (w *Witness) Update(pk *PublicKey, update *Update) error {
 	// u' = u^b * newNu^a mod n
 	newU := new(big.Int)
 	newU.Mul(
-		new(big.Int).Exp(w.U, &b, pk.Group.N),
-		new(big.Int).Exp(newAcc.Nu, &a, pk.Group.N),
-	).Mod(newU, pk.Group.N)
+		new(big.Int).Exp(w.U, &b, pk.N),
+		new(big.Int).Exp(newAcc.Nu, &a, pk.N),
+	).Mod(newU, pk.N)
 
-	if !verify(newU, w.E, newAcc, pk.Group) {
+	if !verify(newU, w.E, newAcc, pk) {
 		return errors.New("nonrevocation witness invalidated by update")
 	}
 
@@ -322,12 +322,12 @@ func (w *Witness) Update(pk *PublicKey, update *Update) error {
 }
 
 // Verify the witness against its SignedAccumulator.
-func (w *Witness) Verify(pk *PublicKey) error {
+func (w *Witness) Verify(pk *keys.PublicKey) error {
 	_, err := w.SignedAccumulator.UnmarshalVerify(pk)
 	if err != nil {
 		return err
 	}
-	if !verify(w.U, w.E, w.SignedAccumulator.Accumulator, pk.Group) {
+	if !verify(w.U, w.E, w.SignedAccumulator.Accumulator, pk) {
 		return errors.New("invalid witness")
 	}
 	return nil
@@ -371,8 +371,8 @@ func (p *proof) ProofResult(name string) *big.Int {
 	return p.Responses[name]
 }
 
-func (p *proof) verify(pk *PublicKey) bool {
-	commitments := proofstructure.commitmentsFromProof(pk.Group, []*big.Int{}, p.Challenge, (*prooftools.PublicKeyGroup)(pk.Group), p, p)
+func (p *proof) verify(pk *keys.PublicKey) bool {
+	commitments := proofstructure.commitmentsFromProof(pk, []*big.Int{}, p.Challenge, (*prooftools.PublicKeyGroup)(pk), p, p)
 	return (*Proof)(p).VerifyWithChallenge(pk, common.HashCommit(commitments, false))
 }
 
@@ -497,9 +497,8 @@ func verify(u, e *big.Int, acc *Accumulator, grp *keys.PublicKey) bool {
 	return new(big.Int).Exp(u, e, grp.N).Cmp(acc.Nu) == 0
 }
 
-func newWitness(sk *PrivateKey, acc *Accumulator, e *big.Int) (*Witness, error) {
-	order := new(big.Int).Mul(sk.P, sk.Q)
-	eInverse, ok := common.ModInverse(e, order)
+func newWitness(sk *keys.PrivateKey, acc *Accumulator, e *big.Int) (*Witness, error) {
+	eInverse, ok := common.ModInverse(e, sk.Order)
 	if !ok {
 		return nil, errors.New("failed to compute modular inverse")
 	}

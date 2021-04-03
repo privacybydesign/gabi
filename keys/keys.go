@@ -1,6 +1,7 @@
 package keys
 
 import (
+	"crypto/ecdsa"
 	"encoding/xml"
 	"strconv"
 
@@ -43,31 +44,37 @@ type (
 
 	// PublicKey represents an issuer's public key.
 	PublicKey struct {
-		XMLName     xml.Name          `xml:"http://www.zurich.ibm.com/security/idemix IssuerPublicKey"`
-		Counter     uint              `xml:"Counter"`
-		ExpiryDate  int64             `xml:"ExpiryDate"`
-		N           *big.Int          `xml:"Elements>n"` // Modulus n
-		Z           *big.Int          `xml:"Elements>Z"` // Generator Z
-		S           *big.Int          `xml:"Elements>S"` // Generator S
-		G           *big.Int          `xml:"Elements>G"` // Generator G for revocation
-		H           *big.Int          `xml:"Elements>H"` // Generator H for revocation
-		R           Bases             `xml:"Elements>Bases"`
-		EpochLength EpochLength       `xml:"Features"`
-		Params      *SystemParameters `xml:"-"`
-		Issuer      string            `xml:"-"`
-		ECDSA       string            `xml:",omitempty"`
+		XMLName     xml.Name    `xml:"http://www.zurich.ibm.com/security/idemix IssuerPublicKey"`
+		Counter     uint        `xml:"Counter"`
+		ExpiryDate  int64       `xml:"ExpiryDate"`
+		N           *big.Int    `xml:"Elements>n"` // Modulus n
+		Z           *big.Int    `xml:"Elements>Z"` // Generator Z
+		S           *big.Int    `xml:"Elements>S"` // Generator S
+		G           *big.Int    `xml:"Elements>G"` // Generator G for revocation
+		H           *big.Int    `xml:"Elements>H"` // Generator H for revocation
+		R           Bases       `xml:"Elements>Bases"`
+		EpochLength EpochLength `xml:"Features"`
+		ECDSAString string      `xml:"ECDSA,omitempty"`
+
+		ECDSA  *ecdsa.PublicKey  `xml:"-"`
+		Params *SystemParameters `xml:"-"`
+		Issuer string            `xml:"-"`
 	}
 
 	// PrivateKey represents an issuer's private key.
 	PrivateKey struct {
-		XMLName    xml.Name `xml:"http://www.zurich.ibm.com/security/idemix IssuerPrivateKey"`
-		Counter    uint     `xml:"Counter"`
-		ExpiryDate int64    `xml:"ExpiryDate"`
-		P          *big.Int `xml:"Elements>p"`
-		Q          *big.Int `xml:"Elements>q"`
-		PPrime     *big.Int `xml:"Elements>pPrime"`
-		QPrime     *big.Int `xml:"Elements>qPrime"`
-		ECDSA      string   `xml:",omitempty"`
+		XMLName     xml.Name `xml:"http://www.zurich.ibm.com/security/idemix IssuerPrivateKey"`
+		Counter     uint     `xml:"Counter"`
+		ExpiryDate  int64    `xml:"ExpiryDate"`
+		P           *big.Int `xml:"Elements>p"`
+		Q           *big.Int `xml:"Elements>q"`
+		PPrime      *big.Int `xml:"Elements>pPrime"`
+		QPrime      *big.Int `xml:"Elements>qPrime"`
+		ECDSAString string   `xml:"ECDSA,omitempty"`
+
+		N     *big.Int          `xml:"-"`
+		ECDSA *ecdsa.PrivateKey `xml:"-"`
+		Order *big.Int          `xml:"-"`
 	}
 )
 

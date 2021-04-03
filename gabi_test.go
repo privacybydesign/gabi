@@ -135,10 +135,16 @@ func setupParameters() error {
 		R[i], _ = new(big.Int).SetString(rv, 10)
 	}
 
-	testPrivK = NewPrivateKey(p, q, "", 0, time.Now().AddDate(1, 0, 0))
-	testPubK = NewPublicKey(n, Z, S, nil, nil, R, "", 0, time.Now().AddDate(1, 0, 0))
-
 	var err error
+	testPrivK, err = NewPrivateKey(p, q, "", 0, time.Now().AddDate(1, 0, 0))
+	if err != nil {
+		return err
+	}
+	testPubK, err = NewPublicKey(n, Z, S, nil, nil, R, "", 0, time.Now().AddDate(1, 0, 0))
+	if err != nil {
+		return err
+	}
+
 	testPrivK1, err = NewPrivateKeyFromXML(xmlPrivKey1, false)
 	if err != nil {
 		return err
@@ -696,26 +702,22 @@ func TestBigAttribute(t *testing.T) {
 	assert.True(t, proof.Verify(testPubK, context, nonce1, false), "Failed to verify ProofD with large undisclosed attribute")
 }
 
-func setupRevocation(t *testing.T) (*revocation.PrivateKey, *revocation.PublicKey, *revocation.Witness, *revocation.Update, *revocation.Accumulator) {
+func setupRevocation(t *testing.T) (*revocation.Witness, *revocation.Update, *revocation.Accumulator) {
 	if !testPrivK.RevocationSupported() {
 		require.NoError(t, GenerateRevocationKeypair(testPrivK, testPubK))
 	}
 
-	revkey, err := testPrivK.RevocationKey()
-	require.NoError(t, err)
-	update, err := revocation.NewAccumulator(revkey)
+	update, err := revocation.NewAccumulator((*keys.PrivateKey)(testPrivK))
 	require.NoError(t, err)
 
-	revpk, err := testPubK.RevocationKey()
-	require.NoError(t, err)
-	acc, err := update.SignedAccumulator.UnmarshalVerify(revpk)
+	acc, err := update.SignedAccumulator.UnmarshalVerify((*keys.PublicKey)(testPubK))
 
 	witness, err := testPrivK.RevocationGenerateWitness(acc)
 	require.NoError(t, err)
 	witness.SignedAccumulator = update.SignedAccumulator
 	require.Zero(t, new(big.Int).Exp(witness.U, witness.E, testPubK.N).Cmp(acc.Nu))
 
-	return revkey, revpk, witness, update, acc
+	return witness, update, acc
 }
 
 func revocationAttrs(w *revocation.Witness) []*big.Int {
@@ -723,7 +725,7 @@ func revocationAttrs(w *revocation.Witness) []*big.Int {
 }
 
 func TestNotRevoked(t *testing.T) {
-	_, _, witness, _, _ := setupRevocation(t)
+	witness, _, _ := setupRevocation(t)
 
 	// Issuance
 	attrs := revocationAttrs(witness)
@@ -750,19 +752,19 @@ func TestNotRevoked(t *testing.T) {
 }
 
 func TestRevoked(t *testing.T) {
-	revkey, revpk, witness, update, acc := setupRevocation(t)
+	witness, update, acc := setupRevocation(t)
 
-	acc, event, err := acc.Remove(revkey, witness.E, update.Events[0])
+	acc, event, err := acc.Remove((*keys.PrivateKey)(testPrivK), witness.E, update.Events[0])
 	require.NoError(t, err)
-	update, err = revocation.NewUpdate(revkey, acc, []*revocation.Event{event})
+	update, err = revocation.NewUpdate((*keys.PrivateKey)(testPrivK), acc, []*revocation.Event{event})
 	require.NoError(t, err)
 
 	// Try to update witness to latest update (where the witness.E is removed)
-	require.Equal(t, revocation.ErrorRevoked, witness.Update(revpk, update))
+	require.Equal(t, revocation.ErrorRevoked, witness.Update((*keys.PublicKey)(testPubK), update))
 }
 
 func TestFullIssueAndShowWithRevocation(t *testing.T) {
-	revkey, revpk, witness, update, acc := setupRevocation(t)
+	witness, update, acc := setupRevocation(t)
 
 	// Issuance
 	context, _ := common.RandomBigInt(testPubK.Params.Lh)
@@ -804,15 +806,15 @@ func TestFullIssueAndShowWithRevocation(t *testing.T) {
 	require.NoError(t, cred.NonrevPrepareCache())
 
 	// simulate revocation of another credential
-	w, err := revocation.RandomWitness(revkey, acc)
+	w, err := revocation.RandomWitness((*keys.PrivateKey)(testPrivK), acc)
 	require.NoError(t, err)
-	acc, event, err := acc.Remove(revkey, w.E, update.Events[0])
+	acc, event, err := acc.Remove((*keys.PrivateKey)(testPrivK), w.E, update.Events[0])
 	require.NoError(t, err)
-	update, err = revocation.NewUpdate(revkey, acc, []*revocation.Event{event})
+	update, err = revocation.NewUpdate((*keys.PrivateKey)(testPrivK), acc, []*revocation.Event{event})
 	require.NoError(t, err)
 
 	// update witness and nonrevocation proof cache
-	require.NoError(t, cred.NonRevocationWitness.Update(revpk, update))
+	require.NoError(t, cred.NonRevocationWitness.Update((*keys.PublicKey)(testPubK), update))
 	require.NoError(t, cred.NonrevPrepareCache())
 	require.Len(t, cred.nonrevCache, 1)
 	cache = <-cred.nonrevCache

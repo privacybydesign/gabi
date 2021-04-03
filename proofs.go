@@ -7,6 +7,7 @@ package gabi
 import (
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
+	"github.com/privacybydesign/gabi/keys"
 	"github.com/privacybydesign/gabi/rangeproof"
 	"github.com/privacybydesign/gabi/revocation"
 
@@ -156,7 +157,7 @@ func (p *ProofD) reconstructRangeProofStructures(pk *PublicKey) error {
 	for index, proofs := range p.RangeProofs {
 		p.cachedRangeStructures[index] = []*rangeproof.ProofStructure{}
 		for _, proof := range proofs {
-			s, err := proof.ExtractStructure(index, &pk.PublicKey)
+			s, err := proof.ExtractStructure(index, (*keys.PublicKey)(pk))
 			if err != nil {
 				return err
 			}
@@ -239,15 +240,11 @@ func (p *ProofD) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.
 	var notrevoked bool
 	// Validate non-revocation
 	if p.HasNonRevocationProof() {
-		rpk, err := pk.RevocationKey()
-		if err != nil {
-			return false
-		}
 		revIdx := p.revocationAttrIndex()
 		if revIdx < 0 || p.AResponses[revIdx] == nil {
 			return false
 		}
-		notrevoked = p.NonRevocationProof.VerifyWithChallenge(rpk, reconstructedChallenge) &&
+		notrevoked = p.NonRevocationProof.VerifyWithChallenge((*keys.PublicKey)(pk), reconstructedChallenge) &&
 			p.NonRevocationProof.Responses["alpha"].Cmp(p.AResponses[revIdx]) == 0
 	} else {
 		notrevoked = true
@@ -263,18 +260,14 @@ func (p *ProofD) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.
 func (p *ProofD) ChallengeContribution(pk *PublicKey) ([]*big.Int, error) {
 	l := []*big.Int{p.A, p.reconstructZ(pk)}
 	if p.NonRevocationProof != nil {
-		revPk, err := pk.RevocationKey()
-		if err != nil {
-			return nil, err
-		}
 		revIdx := p.revocationAttrIndex()
 		if revIdx < 0 || p.AResponses[revIdx] == nil {
 			return nil, errors.New("no revocation response found")
 		}
-		if err = p.NonRevocationProof.SetExpected(revPk, p.C, p.AResponses[revIdx]); err != nil {
+		if err := p.NonRevocationProof.SetExpected((*keys.PublicKey)(pk), p.C, p.AResponses[revIdx]); err != nil {
 			return nil, err
 		}
-		contrib := p.NonRevocationProof.ChallengeContributions(revPk.Group)
+		contrib := p.NonRevocationProof.ChallengeContributions((*keys.PublicKey)(pk))
 		l = append(l, contrib...)
 	}
 
@@ -296,10 +289,10 @@ func (p *ProofD) ChallengeContribution(pk *PublicKey) ([]*big.Int, error) {
 			}
 			for i, s := range structures {
 				p.RangeProofs[index][i].MResponse = new(big.Int).Set(p.AResponses[index])
-				if !s.VerifyProofStructure(&pk.PublicKey, p.RangeProofs[index][i]) {
+				if !s.VerifyProofStructure((*keys.PublicKey)(pk), p.RangeProofs[index][i]) {
 					return nil, errors.New("Invalid range proof")
 				}
-				l = append(l, s.CommitmentsFromProof(&pk.PublicKey, p.RangeProofs[index][i], p.C)...)
+				l = append(l, s.CommitmentsFromProof((*keys.PublicKey)(pk), p.RangeProofs[index][i], p.C)...)
 			}
 		}
 	}

@@ -54,7 +54,6 @@ func (rc *RepTestCommit) Names() (ret []string) {
 
 func TestRepresentationProofBasics(t *testing.T) {
 	setupParameters(t)
-	pk1 := &testPubK1.PublicKey
 
 	var s prooftools.QrRepresentationProofStructure
 	s.Lhs = []keyproof.LhsContribution{
@@ -69,22 +68,21 @@ func TestRepresentationProofBasics(t *testing.T) {
 	secret.randomizers = map[string]*big.Int{"x": big.NewInt(15)}
 
 	var commit RepTestCommit
-	commit.commits = map[string]*big.Int{"x": new(big.Int).Exp(pk1.S, secret.secrets["x"], pk1.N)}
+	commit.commits = map[string]*big.Int{"x": new(big.Int).Exp(testPubK1.S, secret.secrets["x"], testPubK1.N)}
 
 	var proof RepTestProof
 	proof.results = map[string]*big.Int{"x": big.NewInt(25)}
 
-	bases := keyproof.NewBaseMerge((*prooftools.PublicKeyGroup)(pk1), &commit)
+	bases := keyproof.NewBaseMerge((*prooftools.PublicKeyGroup)(testPubK1), &commit)
 
-	listSecrets := s.CommitmentsFromSecrets(pk1, []*big.Int{}, &bases, &secret)
-	listProofs := s.CommitmentsFromProof(pk1, []*big.Int{}, big.NewInt(1), &bases, &proof)
+	listSecrets := s.CommitmentsFromSecrets(testPubK1, []*big.Int{}, &bases, &secret)
+	listProofs := s.CommitmentsFromProof(testPubK1, []*big.Int{}, big.NewInt(1), &bases, &proof)
 
 	assert.Equal(t, listSecrets, listProofs, "commitment lists different")
 }
 
 func TestRepresentationProofComplex(t *testing.T) {
 	setupParameters(t)
-	pk1 := &testPubK1.PublicKey
 
 	var s prooftools.QrRepresentationProofStructure
 	s.Lhs = []keyproof.LhsContribution{
@@ -109,9 +107,9 @@ func TestRepresentationProofComplex(t *testing.T) {
 	commit.commits = map[string]*big.Int{
 		"c": new(big.Int).Mod(
 			new(big.Int).Mul(
-				new(big.Int).Exp(pk1.S, big.NewInt(2), pk1.N),
-				new(big.Int).Exp(pk1.Z, big.NewInt(12), pk1.N)),
-			pk1.N),
+				new(big.Int).Exp(testPubK1.S, big.NewInt(2), testPubK1.N),
+				new(big.Int).Exp(testPubK1.Z, big.NewInt(12), testPubK1.N)),
+			testPubK1.N),
 	}
 
 	var proof RepTestProof
@@ -120,10 +118,10 @@ func TestRepresentationProofComplex(t *testing.T) {
 		"y": big.NewInt(53),
 	}
 
-	bases := keyproof.NewBaseMerge((*prooftools.PublicKeyGroup)(pk1), &commit)
+	bases := keyproof.NewBaseMerge((*prooftools.PublicKeyGroup)(testPubK1), &commit)
 
-	listSecrets := s.CommitmentsFromSecrets(pk1, []*big.Int{}, &bases, &secret)
-	listProofs := s.CommitmentsFromProof(pk1, []*big.Int{}, big.NewInt(2), &bases, &proof)
+	listSecrets := s.CommitmentsFromSecrets(testPubK1, []*big.Int{}, &bases, &secret)
+	listProofs := s.CommitmentsFromProof(testPubK1, []*big.Int{}, big.NewInt(2), &bases, &proof)
 
 	assert.Equal(t, listSecrets, listProofs, "Commitment lists different")
 }

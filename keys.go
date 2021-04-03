@@ -30,29 +30,27 @@ const (
 )
 
 // PrivateKey represents an issuer's private key.
-type PrivateKey struct {
-	keys.PrivateKey
-	order         *big.Int
-	revocationKey *revocation.PrivateKey
-}
+type PrivateKey keys.PrivateKey
 
 // NewPrivateKey creates a new issuer private key using the provided parameters.
-func NewPrivateKey(p, q *big.Int, ecdsa string, counter uint, expiryDate time.Time) *PrivateKey {
+func NewPrivateKey(p, q *big.Int, ecdsa string, counter uint, expiryDate time.Time) (*PrivateKey, error) {
 	sk := PrivateKey{
-		PrivateKey: keys.PrivateKey{
-			P:          p,
-			Q:          q,
-			PPrime:     new(big.Int).Rsh(p, 1),
-			QPrime:     new(big.Int).Rsh(q, 1),
-			Counter:    counter,
-			ExpiryDate: expiryDate.Unix(),
-			ECDSA:      ecdsa,
-		},
+		P:           p,
+		Q:           q,
+		N:           new(big.Int).Mul(p, q),
+		PPrime:      new(big.Int).Rsh(p, 1),
+		QPrime:      new(big.Int).Rsh(q, 1),
+		Counter:     counter,
+		ExpiryDate:  expiryDate.Unix(),
+		ECDSAString: ecdsa,
 	}
 
-	sk.CacheOrder()
+	sk.cacheOrder()
+	if err := sk.parseRevocationKey(); err != nil {
+		return nil, err
+	}
 
-	return &sk
+	return &sk, nil
 }
 
 // NewPrivateKeyFromXML creates a new issuer private key using the xml data
@@ -71,7 +69,12 @@ func NewPrivateKeyFromXML(xmlInput string, demo bool) (*PrivateKey, error) {
 		}
 	}
 
-	privk.CacheOrder()
+	privk.N = new(big.Int).Mul(privk.P, privk.Q)
+	privk.cacheOrder()
+	if err := privk.parseRevocationKey(); err != nil {
+		return nil, err
+	}
+
 	return privk, nil
 }
 
@@ -107,16 +110,12 @@ func (privk *PrivateKey) Validate() error {
 	return nil
 }
 
-func (privk *PrivateKey) CacheOrder() {
-	privk.order = new(big.Int).Mul(privk.PPrime, privk.QPrime)
+func (privk *PrivateKey) cacheOrder() {
+	privk.Order = new(big.Int).Mul(privk.PPrime, privk.QPrime)
 }
 
 func (privk *PrivateKey) RevocationGenerateWitness(accumulator *revocation.Accumulator) (*revocation.Witness, error) {
-	revkey, err := privk.RevocationKey()
-	if err != nil {
-		return nil, err
-	}
-	return revocation.RandomWitness(revkey, accumulator)
+	return revocation.RandomWitness((*keys.PrivateKey)(privk), accumulator)
 }
 
 // Print prints the key to stdout.
@@ -161,32 +160,27 @@ func (privk *PrivateKey) WriteToFile(filename string, forceOverwrite bool) (int6
 	return privk.WriteTo(f)
 }
 
-func (privk *PrivateKey) RevocationKey() (*revocation.PrivateKey, error) {
-	if privk.revocationKey == nil {
-		if !privk.RevocationSupported() {
-			return nil, errors.New("private key does not support revocation")
-		}
-		bts, err := base64.StdEncoding.DecodeString(privk.ECDSA)
-		if err != nil {
-			return nil, err
-		}
-		key, err := signed.UnmarshalPrivateKey(bts)
-		if err != nil {
-			return nil, err
-		}
-		privk.revocationKey = &revocation.PrivateKey{
-			Counter: privk.Counter,
-			ECDSA:   key,
-			P:       privk.PPrime,
-			Q:       privk.QPrime,
-			N:       new(big.Int).Mul(privk.P, privk.Q),
-		}
+func (privk *PrivateKey) parseRevocationKey() error {
+	if privk.ECDSA != nil {
+		return nil
 	}
-	return privk.revocationKey, nil
+	if !privk.RevocationSupported() {
+		return nil
+	}
+	bts, err := base64.StdEncoding.DecodeString(privk.ECDSAString)
+	if err != nil {
+		return err
+	}
+	key, err := signed.UnmarshalPrivateKey(bts)
+	if err != nil {
+		return err
+	}
+	privk.ECDSA = key
+	return nil
 }
 
 func (privk *PrivateKey) RevocationSupported() bool {
-	return len(privk.ECDSA) > 0
+	return len(privk.ECDSAString) > 0
 }
 
 func GenerateRevocationKeypair(privk *PrivateKey, pubk *PublicKey) error {
@@ -207,8 +201,10 @@ func GenerateRevocationKeypair(privk *PrivateKey, pubk *PublicKey) error {
 		return err
 	}
 
-	privk.ECDSA = base64.StdEncoding.EncodeToString(dsabts)
-	pubk.ECDSA = base64.StdEncoding.EncodeToString(pubdsabts)
+	privk.ECDSAString = base64.StdEncoding.EncodeToString(dsabts)
+	privk.ECDSA = key
+	pubk.ECDSAString = base64.StdEncoding.EncodeToString(pubdsabts)
+	pubk.ECDSA = &key.PublicKey
 	pubk.G = common.RandomQR(pubk.N)
 	pubk.H = common.RandomQR(pubk.N)
 
@@ -216,28 +212,28 @@ func GenerateRevocationKeypair(privk *PrivateKey, pubk *PublicKey) error {
 }
 
 // PublicKey represents an issuer's public key.
-type PublicKey struct {
-	keys.PublicKey
-	revocationKey *revocation.PublicKey
-}
+type PublicKey keys.PublicKey
 
 // NewPublicKey creates and returns a new public key based on the provided parameters.
-func NewPublicKey(N, Z, S, G, H *big.Int, R []*big.Int, ecdsa string, counter uint, expiryDate time.Time) *PublicKey {
-	return &PublicKey{
-		PublicKey: keys.PublicKey{
-			Counter:     counter,
-			ExpiryDate:  expiryDate.Unix(),
-			N:           N,
-			Z:           Z,
-			S:           S,
-			R:           R,
-			G:           G,
-			H:           H,
-			EpochLength: DefaultEpochLength,
-			Params:      DefaultSystemParameters[N.BitLen()],
-			ECDSA:       ecdsa,
-		},
+func NewPublicKey(N, Z, S, G, H *big.Int, R []*big.Int, ecdsa string, counter uint, expiryDate time.Time) (*PublicKey, error) {
+	pk := &PublicKey{
+		Counter:     counter,
+		ExpiryDate:  expiryDate.Unix(),
+		N:           N,
+		Z:           Z,
+		S:           S,
+		R:           R,
+		G:           G,
+		H:           H,
+		EpochLength: DefaultEpochLength,
+		Params:      DefaultSystemParameters[N.BitLen()],
+		ECDSAString: ecdsa,
 	}
+
+	if err := pk.parseRevocationKey(); err != nil {
+		return nil, err
+	}
+	return pk, nil
 }
 
 // NewPublicKeyFromXML creates a new issuer public key using the xml data
@@ -255,6 +251,9 @@ func NewPublicKeyFromBytes(bts []byte) (*PublicKey, error) {
 		pubk.Params = sysparam
 	} else {
 		return nil, fmt.Errorf("Unknown keylength %d", keylength)
+	}
+	if err = pubk.parseRevocationKey(); err != nil {
+		return nil, err
 	}
 	return pubk, nil
 }
@@ -282,33 +281,33 @@ func NewPublicKeyFromFile(filename string) (*PublicKey, error) {
 		return nil, err
 	}
 	pubk.Params = DefaultSystemParameters[pubk.N.BitLen()]
+	if err = pubk.parseRevocationKey(); err != nil {
+		return nil, err
+	}
 	return pubk, nil
 }
 
-func (pubk *PublicKey) RevocationKey() (*revocation.PublicKey, error) {
-	if pubk.revocationKey == nil {
-		if !pubk.RevocationSupported() {
-			return nil, errors.New("public key does not support revocation")
-		}
-		bts, err := base64.StdEncoding.DecodeString(pubk.ECDSA)
-		if err != nil {
-			return nil, err
-		}
-		dsakey, err := signed.UnmarshalPublicKey(bts)
-		if err != nil {
-			return nil, err
-		}
-		pubk.revocationKey = &revocation.PublicKey{
-			Counter: pubk.Counter,
-			Group:   &pubk.PublicKey,
-			ECDSA:   dsakey,
-		}
+func (pubk *PublicKey) parseRevocationKey() error {
+	if pubk.ECDSA != nil {
+		return nil
 	}
-	return pubk.revocationKey, nil
+	if !pubk.RevocationSupported() {
+		return nil
+	}
+	bts, err := base64.StdEncoding.DecodeString(pubk.ECDSAString)
+	if err != nil {
+		return err
+	}
+	dsakey, err := signed.UnmarshalPublicKey(bts)
+	if err != nil {
+		return err
+	}
+	pubk.ECDSA = dsakey
+	return nil
 }
 
 func (pubk *PublicKey) RevocationSupported() bool {
-	return pubk.G != nil && pubk.H != nil && len(pubk.ECDSA) > 0
+	return pubk.G != nil && pubk.H != nil && len(pubk.ECDSAString) > 0
 }
 
 // Print prints the key to stdout.
@@ -414,24 +413,27 @@ func GenerateKeyPair(param *keys.SystemParameters, numAttributes int, counter ui
 	}
 
 	priv := &PrivateKey{
-		PrivateKey: keys.PrivateKey{
-			P:          p,
-			Q:          q,
-			PPrime:     new(big.Int).Rsh(p, 1),
-			QPrime:     new(big.Int).Rsh(q, 1),
-			Counter:    counter,
-			ExpiryDate: expiryDate.Unix(),
-		},
+		P:          p,
+		Q:          q,
+		N:          new(big.Int).Mul(p, q),
+		PPrime:     new(big.Int).Rsh(p, 1),
+		QPrime:     new(big.Int).Rsh(q, 1),
+		Counter:    counter,
+		ExpiryDate: expiryDate.Unix(),
 	}
-	priv.order = new(big.Int).Mul(priv.PPrime, priv.QPrime)
+	priv.Order = new(big.Int).Mul(priv.PPrime, priv.QPrime)
+	if err = priv.parseRevocationKey(); err != nil {
+		return nil, nil, err
+	}
 
 	// compute n
 	pubk := &PublicKey{
-		PublicKey: keys.PublicKey{
-			Params: param, EpochLength: DefaultEpochLength, Counter: counter, ExpiryDate: expiryDate.Unix(),
-		},
+		Params: param, EpochLength: DefaultEpochLength, Counter: counter, ExpiryDate: expiryDate.Unix(),
 	}
-	pubk.N = new(big.Int).Mul(priv.P, priv.Q)
+	pubk.N = priv.N
+	if err = pubk.parseRevocationKey(); err != nil {
+		return nil, nil, err
+	}
 
 	// Find an acceptable value for S; we follow lead of the Silvia code here:
 	// Pick a random l_n value and check whether it is a quadratic residue modulo n

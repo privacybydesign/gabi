@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-errors/errors"
+	"github.com/privacybydesign/gabi/keys"
 
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
@@ -157,11 +158,7 @@ func (b *CredentialBuilder) ConstructCredential(msg *IssueSignatureMessage, attr
 	}
 
 	if msg.NonRevocationWitness != nil {
-		rpk, err := b.pk.RevocationKey()
-		if err != nil {
-			return nil, err
-		}
-		if err = msg.NonRevocationWitness.Verify(rpk); err != nil {
+		if err := msg.NonRevocationWitness.Verify((*keys.PublicKey)(b.pk)); err != nil {
 			return nil, err
 		}
 		msg.NonRevocationWitness.Updated = time.Unix(msg.NonRevocationWitness.SignedAccumulator.Accumulator.Time, 0)

@@ -8,6 +8,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
+	"github.com/privacybydesign/gabi/keys"
 	"github.com/privacybydesign/gabi/rangeproof"
 	"github.com/privacybydesign/gabi/revocation"
 )
@@ -73,11 +74,8 @@ func (b *NonRevocationProofBuilder) UpdateCommit(witness *revocation.Witness) er
 
 func (b *NonRevocationProofBuilder) Commit() ([]*big.Int, error) {
 	if b.commitments == nil {
-		revPk, err := b.pk.RevocationKey()
-		if err != nil {
-			return nil, err
-		}
-		b.commitments, b.commit, err = revocation.NewProofCommit(revPk.Group, b.witness, b.randomizer)
+		var err error
+		b.commitments, b.commit, err = revocation.NewProofCommit((*keys.PublicKey)(b.pk), b.witness, b.randomizer)
 		if err != nil {
 			return nil, err
 		}
@@ -309,7 +307,7 @@ func (d *DisclosureProofBuilder) Commit(randomizers map[string]*big.Int) ([]*big
 				continue
 			}
 			for _, s := range structures {
-				contributions, commit, err := s.CommitmentsFromSecrets(&d.pk.PublicKey, d.attributes[index], d.attrRandomizers[index])
+				contributions, commit, err := s.CommitmentsFromSecrets((*keys.PublicKey)(d.pk), d.attributes[index], d.attrRandomizers[index])
 				if err != nil {
 					return nil, err
 				}

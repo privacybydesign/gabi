@@ -5,13 +5,14 @@ import (
 
 	"github.com/privacybydesign/gabi"
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/keys"
 	"github.com/privacybydesign/gabi/prooftools"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 var (
-	testPubK1, testPubK2 *gabi.PublicKey
+	testPubK1, testPubK2 *keys.PublicKey
 )
 
 const (
@@ -59,17 +60,18 @@ const (
 )
 
 func setupParameters(t *testing.T) {
-	var err error
-	testPubK1, err = gabi.NewPublicKeyFromXML(xmlPubKey1)
+	pk1, err := gabi.NewPublicKeyFromXML(xmlPubKey1)
 	require.NoError(t, err)
-	testPubK2, err = gabi.NewPublicKeyFromXML(xmlPubKey2)
+	pk2, err := gabi.NewPublicKeyFromXML(xmlPubKey2)
 	require.NoError(t, err)
+	testPubK1 = (*keys.PublicKey)(pk1)
+	testPubK2 = (*keys.PublicKey)(pk2)
 }
 
 func TestPkGroupBase(t *testing.T) {
 	setupParameters(t)
 
-	pk1 := (*prooftools.PublicKeyGroup)(&testPubK1.PublicKey)
+	pk1 := (*prooftools.PublicKeyGroup)(testPubK1)
 
 	assert.Equal(t, pk1.Base("G"), pk1.G)
 	assert.Equal(t, pk1.Base("H"), pk1.H)
@@ -90,7 +92,7 @@ func TestPkGroupBase(t *testing.T) {
 	assert.Equal(t, pk1.Base("Rabc"), (*big.Int)(nil))
 	assert.Equal(t, pk1.Base("sjdfy"), (*big.Int)(nil))
 
-	pk2 := (*prooftools.PublicKeyGroup)(&testPubK2.PublicKey)
+	pk2 := (*prooftools.PublicKeyGroup)(testPubK2)
 
 	assert.Equal(t, pk2.Base("G"), pk2.G)
 	assert.Equal(t, pk2.Base("H"), pk2.H)
@@ -114,7 +116,7 @@ func TestPkGroupExp(t *testing.T) {
 
 	ret := new(big.Int)
 
-	pk1 := (*prooftools.PublicKeyGroup)(&testPubK1.PublicKey)
+	pk1 := (*prooftools.PublicKeyGroup)(testPubK1)
 
 	assert.False(t, pk1.Exp(ret, "G", big.NewInt(12), pk1.N))
 	assert.False(t, pk1.Exp(ret, "H", big.NewInt(13), pk1.N))
@@ -143,7 +145,7 @@ func TestPkGroupExp(t *testing.T) {
 	assert.False(t, pk1.Exp(ret, "Rabc", big.NewInt(28), pk1.N))
 	assert.False(t, pk1.Exp(ret, "sjdfy", big.NewInt(29), pk1.N))
 
-	pk2 := (*prooftools.PublicKeyGroup)(&testPubK2.PublicKey)
+	pk2 := (*prooftools.PublicKeyGroup)(testPubK2)
 
 	assert.True(t, pk2.Exp(ret, "G", big.NewInt(12), pk2.N))
 	assert.Equal(t, new(big.Int).Exp(pk2.G, big.NewInt(12), pk2.N), ret)
@@ -172,9 +174,9 @@ func TestPkGroupExp(t *testing.T) {
 func TestPkGroupNames(t *testing.T) {
 	setupParameters(t)
 
-	pk1 := (*prooftools.PublicKeyGroup)(&testPubK1.PublicKey)
+	pk1 := (*prooftools.PublicKeyGroup)(testPubK1)
 	assert.ElementsMatch(t, []string{"S", "Z", "R0", "R1", "R2", "R3", "R4", "R5"}, pk1.Names())
 
-	pk2 := (*prooftools.PublicKeyGroup)(&testPubK2.PublicKey)
+	pk2 := (*prooftools.PublicKeyGroup)(testPubK2)
 	assert.ElementsMatch(t, []string{"S", "Z", "G", "H", "R0", "R1", "R2"}, pk2.Names())
 }

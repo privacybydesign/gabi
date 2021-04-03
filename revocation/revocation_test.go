@@ -22,27 +22,26 @@ func init() {
 	Logger.SetLevel(logrus.FatalLevel)
 }
 
-func generateKeys(t *testing.T) (*PrivateKey, *PublicKey) {
+func generateKeys(t *testing.T) (*keys.PrivateKey, *keys.PublicKey) {
 	N, p, q, err := generateGroup()
 	require.NoError(t, err)
 	ecdsa, err := signed.GenerateKey()
 	require.NoError(t, err)
 
-	sk := &PrivateKey{
+	sk := &keys.PrivateKey{
 		Counter: 0,
 		ECDSA:   ecdsa,
-		P:       p,
-		Q:       q,
+		PPrime:  p,
+		QPrime:  q,
 		N:       N,
 	}
-	pk := &PublicKey{
+	sk.Order = new(big.Int).Mul(sk.PPrime, sk.QPrime)
+	pk := &keys.PublicKey{
 		Counter: 0,
 		ECDSA:   &ecdsa.PublicKey,
-		Group: &keys.PublicKey{
-			N: N,
-			G: common.RandomQR(N),
-			H: common.RandomQR(N),
-		},
+		N:       N,
+		G:       common.RandomQR(N),
+		H:       common.RandomQR(N),
 	}
 
 	return sk, pk
@@ -83,28 +82,27 @@ func TestNonRevocationProof(t *testing.T) {
 	ecdsa, err := signed.GenerateKey()
 	require.NoError(t, err)
 
-	sk := &PrivateKey{
+	sk := &keys.PrivateKey{
 		Counter: 0,
 		ECDSA:   ecdsa,
-		P:       p,
-		Q:       q,
+		PPrime:  p,
+		QPrime:  q,
 		N:       N,
 	}
-	pk := &PublicKey{
+	sk.Order = new(big.Int).Mul(sk.PPrime, sk.QPrime)
+	pk := &keys.PublicKey{
 		Counter: 0,
 		ECDSA:   &ecdsa.PublicKey,
-		Group: &keys.PublicKey{
-			N: N,
-			G: common.RandomQR(N),
-			H: common.RandomQR(N),
-		},
+		N:       N,
+		G:       common.RandomQR(N),
+		H:       common.RandomQR(N),
 	}
 
 	require.True(t, testProof(t, pk, sk, true))
 	require.False(t, testProof(t, pk, sk, false))
 }
 
-func testProof(t *testing.T, pk *PublicKey, sk *PrivateKey, valid bool) bool {
+func testProof(t *testing.T, pk *keys.PublicKey, sk *keys.PrivateKey, valid bool) bool {
 
 	acc := &Accumulator{Nu: common.RandomQR(sk.N)}
 
@@ -116,10 +114,10 @@ func testProof(t *testing.T, pk *PublicKey, sk *PrivateKey, valid bool) bool {
 	}
 
 	witn.randomizer = NewProofRandomizer()
-	bases := keyproof.NewBaseMerge((*prooftools.PublicKeyGroup)(pk.Group), (*accumulator)(acc))
+	bases := keyproof.NewBaseMerge((*prooftools.PublicKeyGroup)(pk), (*accumulator)(acc))
 	require.Equal(t, valid, proofstructure.isTrue((*witness)(witn), acc.Nu, sk.N), "statement to prove ")
 
-	list, commit := proofstructure.commitmentsFromSecrets(pk.Group, []*big.Int{}, &bases, (*witness)(witn))
+	list, commit := proofstructure.commitmentsFromSecrets(pk, []*big.Int{}, &bases, (*witness)(witn))
 	challenge := common.HashCommit(list, false)
 	sacc, err := acc.Sign(sk)
 	require.NoError(t, err)
@@ -163,10 +161,10 @@ func TestAccumulatorRemove(t *testing.T) {
 	require.Equal(t, parentevent.hash(), event.ParentHash)
 	require.Equal(t, parentevent.Index+1, event.Index)
 	require.Equal(t, 0, event.E.Cmp(e))
-	require.Equal(t, 0, new(big.Int).Exp(newAcc.Nu, e, pk.Group.N).Cmp(acc.Nu))
+	require.Equal(t, 0, new(big.Int).Exp(newAcc.Nu, e, pk.N).Cmp(acc.Nu))
 }
 
-func revoke(t *testing.T, acc *Accumulator, parent *Event, sk *PrivateKey) (*Accumulator, *Event) {
+func revoke(t *testing.T, acc *Accumulator, parent *Event, sk *keys.PrivateKey) (*Accumulator, *Event) {
 	e, err := common.RandomPrimeInRange(rand.Reader, 3, Parameters.AttributeSize)
 	require.NoError(t, err)
 	acc, event, err := acc.Remove(sk, e, parent)
@@ -174,7 +172,7 @@ func revoke(t *testing.T, acc *Accumulator, parent *Event, sk *PrivateKey) (*Acc
 	return acc, event
 }
 
-func generateUpdate(t *testing.T) (*Update, *PublicKey, *PrivateKey, *Accumulator) {
+func generateUpdate(t *testing.T) (*Update, *keys.PublicKey, *keys.PrivateKey, *Accumulator) {
 	sk, pk := generateKeys(t)
 
 	update, err := NewAccumulator(sk)
