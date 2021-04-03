@@ -8,8 +8,7 @@ import (
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/internal/common"
-	"github.com/privacybydesign/gabi/keyproof"
-	"github.com/privacybydesign/gabi/prooftools"
+	"github.com/privacybydesign/gabi/zkproof"
 )
 
 /*
@@ -93,9 +92,9 @@ type (
 	}
 
 	proofStructure struct {
-		cr  prooftools.QrRepresentationProofStructure
-		nu  prooftools.QrRepresentationProofStructure
-		one prooftools.QrRepresentationProofStructure
+		cr  zkproof.QrRepresentationProofStructure
+		nu  zkproof.QrRepresentationProofStructure
+		one zkproof.QrRepresentationProofStructure
 	}
 
 	// We implement the keyproof interfaces, containing exported methods, without exposing those
@@ -124,23 +123,23 @@ var (
 	bigOne         = big.NewInt(1)
 	secretNames    = []string{"alpha", "beta", "delta", "epsilon", "zeta"}
 	proofstructure = proofStructure{
-		cr: prooftools.QrRepresentationProofStructure{
-			Lhs: []keyproof.LhsContribution{{Base: "cr", Power: bigOne}},
-			Rhs: []keyproof.RhsContribution{
+		cr: zkproof.QrRepresentationProofStructure{
+			Lhs: []zkproof.LhsContribution{{Base: "cr", Power: bigOne}},
+			Rhs: []zkproof.RhsContribution{
 				{Base: "G", Secret: "epsilon", Power: 1}, // r2
 				{Base: "H", Secret: "zeta", Power: 1},    // r3
 			},
 		},
-		nu: prooftools.QrRepresentationProofStructure{
-			Lhs: []keyproof.LhsContribution{{Base: "nu", Power: bigOne}},
-			Rhs: []keyproof.RhsContribution{
+		nu: zkproof.QrRepresentationProofStructure{
+			Lhs: []zkproof.LhsContribution{{Base: "nu", Power: bigOne}},
+			Rhs: []zkproof.RhsContribution{
 				{Base: "cu", Secret: "alpha", Power: 1}, // e
 				{Base: "H", Secret: "beta", Power: -1},  // e r2
 			},
 		},
-		one: prooftools.QrRepresentationProofStructure{
-			Lhs: []keyproof.LhsContribution{{Base: "one", Power: bigOne}},
-			Rhs: []keyproof.RhsContribution{
+		one: zkproof.QrRepresentationProofStructure{
+			Lhs: []zkproof.LhsContribution{{Base: "one", Power: bigOne}},
+			Rhs: []zkproof.RhsContribution{
 				{Base: "cr", Secret: "alpha", Power: 1}, // e
 				{Base: "G", Secret: "beta", Power: -1},  // e r2
 				{Base: "H", Secret: "delta", Power: -1}, // e r3
@@ -185,7 +184,7 @@ func NewProofCommit(key *gabikeys.PublicKey, witn *Witness, randomizer *big.Int)
 		return nil, nil, errors.New("non-revocation relation does not hold")
 	}
 
-	bases := keyproof.NewBaseMerge(key, &accumulator{Nu: witn.SignedAccumulator.Accumulator.Nu})
+	bases := zkproof.NewBaseMerge(key, &accumulator{Nu: witn.SignedAccumulator.Accumulator.Nu})
 	list, commit := proofstructure.commitmentsFromSecrets(key, []*big.Int{}, &bases, (*witness)(witn))
 	commit.sacc = witn.SignedAccumulator
 	return list, (*ProofCommit)(&commit), nil
@@ -257,7 +256,7 @@ func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
 	c.sacc = witness.SignedAccumulator
 
 	commit := (*proofCommit)(c)
-	b := keyproof.NewBaseMerge(c.g, commit)
+	b := zkproof.NewBaseMerge(c.g, commit)
 	l := proofstructure.nu.CommitmentsFromSecrets(c.g, []*big.Int{}, &b, commit)
 
 	commitments[1] = c.cu
@@ -376,7 +375,7 @@ func (p *proof) verify(pk *gabikeys.PublicKey) bool {
 	return (*Proof)(p).VerifyWithChallenge(pk, common.HashCommit(commitments, false))
 }
 
-func (s *proofStructure) commitmentsFromSecrets(g *gabikeys.PublicKey, list []*big.Int, bases keyproof.BaseLookup, secretdata keyproof.SecretLookup) ([]*big.Int, proofCommit) {
+func (s *proofStructure) commitmentsFromSecrets(g *gabikeys.PublicKey, list []*big.Int, bases zkproof.BaseLookup, secretdata zkproof.SecretLookup) ([]*big.Int, proofCommit) {
 	commit := proofCommit{
 		g:           g,
 		secrets:     make(map[string]*big.Int, 5),
@@ -418,7 +417,7 @@ func (s *proofStructure) commitmentsFromSecrets(g *gabikeys.PublicKey, list []*b
 
 	list = append(list, commit.cr, commit.cu, commit.nu)
 
-	b := keyproof.NewBaseMerge(bases, &commit)
+	b := zkproof.NewBaseMerge(bases, &commit)
 	list = s.cr.CommitmentsFromSecrets(g, list, &b, &commit)
 	list = s.nu.CommitmentsFromSecrets(g, list, &b, &commit)
 	list = s.one.CommitmentsFromSecrets(g, list, &b, &commit)
@@ -426,10 +425,10 @@ func (s *proofStructure) commitmentsFromSecrets(g *gabikeys.PublicKey, list []*b
 	return list, commit
 }
 
-func (s *proofStructure) commitmentsFromProof(g *gabikeys.PublicKey, list []*big.Int, challenge *big.Int, bases keyproof.BaseLookup, proofdata keyproof.ProofLookup, proof *proof) []*big.Int {
-	proofs := keyproof.NewProofMerge(proof, proofdata)
+func (s *proofStructure) commitmentsFromProof(g *gabikeys.PublicKey, list []*big.Int, challenge *big.Int, bases zkproof.BaseLookup, proofdata zkproof.ProofLookup, proof *proof) []*big.Int {
+	proofs := zkproof.NewProofMerge(proof, proofdata)
 
-	b := keyproof.NewBaseMerge(g, &proofCommit{cr: proof.Cr, cu: proof.Cu, nu: proof.Nu})
+	b := zkproof.NewBaseMerge(g, &proofCommit{cr: proof.Cr, cu: proof.Cu, nu: proof.Nu})
 
 	list = append(list, proof.Cr, proof.Cu, proof.Nu)
 	list = s.cr.CommitmentsFromProof(g, list, challenge, &b, &proofs)
@@ -448,7 +447,7 @@ func (s *proofStructure) verifyProofStructure(p *proof) bool {
 	return p.Cr != nil && p.Cu != nil && p.Nu != nil && p.Challenge != nil
 }
 
-func (s *proofStructure) isTrue(secretdata keyproof.SecretLookup, nu, n *big.Int) bool {
+func (s *proofStructure) isTrue(secretdata zkproof.SecretLookup, nu, n *big.Int) bool {
 	return new(big.Int).
 		Exp(secretdata.Secret("u"), secretdata.Secret("alpha"), n).
 		Cmp(nu) == 0

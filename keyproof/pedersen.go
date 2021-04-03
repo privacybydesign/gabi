@@ -5,12 +5,13 @@ import (
 
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
+	"github.com/privacybydesign/gabi/zkproof"
 )
 
 type (
 	pedersenStructure struct {
 		name           string
-		representation RepresentationProofStructure
+		representation zkproof.RepresentationProofStructure
 	}
 
 	pedersenCommit struct {
@@ -19,7 +20,7 @@ type (
 		hider   secret
 		commit  *big.Int
 
-		g *group
+		g *zkproof.Group
 	}
 
 	PedersenProof struct {
@@ -33,11 +34,11 @@ type (
 func newPedersenStructure(name string) pedersenStructure {
 	return pedersenStructure{
 		name,
-		RepresentationProofStructure{
-			[]LhsContribution{
+		zkproof.RepresentationProofStructure{
+			[]zkproof.LhsContribution{
 				{name, big.NewInt(1)},
 			},
-			[]RhsContribution{
+			[]zkproof.RhsContribution{
 				{"g", name, 1},
 				{"h", strings.Join([]string{name, "hider"}, "_"), 1},
 			},
@@ -47,11 +48,11 @@ func newPedersenStructure(name string) pedersenStructure {
 
 func newPedersenRangeProofStructure(name string, l1 uint, l2 uint) rangeProofStructure {
 	structure := rangeProofStructure{
-		RepresentationProofStructure: RepresentationProofStructure{
-			Lhs: []LhsContribution{
+		RepresentationProofStructure: zkproof.RepresentationProofStructure{
+			Lhs: []zkproof.LhsContribution{
 				{name, big.NewInt(1)},
 			},
-			Rhs: []RhsContribution{
+			Rhs: []zkproof.RhsContribution{
 				{"g", name, 1},
 				{"h", strings.Join([]string{name, "hider"}, "_"), 1},
 			},
@@ -64,29 +65,29 @@ func newPedersenRangeProofStructure(name string, l1 uint, l2 uint) rangeProofStr
 }
 
 func (s *pedersenStructure) numRangeProofs() int {
-	return s.representation.numRangeProofs()
+	return s.representation.NumRangeProofs()
 }
 
 func (s *pedersenStructure) numCommitments() int {
-	return s.representation.numCommitments() + 1
+	return s.representation.NumCommitments() + 1
 }
 
-func (s *pedersenStructure) commitmentsFromSecrets(g group, list []*big.Int, value *big.Int) ([]*big.Int, pedersenCommit) {
+func (s *pedersenStructure) commitmentsFromSecrets(g zkproof.Group, list []*big.Int, value *big.Int) ([]*big.Int, pedersenCommit) {
 	result := pedersenCommit{
 		name:    s.name,
 		secretv: newSecret(g, s.name, value),
-		hider:   newSecret(g, strings.Join([]string{s.name, "hider"}, "_"), common.FastRandomBigInt(g.order)),
+		hider:   newSecret(g, strings.Join([]string{s.name, "hider"}, "_"), common.FastRandomBigInt(g.Order)),
 		g:       &g,
 		commit:  new(big.Int),
 	}
-	result.Exp(result.commit, s.name, big.NewInt(1), g.p)
+	result.Exp(result.commit, s.name, big.NewInt(1), g.P)
 
-	bases := NewBaseMerge(&result, &g)
+	bases := zkproof.NewBaseMerge(&result, &g)
 	list = append(list, result.commit)
-	return s.representation.commitmentsFromSecrets(g, list, &bases, &result), result
+	return s.representation.CommitmentsFromSecrets(g, list, &bases, &result), result
 }
 
-func (s *pedersenStructure) commitmentsDuplicate(g group, list []*big.Int, value *big.Int, hider *big.Int) ([]*big.Int, pedersenCommit) {
+func (s *pedersenStructure) commitmentsDuplicate(g zkproof.Group, list []*big.Int, value *big.Int, hider *big.Int) ([]*big.Int, pedersenCommit) {
 	var result = pedersenCommit{
 		name:    s.name,
 		secretv: newSecret(g, s.name, value),
@@ -94,14 +95,14 @@ func (s *pedersenStructure) commitmentsDuplicate(g group, list []*big.Int, value
 		g:       &g,
 		commit:  new(big.Int),
 	}
-	result.Exp(result.commit, s.name, big.NewInt(1), g.p)
+	result.Exp(result.commit, s.name, big.NewInt(1), g.P)
 
-	bases := NewBaseMerge(&result, &g)
+	bases := zkproof.NewBaseMerge(&result, &g)
 	list = append(list, result.commit)
-	return s.representation.commitmentsFromSecrets(g, list, &bases, &result), result
+	return s.representation.CommitmentsFromSecrets(g, list, &bases, &result), result
 }
 
-func (s *pedersenStructure) buildProof(g group, challenge *big.Int, commit pedersenCommit) PedersenProof {
+func (s *pedersenStructure) buildProof(g zkproof.Group, challenge *big.Int, commit pedersenCommit) PedersenProof {
 	return PedersenProof{
 		Commit:  commit.commit,
 		Sresult: commit.secretv.buildProof(g, challenge),
@@ -109,13 +110,13 @@ func (s *pedersenStructure) buildProof(g group, challenge *big.Int, commit peder
 	}
 }
 
-func (s *pedersenStructure) fakeProof(g group) PedersenProof {
+func (s *pedersenStructure) fakeProof(g zkproof.Group) PedersenProof {
 	var gCommit, hCommit big.Int
-	g.Exp(&gCommit, "g", common.FastRandomBigInt(g.order), g.p)
-	g.Exp(&hCommit, "h", common.FastRandomBigInt(g.order), g.p)
+	g.Exp(&gCommit, "g", common.FastRandomBigInt(g.Order), g.P)
+	g.Exp(&hCommit, "h", common.FastRandomBigInt(g.Order), g.P)
 	var Commit big.Int
 	Commit.Mul(&gCommit, &hCommit)
-	Commit.Mod(&Commit, g.p)
+	Commit.Mod(&Commit, g.P)
 	return PedersenProof{
 		Commit:  &Commit,
 		Sresult: fakeProof(g),
@@ -127,11 +128,11 @@ func (s *pedersenStructure) verifyProofStructure(proof PedersenProof) bool {
 	return proof.Commit != nil && proof.Hresult.verifyStructure() && proof.Sresult.verifyStructure()
 }
 
-func (s *pedersenStructure) commitmentsFromProof(g group, list []*big.Int, challenge *big.Int, proof PedersenProof) []*big.Int {
+func (s *pedersenStructure) commitmentsFromProof(g zkproof.Group, list []*big.Int, challenge *big.Int, proof PedersenProof) []*big.Int {
 	proof.setName(s.name)
-	bases := NewBaseMerge(&proof, &g)
+	bases := zkproof.NewBaseMerge(&proof, &g)
 	list = append(list, proof.Commit)
-	return s.representation.commitmentsFromProof(g, list, challenge, &bases, &proof)
+	return s.representation.CommitmentsFromProof(g, list, challenge, &bases, &proof)
 }
 
 func (c *pedersenCommit) Base(name string) *big.Int {
@@ -150,13 +151,13 @@ func (c *pedersenCommit) Exp(ret *big.Int, name string, exp, P *big.Int) bool {
 	// directly, than with two table-backed exponentiations.
 	var exp1, exp2, ret1, ret2, tmp big.Int
 	tmp.Mul(c.secretv.secretv, exp)
-	c.g.orderMod.Mod(&exp1, &tmp)
+	c.g.OrderMod.Mod(&exp1, &tmp)
 	tmp.Mul(c.hider.secretv, exp)
-	c.g.orderMod.Mod(&exp2, &tmp)
-	c.g.Exp(&ret1, "g", &exp1, c.g.p)
-	c.g.Exp(&ret2, "h", &exp2, c.g.p)
+	c.g.OrderMod.Mod(&exp2, &tmp)
+	c.g.Exp(&ret1, "g", &exp1, c.g.P)
+	c.g.Exp(&ret2, "h", &exp2, c.g.P)
 	tmp.Mul(&ret1, &ret2)
-	c.g.pMod.Mod(ret, &tmp)
+	c.g.PMod.Mod(ret, &tmp)
 	return true
 }
 

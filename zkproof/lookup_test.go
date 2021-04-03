@@ -1,4 +1,4 @@
-package keyproof
+package zkproof
 
 import (
 	"testing"
@@ -10,7 +10,7 @@ import (
 
 func TestGroupAsLookupBase(t *testing.T) {
 	const p = 26903
-	g, ok := buildGroup(big.NewInt(p))
+	g, ok := BuildGroup(big.NewInt(p))
 	require.True(t, ok, "Problem generating group")
 
 	t1 := g.Base("g")

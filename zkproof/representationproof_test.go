@@ -1,4 +1,4 @@
-package prooftools_test
+package zkproof_test
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/keyproof"
-	"github.com/privacybydesign/gabi/prooftools"
+	"github.com/privacybydesign/gabi/zkproof"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -102,14 +102,14 @@ func (rc *RepTestCommit) Names() (ret []string) {
 	return
 }
 
-func TestRepresentationProofBasics(t *testing.T) {
+func TestQrRepresentationProofBasics(t *testing.T) {
 	setupParameters(t)
 
-	var s prooftools.QrRepresentationProofStructure
-	s.Lhs = []keyproof.LhsContribution{
+	var s zkproof.QrRepresentationProofStructure
+	s.Lhs = []zkproof.LhsContribution{
 		{Base: "x", Power: big.NewInt(1)},
 	}
-	s.Rhs = []keyproof.RhsContribution{
+	s.Rhs = []zkproof.RhsContribution{
 		{Base: "S", Secret: "x", Power: 1},
 	}
 
@@ -123,7 +123,7 @@ func TestRepresentationProofBasics(t *testing.T) {
 	var proof RepTestProof
 	proof.results = map[string]*big.Int{"x": big.NewInt(25)}
 
-	bases := keyproof.NewBaseMerge(testPubK1, &commit)
+	bases := zkproof.NewBaseMerge(testPubK1, &commit)
 
 	listSecrets := s.CommitmentsFromSecrets(testPubK1, []*big.Int{}, &bases, &secret)
 	listProofs := s.CommitmentsFromProof(testPubK1, []*big.Int{}, big.NewInt(1), &bases, &proof)
@@ -131,14 +131,14 @@ func TestRepresentationProofBasics(t *testing.T) {
 	assert.Equal(t, listSecrets, listProofs, "commitment lists different")
 }
 
-func TestRepresentationProofComplex(t *testing.T) {
+func TestQrRepresentationProofComplex(t *testing.T) {
 	setupParameters(t)
 
-	var s prooftools.QrRepresentationProofStructure
-	s.Lhs = []keyproof.LhsContribution{
+	var s zkproof.QrRepresentationProofStructure
+	s.Lhs = []zkproof.LhsContribution{
 		{Base: "c", Power: big.NewInt(4)},
 	}
-	s.Rhs = []keyproof.RhsContribution{
+	s.Rhs = []zkproof.RhsContribution{
 		{Base: "S", Secret: "x", Power: 2},
 		{Base: "Z", Secret: "y", Power: 3},
 	}
@@ -168,7 +168,7 @@ func TestRepresentationProofComplex(t *testing.T) {
 		"y": big.NewInt(53),
 	}
 
-	bases := keyproof.NewBaseMerge(testPubK1, &commit)
+	bases := zkproof.NewBaseMerge(testPubK1, &commit)
 
 	listSecrets := s.CommitmentsFromSecrets(testPubK1, []*big.Int{}, &bases, &secret)
 	listProofs := s.CommitmentsFromProof(testPubK1, []*big.Int{}, big.NewInt(2), &bases, &proof)
@@ -295,4 +295,114 @@ func TestPkGroupNames(t *testing.T) {
 
 	pk2 := testPubK2
 	assert.ElementsMatch(t, []string{"S", "Z", "G", "H", "R0", "R1", "R2"}, pk2.Names())
+}
+
+func TestRepresentationProofBasics(t *testing.T) {
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
+	require.True(t, gok, "Failed to setup group for Representation proof testing")
+
+	keyproof.Follower.(*TestFollower).count = 0
+
+	var s zkproof.RepresentationProofStructure
+	s.Lhs = []zkproof.LhsContribution{
+		zkproof.LhsContribution{"x", big.NewInt(1)},
+	}
+	s.Rhs = []zkproof.RhsContribution{
+		zkproof.RhsContribution{"g", "x", 1},
+	}
+
+	var secret RepTestSecret
+	secret.secrets = map[string]*big.Int{"x": big.NewInt(10)}
+	secret.randomizers = map[string]*big.Int{"x": big.NewInt(15)}
+
+	var commit RepTestCommit
+	commit.commits = map[string]*big.Int{"x": new(big.Int).Exp(g.G, secret.secrets["x"], g.P)}
+
+	var proof RepTestProof
+	proof.results = map[string]*big.Int{"x": big.NewInt(5)}
+
+	bases := zkproof.NewBaseMerge(&g, &commit)
+
+	listSecrets := s.CommitmentsFromSecrets(g, []*big.Int{}, &bases, &secret)
+
+	assert.Equal(t, len(listSecrets), s.NumCommitments(), "NumCommitments is off")
+	assert.Equal(t, keyproof.Follower.(*TestFollower).count, s.NumRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
+	keyproof.Follower.(*TestFollower).count = 0
+
+	listProofs := s.CommitmentsFromProof(g, []*big.Int{}, big.NewInt(1), &bases, &proof)
+
+	assert.Equal(t, keyproof.Follower.(*TestFollower).count, s.NumRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
+	assert.True(t, s.IsTrue(g, &bases, &secret), "Incorrect rejection of truth")
+	assert.Equal(t, listSecrets, listProofs, "commitment lists different")
+}
+
+func TestRepresentationProofComplex(t *testing.T) {
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
+	require.True(t, gok, "Failed to setup group for Representation proof testing")
+
+	var s zkproof.RepresentationProofStructure
+	s.Lhs = []zkproof.LhsContribution{
+		zkproof.LhsContribution{"c", big.NewInt(4)},
+	}
+	s.Rhs = []zkproof.RhsContribution{
+		zkproof.RhsContribution{"g", "x", 2},
+		zkproof.RhsContribution{"h", "y", 1},
+	}
+
+	keyproof.Follower.(*TestFollower).count = 0
+
+	var secret RepTestSecret
+	secret.secrets = map[string]*big.Int{
+		"x": big.NewInt(4),
+		"y": big.NewInt(2),
+	}
+	secret.randomizers = map[string]*big.Int{
+		"x": big.NewInt(12),
+		"y": big.NewInt(21),
+	}
+
+	var commit RepTestCommit
+	commit.commits = map[string]*big.Int{
+		"c": new(big.Int).Mod(
+			new(big.Int).Mul(
+				new(big.Int).Exp(g.G, big.NewInt(2), g.P),
+				new(big.Int).Exp(g.H, big.NewInt(12), g.P)),
+			g.P),
+	}
+
+	var proof RepTestProof
+	proof.results = map[string]*big.Int{
+		"x": big.NewInt(4),
+		"y": big.NewInt(17),
+	}
+
+	bases := zkproof.NewBaseMerge(&g, &commit)
+
+	listSecrets := s.CommitmentsFromSecrets(g, []*big.Int{}, &bases, &secret)
+
+	assert.Equal(t, len(listSecrets), s.NumCommitments(), "NumCommitments is off")
+	assert.Equal(t, keyproof.Follower.(*TestFollower).count, s.NumRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
+	keyproof.Follower.(*TestFollower).count = 0
+
+	listProofs := s.CommitmentsFromProof(g, []*big.Int{}, big.NewInt(2), &bases, &proof)
+
+	assert.Equal(t, keyproof.Follower.(*TestFollower).count, s.NumRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
+	assert.True(t, s.IsTrue(g, &bases, &secret), "Incorrect rejection of truth")
+	assert.Equal(t, listSecrets, listProofs, "Commitment lists different")
+}
+
+type TestFollower struct {
+	count int
+}
+
+func (_ *TestFollower) StepStart(desc string, intermediates int) {}
+
+func (t *TestFollower) Tick() {
+	t.count++
+}
+
+func (t *TestFollower) StepDone() {}
+
+func init() {
+	keyproof.Follower = &TestFollower{}
 }

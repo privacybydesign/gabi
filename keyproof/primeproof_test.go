@@ -5,12 +5,13 @@ import (
 	"testing"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/zkproof"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestPrimeProofFlow(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for Prime proof testing")
 
 	Follower.(*TestFollower).count = 0
@@ -20,7 +21,7 @@ func TestPrimeProofFlow(t *testing.T) {
 	const p = 11
 	pCommits := newPedersenStructure("p")
 	_, pCommit := pCommits.commitmentsFromSecrets(g, nil, big.NewInt(p))
-	bases := NewBaseMerge(&g, &pCommit)
+	bases := zkproof.NewBaseMerge(&g, &pCommit)
 
 	listSecrets, commit := s.commitmentsFromSecrets(g, []*big.Int{}, &bases, &pCommit)
 
@@ -32,7 +33,7 @@ func TestPrimeProofFlow(t *testing.T) {
 	pProof := pCommits.buildProof(g, big.NewInt(12345), pCommit)
 	pProof.setName("p")
 
-	basesProof := NewBaseMerge(&g, &pProof)
+	basesProof := zkproof.NewBaseMerge(&g, &pProof)
 
 	require.True(t, s.verifyProofStructure(big.NewInt(12345), proof), "Proof structure rejected.")
 
@@ -43,7 +44,7 @@ func TestPrimeProofFlow(t *testing.T) {
 }
 
 func TestPrimeProofFake(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for Prime proof testing")
 
 	s := newPrimeProofStructure("p", 4)
@@ -54,7 +55,7 @@ func TestPrimeProofFake(t *testing.T) {
 }
 
 func TestPrimeProofJSON(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for Prime proof testing")
 
 	s := newPrimeProofStructure("p", 4)
@@ -71,7 +72,7 @@ func TestPrimeProofJSON(t *testing.T) {
 }
 
 func TestPrimeProofVerify(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for Prime proof testing")
 
 	s := newPrimeProofStructure("p", 4)

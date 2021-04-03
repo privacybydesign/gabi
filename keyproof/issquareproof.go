@@ -6,6 +6,7 @@ import (
 
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
+	"github.com/privacybydesign/gabi/zkproof"
 )
 
 type (
@@ -15,9 +16,9 @@ type (
 		squares         []*big.Int
 		squaresPedersen []pedersenStructure
 
-		nRep RepresentationProofStructure
+		nRep zkproof.RepresentationProofStructure
 
-		squaresRep []RepresentationProofStructure
+		squaresRep []zkproof.RepresentationProofStructure
 		rootsRep   []pedersenStructure
 		rootsRange []rangeProofStructure
 		rootsValid []multiplicationProofStructure
@@ -48,16 +49,16 @@ func newIsSquareProofStructure(N *big.Int, Squares []*big.Int) isSquareProofStru
 		nPedersen:       newPedersenStructure("N"),
 		squares:         make([]*big.Int, len(Squares)),
 		squaresPedersen: make([]pedersenStructure, len(Squares)),
-		nRep: RepresentationProofStructure{
-			[]LhsContribution{
+		nRep: zkproof.RepresentationProofStructure{
+			[]zkproof.LhsContribution{
 				{"N", big.NewInt(-1)},
 				{"g", new(big.Int).Set(N)},
 			},
-			[]RhsContribution{
+			[]zkproof.RhsContribution{
 				{"h", "N_hider", -1},
 			},
 		},
-		squaresRep: make([]RepresentationProofStructure, len(Squares)),
+		squaresRep: make([]zkproof.RepresentationProofStructure, len(Squares)),
 		rootsRep:   make([]pedersenStructure, len(Squares)),
 		rootsRange: make([]rangeProofStructure, len(Squares)),
 		rootsValid: make([]multiplicationProofStructure, len(Squares)),
@@ -71,12 +72,12 @@ func newIsSquareProofStructure(N *big.Int, Squares []*big.Int) isSquareProofStru
 
 	// Setup representation proofs of square
 	for i, val := range result.squares {
-		result.squaresRep[i] = RepresentationProofStructure{
-			[]LhsContribution{
+		result.squaresRep[i] = zkproof.RepresentationProofStructure{
+			[]zkproof.LhsContribution{
 				{strings.Join([]string{"s", fmt.Sprintf("%v", i)}, "_"), big.NewInt(-1)},
 				{"g", new(big.Int).Set(val)},
 			},
-			[]RhsContribution{
+			[]zkproof.RhsContribution{
 				{"h", strings.Join([]string{"s", fmt.Sprintf("%v", i), "hider"}, "_"), -1},
 			},
 		}
@@ -109,7 +110,7 @@ func newIsSquareProofStructure(N *big.Int, Squares []*big.Int) isSquareProofStru
 	return result
 }
 
-func (s *isSquareProofStructure) commitmentsFromSecrets(g group, list []*big.Int, P *big.Int, Q *big.Int) ([]*big.Int, isSquareProofCommit) {
+func (s *isSquareProofStructure) commitmentsFromSecrets(g zkproof.Group, list []*big.Int, P *big.Int, Q *big.Int) ([]*big.Int, isSquareProofCommit) {
 	// Setup commit structure
 	commit := isSquareProofCommit{
 		squares:         make([]pedersenCommit, len(s.squares)),
@@ -132,8 +133,8 @@ func (s *isSquareProofStructure) commitmentsFromSecrets(g group, list []*big.Int
 	list, commit.n = s.nPedersen.commitmentsFromSecrets(g, list, s.n)
 
 	// Build up bases and secrets (this is ugly code, hopefully go2 will make this better someday)
-	var baseList []BaseLookup
-	var secretList []SecretLookup
+	var baseList []zkproof.BaseLookup
+	var secretList []zkproof.SecretLookup
 	for i := range commit.squares {
 		baseList = append(baseList, &commit.squares[i])
 		secretList = append(secretList, &commit.squares[i])
@@ -145,17 +146,17 @@ func (s *isSquareProofStructure) commitmentsFromSecrets(g group, list []*big.Int
 	baseList = append(baseList, &commit.n)
 	secretList = append(secretList, &commit.n)
 	baseList = append(baseList, &g)
-	bases := NewBaseMerge(baseList...)
-	secrets := NewSecretMerge(secretList...)
+	bases := zkproof.NewBaseMerge(baseList...)
+	secrets := zkproof.NewSecretMerge(secretList...)
 
 	// Generate commitments
 	list = append(list, s.n)
 	for _, val := range s.squares {
 		list = append(list, val)
 	}
-	list = s.nRep.commitmentsFromSecrets(g, list, &bases, &secrets)
+	list = s.nRep.CommitmentsFromSecrets(g, list, &bases, &secrets)
 	for i := range s.squaresRep {
-		list = s.squaresRep[i].commitmentsFromSecrets(g, list, &bases, &secrets)
+		list = s.squaresRep[i].CommitmentsFromSecrets(g, list, &bases, &secrets)
 	}
 	for i := range s.rootsRange {
 		list, commit.rootRangeCommit[i] = s.rootsRange[i].commitmentsFromSecrets(g, list, &bases, &secrets)
@@ -167,9 +168,9 @@ func (s *isSquareProofStructure) commitmentsFromSecrets(g group, list []*big.Int
 	return list, commit
 }
 
-func (s *isSquareProofStructure) buildProof(g group, challenge *big.Int, commit isSquareProofCommit) IsSquareProof {
+func (s *isSquareProofStructure) buildProof(g zkproof.Group, challenge *big.Int, commit isSquareProofCommit) IsSquareProof {
 	// Build up secrets (this is ugly code, hopefully go2 will make this better someday)
-	var secretList []SecretLookup
+	var secretList []zkproof.SecretLookup
 	for i := range commit.squares {
 		secretList = append(secretList, &commit.squares[i])
 	}
@@ -177,7 +178,7 @@ func (s *isSquareProofStructure) buildProof(g group, challenge *big.Int, commit 
 		secretList = append(secretList, &commit.roots[i])
 	}
 	secretList = append(secretList, &commit.n)
-	secrets := NewSecretMerge(secretList...)
+	secrets := zkproof.NewSecretMerge(secretList...)
 
 	// Calculate proofs
 	proof := IsSquareProof{
@@ -231,7 +232,7 @@ func (s *isSquareProofStructure) verifyProofStructure(proof IsSquareProof) bool 
 	return true
 }
 
-func (s *isSquareProofStructure) commitmentsFromProof(g group, list []*big.Int, challenge *big.Int, proof IsSquareProof) []*big.Int {
+func (s *isSquareProofStructure) commitmentsFromProof(g zkproof.Group, list []*big.Int, challenge *big.Int, proof IsSquareProof) []*big.Int {
 	// Setup names in pedersen proofs
 	proof.NProof.setName("N")
 	for i := range s.squares {
@@ -240,8 +241,8 @@ func (s *isSquareProofStructure) commitmentsFromProof(g group, list []*big.Int, 
 	}
 
 	// Build up bases and proofs mergers
-	var baseList []BaseLookup
-	var proofList []ProofLookup
+	var baseList []zkproof.BaseLookup
+	var proofList []zkproof.ProofLookup
 	for i := range s.squares {
 		baseList = append(baseList, &proof.SquaresProof[i])
 		proofList = append(proofList, &proof.SquaresProof[i])
@@ -253,8 +254,8 @@ func (s *isSquareProofStructure) commitmentsFromProof(g group, list []*big.Int, 
 	baseList = append(baseList, &proof.NProof)
 	proofList = append(proofList, &proof.NProof)
 	baseList = append(baseList, &g)
-	var bases = NewBaseMerge(baseList...)
-	var proofs = NewProofMerge(proofList...)
+	var bases = zkproof.NewBaseMerge(baseList...)
+	var proofs = zkproof.NewProofMerge(proofList...)
 
 	// Build up commitment list
 	for i := range s.squares {
@@ -268,9 +269,9 @@ func (s *isSquareProofStructure) commitmentsFromProof(g group, list []*big.Int, 
 	for _, val := range s.squares {
 		list = append(list, val)
 	}
-	list = s.nRep.commitmentsFromProof(g, list, challenge, &bases, &proofs)
+	list = s.nRep.CommitmentsFromProof(g, list, challenge, &bases, &proofs)
 	for i := range s.squares {
-		list = s.squaresRep[i].commitmentsFromProof(g, list, challenge, &bases, &proofs)
+		list = s.squaresRep[i].CommitmentsFromProof(g, list, challenge, &bases, &proofs)
 	}
 	for i := range s.squares {
 		list = s.rootsRange[i].commitmentsFromProof(g, list, challenge, &bases, proof.RootsRangeProof[i])
@@ -303,9 +304,9 @@ func (s *isSquareProofStructure) numCommitments() int {
 		res += s.rootsRep[i].numCommitments()
 	}
 	// Representationproofs
-	res += s.nRep.numCommitments()
+	res += s.nRep.NumCommitments()
 	for i := range s.squaresRep {
-		res += s.squaresRep[i].numCommitments()
+		res += s.squaresRep[i].NumCommitments()
 	}
 	// ValidityProofs
 	for i := range s.rootsRange {

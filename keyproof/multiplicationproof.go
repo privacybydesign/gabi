@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/zkproof"
 )
 
 type (
@@ -15,7 +16,7 @@ type (
 		myname             string
 		modMultPedersen    pedersenStructure
 		modMultRange       rangeProofStructure
-		multRepresentation RepresentationProofStructure
+		multRepresentation zkproof.RepresentationProofStructure
 	}
 
 	MultiplicationProof struct {
@@ -40,11 +41,11 @@ func newMultiplicationProofStructure(m1, m2, mod, result string, l uint) multipl
 		result: result,
 		myname: strings.Join([]string{m1, m2, mod, result, "mul"}, "_"),
 	}
-	structure.multRepresentation = RepresentationProofStructure{
-		[]LhsContribution{
+	structure.multRepresentation = zkproof.RepresentationProofStructure{
+		[]zkproof.LhsContribution{
 			{result, big.NewInt(1)},
 		},
-		[]RhsContribution{
+		[]zkproof.RhsContribution{
 			{m2, m1, 1},
 			{mod, strings.Join([]string{structure.myname, "mod"}, "_"), -1},
 			{"h", strings.Join([]string{structure.myname, "hider"}, "_"), 1},
@@ -55,7 +56,7 @@ func newMultiplicationProofStructure(m1, m2, mod, result string, l uint) multipl
 	return structure
 }
 
-func (s *multiplicationProofStructure) commitmentsFromSecrets(g group, list []*big.Int, bases BaseLookup, secretdata SecretLookup) ([]*big.Int, multiplicationProofCommit) {
+func (s *multiplicationProofStructure) commitmentsFromSecrets(g zkproof.Group, list []*big.Int, bases zkproof.BaseLookup, secretdata zkproof.SecretLookup) ([]*big.Int, multiplicationProofCommit) {
 	var commit multiplicationProofCommit
 
 	// Generate the neccesary commit data for our parts of the proof
@@ -76,21 +77,21 @@ func (s *multiplicationProofStructure) commitmentsFromSecrets(g group, list []*b
 			new(big.Int).Mul(
 				commit.modMultPedersen.secretv.secretv,
 				secretdata.Secret(strings.Join([]string{s.mod, "hider"}, "_")))),
-		g.order))
+		g.Order))
 
 	// Build inner secrets
-	secrets := NewSecretMerge(&commit.hider, &commit.modMultPedersen, secretdata)
+	secrets := zkproof.NewSecretMerge(&commit.hider, &commit.modMultPedersen, secretdata)
 
 	// Generate commitments for the two main proofs (pedersen was handled above when generating its commit)
-	list = s.multRepresentation.commitmentsFromSecrets(g, list, bases, &secrets)
+	list = s.multRepresentation.CommitmentsFromSecrets(g, list, bases, &secrets)
 	list, commit.rangeCommit = s.modMultRange.commitmentsFromSecrets(g, list, bases, &secrets)
 
 	return list, commit
 }
 
-func (s *multiplicationProofStructure) buildProof(g group, challenge *big.Int, commit multiplicationProofCommit, secretdata SecretLookup) MultiplicationProof {
+func (s *multiplicationProofStructure) buildProof(g zkproof.Group, challenge *big.Int, commit multiplicationProofCommit, secretdata zkproof.SecretLookup) MultiplicationProof {
 	// Generate the proofs
-	rangeSecrets := NewSecretMerge(&commit.hider, &commit.modMultPedersen, secretdata)
+	rangeSecrets := zkproof.NewSecretMerge(&commit.hider, &commit.modMultPedersen, secretdata)
 	return MultiplicationProof{
 		RangeProof:   s.modMultRange.buildProof(g, challenge, commit.rangeCommit, &rangeSecrets),
 		ModMultProof: s.modMultPedersen.buildProof(g, challenge, commit.modMultPedersen),
@@ -98,7 +99,7 @@ func (s *multiplicationProofStructure) buildProof(g group, challenge *big.Int, c
 	}
 }
 
-func (s *multiplicationProofStructure) fakeProof(g group) MultiplicationProof {
+func (s *multiplicationProofStructure) fakeProof(g zkproof.Group) MultiplicationProof {
 	return MultiplicationProof{
 		RangeProof:   s.modMultRange.fakeProof(g),
 		ModMultProof: s.modMultPedersen.fakeProof(g),
@@ -119,22 +120,22 @@ func (s *multiplicationProofStructure) verifyProofStructure(proof Multiplication
 	return true
 }
 
-func (s *multiplicationProofStructure) commitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases BaseLookup, proofdata ProofLookup, proof MultiplicationProof) []*big.Int {
+func (s *multiplicationProofStructure) commitmentsFromProof(g zkproof.Group, list []*big.Int, challenge *big.Int, bases zkproof.BaseLookup, proofdata zkproof.ProofLookup, proof MultiplicationProof) []*big.Int {
 	// Build inner proof lookup
 	proof.ModMultProof.setName(strings.Join([]string{s.myname, "mod"}, "_"))
 	proof.Hider.setName(strings.Join([]string{s.myname, "hider"}, "_"))
-	proofs := NewProofMerge(&proof.Hider, &proof.ModMultProof, proofdata)
-	innerBases := NewBaseMerge(&proof.ModMultProof, bases)
+	proofs := zkproof.NewProofMerge(&proof.Hider, &proof.ModMultProof, proofdata)
+	innerBases := zkproof.NewBaseMerge(&proof.ModMultProof, bases)
 
 	// And regenerate the commitments
 	list = s.modMultPedersen.commitmentsFromProof(g, list, challenge, proof.ModMultProof)
-	list = s.multRepresentation.commitmentsFromProof(g, list, challenge, &innerBases, &proofs)
+	list = s.multRepresentation.CommitmentsFromProof(g, list, challenge, &innerBases, &proofs)
 	list = s.modMultRange.commitmentsFromProof(g, list, challenge, &innerBases, proof.RangeProof)
 
 	return list
 }
 
-func (s *multiplicationProofStructure) isTrue(secretdata SecretLookup) bool {
+func (s *multiplicationProofStructure) isTrue(secretdata zkproof.SecretLookup) bool {
 	div := new(big.Int)
 	mod := new(big.Int)
 
@@ -155,7 +156,7 @@ func (s *multiplicationProofStructure) numRangeProofs() int {
 }
 
 func (s *multiplicationProofStructure) numCommitments() int {
-	return s.multRepresentation.numCommitments() +
+	return s.multRepresentation.NumCommitments() +
 		s.modMultPedersen.numCommitments() +
 		s.modMultRange.numCommitments()
 }

@@ -125,9 +125,9 @@ For interacting with these, each proof also provides the following functions:
  - A method for generating a fake proof when given a challenge. (fakeProof)
     this is needed in proofs that participate in a larger OR proof.
 Finally, each proof has a number of utility functions:
- - isTrue can be used in debugging to validate whether the proof holds on
+ - IsTrue can be used in debugging to validate whether the proof holds on
     secret data
- - numCommitments returns the number of commitments added to the list by the
+ - NumCommitments returns the number of commitments added to the list by the
     commitment generating functions. This is used to allocate space when
     generating parts of the proofs in parallel
  - numRangeproofs returns the number of range proofs contained within the

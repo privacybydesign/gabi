@@ -8,9 +8,9 @@ import (
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/internal/common"
-	"github.com/privacybydesign/gabi/keyproof"
 	"github.com/privacybydesign/gabi/safeprime"
 	"github.com/privacybydesign/gabi/signed"
+	"github.com/privacybydesign/gabi/zkproof"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -113,7 +113,7 @@ func testProof(t *testing.T, pk *gabikeys.PublicKey, sk *gabikeys.PrivateKey, va
 	}
 
 	witn.randomizer = NewProofRandomizer()
-	bases := keyproof.NewBaseMerge(pk, (*accumulator)(acc))
+	bases := zkproof.NewBaseMerge(pk, (*accumulator)(acc))
 	require.Equal(t, valid, proofstructure.isTrue((*witness)(witn), acc.Nu, sk.N), "statement to prove ")
 
 	list, commit := proofstructure.commitmentsFromSecrets(pk, []*big.Int{}, &bases, (*witness)(witn))

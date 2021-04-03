@@ -8,8 +8,7 @@ import (
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/internal/common"
-	"github.com/privacybydesign/gabi/keyproof"
-	"github.com/privacybydesign/gabi/prooftools"
+	"github.com/privacybydesign/gabi/zkproof"
 )
 
 // This subpackage of gabi implements a variation of the inequality/range proof protocol given in section 6.2.6/6.3.6 of "
@@ -95,8 +94,8 @@ import (
 
 type (
 	ProofStructure struct {
-		cRep     []prooftools.QrRepresentationProofStructure
-		mCorrect prooftools.QrRepresentationProofStructure
+		cRep     []zkproof.QrRepresentationProofStructure
+		mCorrect zkproof.QrRepresentationProofStructure
 
 		index int
 		a     int
@@ -162,11 +161,11 @@ func newWithParams(index, a int, k *big.Int, split SquareSplitter, nSplit int, l
 	}
 
 	result := &ProofStructure{
-		mCorrect: prooftools.QrRepresentationProofStructure{
-			Lhs: []keyproof.LhsContribution{
+		mCorrect: zkproof.QrRepresentationProofStructure{
+			Lhs: []zkproof.LhsContribution{
 				{Base: fmt.Sprintf("R%d", index), Power: new(big.Int).Neg(k)},
 			},
-			Rhs: []keyproof.RhsContribution{
+			Rhs: []zkproof.RhsContribution{
 				{Base: "S", Secret: "v5", Power: -1},
 				{Base: fmt.Sprintf("R%d", index), Secret: "m", Power: int64(-a)},
 			},
@@ -181,17 +180,17 @@ func newWithParams(index, a int, k *big.Int, split SquareSplitter, nSplit int, l
 	}
 
 	for i := 0; i < nSplit; i++ {
-		result.cRep = append(result.cRep, prooftools.QrRepresentationProofStructure{
-			Lhs: []keyproof.LhsContribution{
+		result.cRep = append(result.cRep, zkproof.QrRepresentationProofStructure{
+			Lhs: []zkproof.LhsContribution{
 				{Base: fmt.Sprintf("C%d", i), Power: big.NewInt(1)},
 			},
-			Rhs: []keyproof.RhsContribution{
+			Rhs: []zkproof.RhsContribution{
 				{Base: fmt.Sprintf("R%d", index), Secret: fmt.Sprintf("d%d", i), Power: 1},
 				{Base: "S", Secret: fmt.Sprintf("v%d", i), Power: 1},
 			},
 		})
 
-		result.mCorrect.Rhs = append(result.mCorrect.Rhs, keyproof.RhsContribution{
+		result.mCorrect.Rhs = append(result.mCorrect.Rhs, zkproof.RhsContribution{
 			Base:   fmt.Sprintf("C%d", i),
 			Secret: fmt.Sprintf("d%d", i),
 			Power:  1,
@@ -269,7 +268,7 @@ func (s *ProofStructure) CommitmentsFromSecrets(g *gabikeys.PublicKey, m, mRando
 		commit.c[i].Mod(commit.c[i], g.N)
 	}
 
-	bases := keyproof.NewBaseMerge(g, commit)
+	bases := zkproof.NewBaseMerge(g, commit)
 
 	contributions := []*big.Int{}
 	contributions = s.mCorrect.CommitmentsFromSecrets(g, contributions, &bases, commit)
@@ -336,7 +335,7 @@ func (s *ProofStructure) VerifyProofStructure(g *gabikeys.PublicKey, p *Proof) b
 }
 
 func (s *ProofStructure) CommitmentsFromProof(g *gabikeys.PublicKey, p *Proof, challenge *big.Int) []*big.Int {
-	bases := keyproof.NewBaseMerge(g, (*proof)(p))
+	bases := zkproof.NewBaseMerge(g, (*proof)(p))
 
 	contributions := []*big.Int{}
 	contributions = s.mCorrect.CommitmentsFromProof(g, contributions, challenge, &bases, (*proof)(p))

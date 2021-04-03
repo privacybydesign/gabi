@@ -2,6 +2,7 @@ package keyproof
 
 import (
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/zkproof"
 
 	"fmt"
 	"runtime"
@@ -20,14 +21,14 @@ type (
 		bitlen   uint
 
 		expBits  []pedersenStructure
-		expBitEq RepresentationProofStructure
+		expBitEq zkproof.RepresentationProofStructure
 
 		basePows     []pedersenStructure
 		basePowRange []rangeProofStructure
 		basePowRels  []multiplicationProofStructure
 
 		start    pedersenStructure
-		startRep RepresentationProofStructure
+		startRep zkproof.RepresentationProofStructure
 
 		interRess     []pedersenStructure
 		interResRange []rangeProofStructure
@@ -86,18 +87,18 @@ func newExpProofStructure(base, exponent, mod, result string, bitlen uint) expPr
 	}
 
 	// Bit equality proof
-	structure.expBitEq = RepresentationProofStructure{
-		[]LhsContribution{
-			LhsContribution{exponent, big.NewInt(-1)},
+	structure.expBitEq = zkproof.RepresentationProofStructure{
+		[]zkproof.LhsContribution{
+			zkproof.LhsContribution{exponent, big.NewInt(-1)},
 		},
-		[]RhsContribution{
-			RhsContribution{"h", strings.Join([]string{structure.myname, "biteqhider"}, "_"), 1},
+		[]zkproof.RhsContribution{
+			zkproof.RhsContribution{"h", strings.Join([]string{structure.myname, "biteqhider"}, "_"), 1},
 		},
 	}
 	for i := uint(0); i < bitlen; i++ {
 		structure.expBitEq.Lhs = append(
 			structure.expBitEq.Lhs,
-			LhsContribution{
+			zkproof.LhsContribution{
 				strings.Join([]string{structure.myname, "bit", fmt.Sprintf("%v", i)}, "_"),
 				new(big.Int).Lsh(big.NewInt(1), i),
 			})
@@ -145,13 +146,13 @@ func newExpProofStructure(base, exponent, mod, result string, bitlen uint) expPr
 
 	// start representation proof
 	structure.start = newPedersenStructure(strings.Join([]string{structure.myname, "start"}, "_"))
-	structure.startRep = RepresentationProofStructure{
-		[]LhsContribution{
-			LhsContribution{strings.Join([]string{structure.myname, "start"}, "_"), big.NewInt(1)},
-			LhsContribution{"g", big.NewInt(-1)},
+	structure.startRep = zkproof.RepresentationProofStructure{
+		[]zkproof.LhsContribution{
+			zkproof.LhsContribution{strings.Join([]string{structure.myname, "start"}, "_"), big.NewInt(1)},
+			zkproof.LhsContribution{"g", big.NewInt(-1)},
 		},
-		[]RhsContribution{
-			RhsContribution{"h", strings.Join([]string{structure.myname, "start", "hider"}, "_"), 1},
+		[]zkproof.RhsContribution{
+			zkproof.RhsContribution{"h", strings.Join([]string{structure.myname, "start", "hider"}, "_"), 1},
 		},
 	}
 
@@ -211,7 +212,7 @@ func newExpProofStructure(base, exponent, mod, result string, bitlen uint) expPr
 	return structure
 }
 
-func (s *expProofStructure) commitmentsFromSecrets(g group, list []*big.Int, bases BaseLookup, secretdata SecretLookup) ([]*big.Int, expProofCommit) {
+func (s *expProofStructure) commitmentsFromSecrets(g zkproof.Group, list []*big.Int, bases zkproof.BaseLookup, secretdata zkproof.SecretLookup) ([]*big.Int, expProofCommit) {
 	var commit expProofCommit
 	var todo []func([]*big.Int)
 	todoOffset := new(uint32)
@@ -225,7 +226,7 @@ func (s *expProofStructure) commitmentsFromSecrets(g group, list []*big.Int, bas
 		list, commit.expBits[i] = s.expBits[i].commitmentsFromSecrets(g, list, big.NewInt(int64(secretdata.Secret(s.exponent).Bit(int(i)))))
 		BitEqHider.Add(BitEqHider, new(big.Int).Lsh(commit.expBits[i].hider.secretv, i))
 	}
-	BitEqHider.Mod(BitEqHider, g.order)
+	BitEqHider.Mod(BitEqHider, g.Order)
 	commit.expBitEqHider = newSecret(g, strings.Join([]string{s.myname, "biteqhider"}, "_"), BitEqHider)
 
 	// base powers
@@ -262,8 +263,8 @@ func (s *expProofStructure) commitmentsFromSecrets(g group, list []*big.Int, bas
 	}
 
 	// inner bases and secrets (this is ugly code, hopefully go2 will make this better someday)
-	baseList := []BaseLookup{}
-	secretList := []SecretLookup{}
+	baseList := []zkproof.BaseLookup{}
+	secretList := []zkproof.SecretLookup{}
 	for i := range commit.expBits {
 		baseList = append(baseList, &commit.expBits[i])
 		secretList = append(secretList, &commit.expBits[i])
@@ -281,11 +282,11 @@ func (s *expProofStructure) commitmentsFromSecrets(g group, list []*big.Int, bas
 	baseList = append(baseList, bases)
 	secretList = append(secretList, secretdata)
 	secretList = append(secretList, &commit.expBitEqHider)
-	innerBases := NewBaseMerge(baseList...)
-	innerSecrets := NewSecretMerge(secretList...)
+	innerBases := zkproof.NewBaseMerge(baseList...)
+	innerSecrets := zkproof.NewSecretMerge(secretList...)
 
 	// bits
-	list = s.expBitEq.commitmentsFromSecrets(g, list, &innerBases, &innerSecrets)
+	list = s.expBitEq.CommitmentsFromSecrets(g, list, &innerBases, &innerSecrets)
 
 	//base
 	commit.basePowRangeCommit = make([]rangeCommit, 0, len(s.basePowRange))
@@ -322,7 +323,7 @@ func (s *expProofStructure) commitmentsFromSecrets(g group, list []*big.Int, bas
 	}
 
 	//start
-	list = s.startRep.commitmentsFromSecrets(g, list, &innerBases, &innerSecrets)
+	list = s.startRep.CommitmentsFromSecrets(g, list, &innerBases, &innerSecrets)
 
 	// interres
 	commit.interResRangeCommit = make([]rangeCommit, 0, len(s.interResRange))
@@ -381,11 +382,11 @@ func (s *expProofStructure) commitmentsFromSecrets(g group, list []*big.Int, bas
 	return list, commit
 }
 
-func (s *expProofStructure) buildProof(g group, challenge *big.Int, commit expProofCommit, secretdata SecretLookup) ExpProof {
+func (s *expProofStructure) buildProof(g zkproof.Group, challenge *big.Int, commit expProofCommit, secretdata zkproof.SecretLookup) ExpProof {
 	var proof ExpProof
 
 	// inner secret data
-	var secretList []SecretLookup
+	var secretList []zkproof.SecretLookup
 	for i := range commit.expBits {
 		secretList = append(secretList, &commit.expBits[i])
 	}
@@ -398,7 +399,7 @@ func (s *expProofStructure) buildProof(g group, challenge *big.Int, commit expPr
 	}
 	secretList = append(secretList, secretdata)
 	secretList = append(secretList, &commit.expBitEqHider)
-	innerSecrets := NewSecretMerge(secretList...)
+	innerSecrets := zkproof.NewSecretMerge(secretList...)
 
 	//bit proofs
 	proof.ExpBitProofs = make([]PedersenProof, len(commit.expBits))
@@ -449,7 +450,7 @@ func (s *expProofStructure) buildProof(g group, challenge *big.Int, commit expPr
 	return proof
 }
 
-func (s *expProofStructure) fakeProof(g group, challenge *big.Int) ExpProof {
+func (s *expProofStructure) fakeProof(g zkproof.Group, challenge *big.Int) ExpProof {
 	var proof ExpProof
 
 	proof.ExpBitEqHider = fakeProof(g)
@@ -538,10 +539,10 @@ func (s *expProofStructure) verifyProofStructure(challenge *big.Int, proof ExpPr
 	return true
 }
 
-func (s *expProofStructure) commitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases BaseLookup, proofdata ProofLookup, proof ExpProof) []*big.Int {
+func (s *expProofStructure) commitmentsFromProof(g zkproof.Group, list []*big.Int, challenge *big.Int, bases zkproof.BaseLookup, proofdata zkproof.ProofLookup, proof ExpProof) []*big.Int {
 	// inner bases and proofs (again hopefully go2 will make this better)
-	baseList := []BaseLookup{}
-	proofList := []ProofLookup{}
+	baseList := []zkproof.BaseLookup{}
+	proofList := []zkproof.ProofLookup{}
 	for i := range proof.ExpBitProofs {
 		proof.ExpBitProofs[i].setName(strings.Join([]string{s.myname, "bit", fmt.Sprintf("%v", i)}, "_"))
 		baseList = append(baseList, &proof.ExpBitProofs[i])
@@ -564,8 +565,8 @@ func (s *expProofStructure) commitmentsFromProof(g group, list []*big.Int, chall
 	proofList = append(proofList, proofdata)
 	proof.ExpBitEqHider.setName(strings.Join([]string{s.myname, "biteqhider"}, "_"))
 	proofList = append(proofList, &proof.ExpBitEqHider)
-	innerBases := NewBaseMerge(baseList...)
-	innerProof := NewProofMerge(proofList...)
+	innerBases := zkproof.NewBaseMerge(baseList...)
+	innerProof := zkproof.NewProofMerge(proofList...)
 
 	// Generate commitment list
 	var todo []func([]*big.Int)
@@ -617,7 +618,7 @@ func (s *expProofStructure) commitmentsFromProof(g group, list []*big.Int, chall
 	}
 
 	// bit
-	list = s.expBitEq.commitmentsFromProof(g, list, challenge, &innerBases, &innerProof)
+	list = s.expBitEq.CommitmentsFromProof(g, list, challenge, &innerBases, &innerProof)
 
 	//base
 	for i := range s.basePowRange {
@@ -646,7 +647,7 @@ func (s *expProofStructure) commitmentsFromProof(g group, list []*big.Int, chall
 	}
 
 	// start
-	list = s.startRep.commitmentsFromProof(g, list, challenge, &innerBases, &innerProof)
+	list = s.startRep.CommitmentsFromProof(g, list, challenge, &innerBases, &innerProof)
 
 	// interres
 	for i := range s.interResRange {
@@ -697,7 +698,7 @@ func (s *expProofStructure) commitmentsFromProof(g group, list []*big.Int, chall
 	return list
 }
 
-func (s *expProofStructure) isTrue(secretdata SecretLookup) bool {
+func (s *expProofStructure) isTrue(secretdata zkproof.SecretLookup) bool {
 	div := new(big.Int)
 	mod := new(big.Int)
 
@@ -731,7 +732,7 @@ func (s *expProofStructure) numCommitments() int {
 	for i := range s.expBits {
 		res += s.expBits[i].numCommitments()
 	}
-	res += s.expBitEq.numCommitments()
+	res += s.expBitEq.NumCommitments()
 	for i := range s.basePows {
 		res += s.basePows[i].numCommitments()
 	}
@@ -742,7 +743,7 @@ func (s *expProofStructure) numCommitments() int {
 		res += s.basePowRels[i].numCommitments()
 	}
 	res += s.start.numCommitments()
-	res += s.startRep.numCommitments()
+	res += s.startRep.NumCommitments()
 	for i := range s.interRess {
 		res += s.interRess[i].numCommitments()
 	}

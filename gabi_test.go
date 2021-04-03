@@ -423,8 +423,8 @@ func TestShowingProofLogged(t *testing.T) {
 	assert.True(t, proof1.Verify(testPubK, context, nonce1, false), "Proof of disclosure did not verify, whereas it should.")
 
 	aDisclosed[1] = s2big("123")
-	proof2 := &ProofD{C: c, A: A, EResponse: eResponse, VResponse: vResponse, AResponses: aResponses, ADisclosed: aDisclosed}
-	assert.False(t, proof2.Verify(testPubK, context, nonce1, false), "Proof of disclosure verifies, whereas it should not.")
+	proof := &ProofD{C: c, A: A, EResponse: eResponse, VResponse: vResponse, AResponses: aResponses, ADisclosed: aDisclosed}
+	assert.False(t, proof.Verify(testPubK, context, nonce1, false), "Proof of disclosure verifies, whereas it should not.")
 }
 
 func TestFullIssuanceAndShowing(t *testing.T) {

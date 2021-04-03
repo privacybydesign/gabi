@@ -3,6 +3,7 @@ package keyproof
 import (
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
+	"github.com/privacybydesign/gabi/zkproof"
 )
 
 type (
@@ -41,7 +42,7 @@ func newExpStepStructure(bitname, prename, postname, mulname, modname string, bi
 	}
 }
 
-func (s *expStepStructure) commitmentsFromSecrets(g group, list []*big.Int, bases BaseLookup, secretdata SecretLookup) ([]*big.Int, expStepCommit) {
+func (s *expStepStructure) commitmentsFromSecrets(g zkproof.Group, list []*big.Int, bases zkproof.BaseLookup, secretdata zkproof.SecretLookup) ([]*big.Int, expStepCommit) {
 	var commit expStepCommit
 
 	if secretdata.Secret(s.bitname).Cmp(big.NewInt(0)) == 0 {
@@ -69,7 +70,7 @@ func (s *expStepStructure) commitmentsFromSecrets(g group, list []*big.Int, base
 	return list, commit
 }
 
-func (s *expStepStructure) buildProof(g group, challenge *big.Int, commit expStepCommit, secretdata SecretLookup) ExpStepProof {
+func (s *expStepStructure) buildProof(g zkproof.Group, challenge *big.Int, commit expStepCommit, secretdata zkproof.SecretLookup) ExpStepProof {
 	var proof ExpStepProof
 
 	if commit.isTypeA {
@@ -93,7 +94,7 @@ func (s *expStepStructure) buildProof(g group, challenge *big.Int, commit expSte
 	return proof
 }
 
-func (s *expStepStructure) fakeProof(g group, challenge *big.Int) ExpStepProof {
+func (s *expStepStructure) fakeProof(g zkproof.Group, challenge *big.Int) ExpStepProof {
 	var proof ExpStepProof
 
 	proof.Achallenge = common.FastRandomBigInt(new(big.Int).Lsh(big.NewInt(1), 256))
@@ -116,13 +117,13 @@ func (s *expStepStructure) verifyProofStructure(challenge *big.Int, proof ExpSte
 	return s.stepa.verifyProofStructure(proof.Aproof) && s.stepb.verifyProofStructure(proof.Bproof)
 }
 
-func (s *expStepStructure) commitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases BaseLookup, proof ExpStepProof) []*big.Int {
+func (s *expStepStructure) commitmentsFromProof(g zkproof.Group, list []*big.Int, challenge *big.Int, bases zkproof.BaseLookup, proof ExpStepProof) []*big.Int {
 	list = s.stepa.commitmentsFromProof(g, list, proof.Achallenge, bases, proof.Aproof)
 	list = s.stepb.commitmentsFromProof(g, list, proof.Bchallenge, bases, proof.Bproof)
 	return list
 }
 
-func (s *expStepStructure) isTrue(secretdata SecretLookup) bool {
+func (s *expStepStructure) isTrue(secretdata zkproof.SecretLookup) bool {
 	return s.stepa.isTrue(secretdata) || s.stepb.isTrue(secretdata)
 }
 
