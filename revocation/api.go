@@ -75,8 +75,8 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/multiformats/go-multihash"
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/internal/common"
-	"github.com/privacybydesign/gabi/keys"
 	"github.com/privacybydesign/gabi/signed"
 	"github.com/sirupsen/logrus"
 )
@@ -155,7 +155,7 @@ const (
 
 var Logger *logrus.Logger
 
-func NewAccumulator(sk *keys.PrivateKey) (*Update, error) {
+func NewAccumulator(sk *gabikeys.PrivateKey) (*Update, error) {
 	empty := [32]byte{}
 	emptyhash, err := multihash.Encode(empty[:], HashAlgorithm)
 	initialEvent := &Event{
@@ -183,7 +183,7 @@ func NewAccumulator(sk *keys.PrivateKey) (*Update, error) {
 }
 
 // Sign the accumulator into a SignedAccumulator (c.f. SignedAccumulator.UnmarshalVerify()).
-func (acc *Accumulator) Sign(sk *keys.PrivateKey) (*SignedAccumulator, error) {
+func (acc *Accumulator) Sign(sk *gabikeys.PrivateKey) (*SignedAccumulator, error) {
 	sig, err := signed.MarshalSign(sk.ECDSA, acc)
 	if err != nil {
 		return nil, err
@@ -192,7 +192,7 @@ func (acc *Accumulator) Sign(sk *keys.PrivateKey) (*SignedAccumulator, error) {
 }
 
 // Remove generates a new accumulator with the specified e removed from it.
-func (acc *Accumulator) Remove(sk *keys.PrivateKey, e *big.Int, parent *Event) (*Accumulator, *Event, error) {
+func (acc *Accumulator) Remove(sk *gabikeys.PrivateKey, e *big.Int, parent *Event) (*Accumulator, *Event, error) {
 	eInverse, ok := common.ModInverse(e, new(big.Int).Mul(sk.PPrime, sk.QPrime))
 	if !ok {
 		// since N = P*Q and P, Q prime, e has no inverse if and only if e equals either P or Q
@@ -215,7 +215,7 @@ func (acc *Accumulator) Remove(sk *keys.PrivateKey, e *big.Int, parent *Event) (
 
 // UnmarshalVerify verifies the signature and unmarshals the accumulator
 // (c.f. Accumulator.Sign()).
-func (s *SignedAccumulator) UnmarshalVerify(pk *keys.PublicKey) (*Accumulator, error) {
+func (s *SignedAccumulator) UnmarshalVerify(pk *gabikeys.PublicKey) (*Accumulator, error) {
 	if s.Accumulator != nil {
 		return s.Accumulator, nil
 	}
@@ -230,7 +230,7 @@ func (s *SignedAccumulator) UnmarshalVerify(pk *keys.PublicKey) (*Accumulator, e
 	return s.Accumulator, nil
 }
 
-func NewUpdate(sk *keys.PrivateKey, acc *Accumulator, events []*Event) (*Update, error) {
+func NewUpdate(sk *gabikeys.PrivateKey, acc *Accumulator, events []*Event) (*Update, error) {
 	sacc, err := acc.Sign(sk)
 	if err != nil {
 		return nil, err
@@ -299,7 +299,7 @@ func (update *Update) UnmarshalCBOR(data []byte) error {
 // - the accumulator is validly signed
 // - the accumulator includes the hash of the last item in the hash chain
 // - the hash chain is valid (each chain item has the correct hash of its parent).
-func (update *Update) Verify(pk *keys.PublicKey) (*Accumulator, error) {
+func (update *Update) Verify(pk *gabikeys.PublicKey) (*Accumulator, error) {
 	acc, err := update.SignedAccumulator.UnmarshalVerify(pk)
 	if err != nil {
 		return nil, err

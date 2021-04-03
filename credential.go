@@ -7,8 +7,8 @@ package gabi
 import (
 	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/internal/common"
-	"github.com/privacybydesign/gabi/keys"
 	"github.com/privacybydesign/gabi/rangeproof"
 	"github.com/privacybydesign/gabi/revocation"
 )
@@ -16,7 +16,7 @@ import (
 // Credential represents an Idemix credential.
 type Credential struct {
 	Signature            *CLSignature        `json:"signature"`
-	Pk                   *keys.PublicKey     `json:"-"`
+	Pk                   *gabikeys.PublicKey `json:"-"`
 	Attributes           []*big.Int          `json:"attributes"`
 	NonRevocationWitness *revocation.Witness `json:"nonrevWitness,omitempty"`
 
@@ -41,7 +41,7 @@ type DisclosureProofBuilder struct {
 	z                     *big.Int
 	disclosedAttributes   []int
 	undisclosedAttributes []int
-	pk                    *keys.PublicKey
+	pk                    *gabikeys.PublicKey
 	attributes            []*big.Int
 	nonrevBuilder         *NonRevocationProofBuilder
 
@@ -50,7 +50,7 @@ type DisclosureProofBuilder struct {
 }
 
 type NonRevocationProofBuilder struct {
-	pk          *keys.PublicKey
+	pk          *gabikeys.PublicKey
 	witness     *revocation.Witness
 	commit      *revocation.ProofCommit
 	commitments []*big.Int
@@ -268,7 +268,7 @@ func (d *DisclosureProofBuilder) MergeProofPCommitment(commitment *ProofPCommitm
 }
 
 // PublicKey returns the Idemix public key against which this disclosure proof will verify.
-func (d *DisclosureProofBuilder) PublicKey() *keys.PublicKey {
+func (d *DisclosureProofBuilder) PublicKey() *gabikeys.PublicKey {
 	return d.pk
 }
 
@@ -390,5 +390,5 @@ func (d *DisclosureProofBuilder) TimestampRequestContributions() (*big.Int, []*b
 
 // Generate secret attribute used prove ownership and links between credentials from the same user.
 func GenerateSecretAttribute() (*big.Int, error) {
-	return common.RandomBigInt(keys.DefaultSystemParameters[1024].Lm)
+	return common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].Lm)
 }

@@ -6,9 +6,9 @@ import (
 	"strconv"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/internal/common"
 	"github.com/privacybydesign/gabi/keyproof"
-	"github.com/privacybydesign/gabi/keys"
 	"github.com/privacybydesign/gabi/prooftools"
 )
 
@@ -201,7 +201,7 @@ func newWithParams(index, a int, k *big.Int, split SquareSplitter, nSplit int, l
 	return result
 }
 
-func (s *ProofStructure) CommitmentsFromSecrets(g *keys.PublicKey, m, mRandomizer *big.Int) ([]*big.Int, *ProofCommit, error) {
+func (s *ProofStructure) CommitmentsFromSecrets(g *gabikeys.PublicKey, m, mRandomizer *big.Int) ([]*big.Int, *ProofCommit, error) {
 	var err error
 
 	d := new(big.Int).Mul(m, big.NewInt(int64(s.a)))
@@ -306,7 +306,7 @@ func (s *ProofStructure) BuildProof(commit *ProofCommit, challenge *big.Int) *Pr
 	return result
 }
 
-func (s *ProofStructure) VerifyProofStructure(g *keys.PublicKey, p *Proof) bool {
+func (s *ProofStructure) VerifyProofStructure(g *gabikeys.PublicKey, p *Proof) bool {
 	if len(s.cRep) != len(p.Cs) || len(s.cRep) != len(p.DResponses) || len(s.cRep) != len(p.VResponses) {
 		return false
 	}
@@ -335,7 +335,7 @@ func (s *ProofStructure) VerifyProofStructure(g *keys.PublicKey, p *Proof) bool 
 	return true
 }
 
-func (s *ProofStructure) CommitmentsFromProof(g *keys.PublicKey, p *Proof, challenge *big.Int) []*big.Int {
+func (s *ProofStructure) CommitmentsFromProof(g *gabikeys.PublicKey, p *Proof, challenge *big.Int) []*big.Int {
 	bases := keyproof.NewBaseMerge(g, (*proof)(p))
 
 	contributions := []*big.Int{}
@@ -358,7 +358,7 @@ func (p *Proof) ProvesStatement(a int, k *big.Int) bool {
 }
 
 // Extract proof structure from proof
-func (p *Proof) ExtractStructure(index int, g *keys.PublicKey) (*ProofStructure, error) {
+func (p *Proof) ExtractStructure(index int, g *gabikeys.PublicKey) (*ProofStructure, error) {
 	// Check that all values needed for the structure are present and reasonable
 	//
 	// ld > lm is never reasonable since that implies a difference greater than 2^(2*lm)

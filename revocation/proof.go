@@ -6,9 +6,9 @@ import (
 
 	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/internal/common"
 	"github.com/privacybydesign/gabi/keyproof"
-	"github.com/privacybydesign/gabi/keys"
 	"github.com/privacybydesign/gabi/prooftools"
 )
 
@@ -88,7 +88,7 @@ type (
 		cu, cr, nu  *big.Int
 		secrets     map[string]*big.Int
 		randomizers map[string]*big.Int
-		g           *keys.PublicKey
+		g           *gabikeys.PublicKey
 		sacc        *SignedAccumulator
 	}
 
@@ -165,7 +165,7 @@ func NewProofRandomizer() *big.Int {
 }
 
 // RandomWitness returns a new random Witness valid against the specified Accumulator.
-func RandomWitness(sk *keys.PrivateKey, acc *Accumulator) (*Witness, error) {
+func RandomWitness(sk *gabikeys.PrivateKey, acc *Accumulator) (*Witness, error) {
 	e, err := common.RandomPrimeInRange(rand.Reader, 3, Parameters.AttributeSize)
 	if err != nil {
 		return nil, err
@@ -174,7 +174,7 @@ func RandomWitness(sk *keys.PrivateKey, acc *Accumulator) (*Witness, error) {
 }
 
 // NewProofCommit performs the first move in the Schnorr zero-knowledge protocol: committing to randomizers.
-func NewProofCommit(key *keys.PublicKey, witn *Witness, randomizer *big.Int) ([]*big.Int, *ProofCommit, error) {
+func NewProofCommit(key *gabikeys.PublicKey, witn *Witness, randomizer *big.Int) ([]*big.Int, *ProofCommit, error) {
 	Logger.Tracef("revocation.NewProofCommit()")
 	defer Logger.Tracef("revocation.NewProofCommit() done")
 	witn.randomizer = randomizer
@@ -193,7 +193,7 @@ func NewProofCommit(key *keys.PublicKey, witn *Witness, randomizer *big.Int) ([]
 
 // SetExpected sets certain values of the proof to expected values, inferred from the containing proofs,
 // before verification.
-func (p *Proof) SetExpected(pk *keys.PublicKey, challenge, response *big.Int) error {
+func (p *Proof) SetExpected(pk *gabikeys.PublicKey, challenge, response *big.Int) error {
 	acc, err := p.SignedAccumulator.UnmarshalVerify(pk)
 	if err != nil {
 		return err
@@ -204,12 +204,12 @@ func (p *Proof) SetExpected(pk *keys.PublicKey, challenge, response *big.Int) er
 	return nil
 }
 
-func (p *Proof) ChallengeContributions(key *keys.PublicKey) []*big.Int {
+func (p *Proof) ChallengeContributions(key *gabikeys.PublicKey) []*big.Int {
 	return proofstructure.commitmentsFromProof(key, []*big.Int{},
 		p.Challenge, key, (*proof)(p), (*proof)(p))
 }
 
-func (p *Proof) VerifyWithChallenge(pk *keys.PublicKey, reconstructedChallenge *big.Int) bool {
+func (p *Proof) VerifyWithChallenge(pk *gabikeys.PublicKey, reconstructedChallenge *big.Int) bool {
 	if !proofstructure.verifyProofStructure((*proof)(p)) {
 		return false
 	}
@@ -268,7 +268,7 @@ func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
 // Update updates the witness using the specified update data from the issuer,
 // after which the witness can be used to prove nonrevocation against the latest Accumulator
 // (contained in the update message).
-func (w *Witness) Update(pk *keys.PublicKey, update *Update) error {
+func (w *Witness) Update(pk *gabikeys.PublicKey, update *Update) error {
 	Logger.Tracef("revocation.Witness.Update()")
 	defer Logger.Tracef("revocation.Witness.Update() done")
 
@@ -322,7 +322,7 @@ func (w *Witness) Update(pk *keys.PublicKey, update *Update) error {
 }
 
 // Verify the witness against its SignedAccumulator.
-func (w *Witness) Verify(pk *keys.PublicKey) error {
+func (w *Witness) Verify(pk *gabikeys.PublicKey) error {
 	_, err := w.SignedAccumulator.UnmarshalVerify(pk)
 	if err != nil {
 		return err
@@ -371,12 +371,12 @@ func (p *proof) ProofResult(name string) *big.Int {
 	return p.Responses[name]
 }
 
-func (p *proof) verify(pk *keys.PublicKey) bool {
+func (p *proof) verify(pk *gabikeys.PublicKey) bool {
 	commitments := proofstructure.commitmentsFromProof(pk, []*big.Int{}, p.Challenge, pk, p, p)
 	return (*Proof)(p).VerifyWithChallenge(pk, common.HashCommit(commitments, false))
 }
 
-func (s *proofStructure) commitmentsFromSecrets(g *keys.PublicKey, list []*big.Int, bases keyproof.BaseLookup, secretdata keyproof.SecretLookup) ([]*big.Int, proofCommit) {
+func (s *proofStructure) commitmentsFromSecrets(g *gabikeys.PublicKey, list []*big.Int, bases keyproof.BaseLookup, secretdata keyproof.SecretLookup) ([]*big.Int, proofCommit) {
 	commit := proofCommit{
 		g:           g,
 		secrets:     make(map[string]*big.Int, 5),
@@ -426,7 +426,7 @@ func (s *proofStructure) commitmentsFromSecrets(g *keys.PublicKey, list []*big.I
 	return list, commit
 }
 
-func (s *proofStructure) commitmentsFromProof(g *keys.PublicKey, list []*big.Int, challenge *big.Int, bases keyproof.BaseLookup, proofdata keyproof.ProofLookup, proof *proof) []*big.Int {
+func (s *proofStructure) commitmentsFromProof(g *gabikeys.PublicKey, list []*big.Int, challenge *big.Int, bases keyproof.BaseLookup, proofdata keyproof.ProofLookup, proof *proof) []*big.Int {
 	proofs := keyproof.NewProofMerge(proof, proofdata)
 
 	b := keyproof.NewBaseMerge(g, &proofCommit{cr: proof.Cr, cu: proof.Cu, nu: proof.Nu})
@@ -493,11 +493,11 @@ func (w *witness) Randomizer(name string) *big.Int {
 
 // Helpers
 
-func verify(u, e *big.Int, acc *Accumulator, grp *keys.PublicKey) bool {
+func verify(u, e *big.Int, acc *Accumulator, grp *gabikeys.PublicKey) bool {
 	return new(big.Int).Exp(u, e, grp.N).Cmp(acc.Nu) == 0
 }
 
-func newWitness(sk *keys.PrivateKey, acc *Accumulator, e *big.Int) (*Witness, error) {
+func newWitness(sk *gabikeys.PrivateKey, acc *Accumulator, e *big.Int) (*Witness, error) {
 	eInverse, ok := common.ModInverse(e, sk.Order)
 	if !ok {
 		return nil, errors.New("failed to compute modular inverse")

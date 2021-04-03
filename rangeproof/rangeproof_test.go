@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/internal/common"
-	"github.com/privacybydesign/gabi/keys"
 	"github.com/privacybydesign/gabi/rangeproof"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,8 +36,8 @@ const (
 </IssuerPublicKey>`
 )
 
-func setupPubkey(t *testing.T) *keys.PublicKey {
-	PubKey, err := keys.NewPublicKeyFromXML(xmlPubKey1)
+func setupPubkey(t *testing.T) *gabikeys.PublicKey {
+	PubKey, err := gabikeys.NewPublicKeyFromXML(xmlPubKey1)
 	require.NoError(t, err)
 	return PubKey
 }

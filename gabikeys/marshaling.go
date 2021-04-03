@@ -1,4 +1,4 @@
-package keys
+package gabikeys
 
 import (
 	"encoding/xml"

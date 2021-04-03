@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/internal/common"
 	"github.com/privacybydesign/gabi/keyproof"
-	"github.com/privacybydesign/gabi/keys"
 	"github.com/privacybydesign/gabi/safeprime"
 	"github.com/privacybydesign/gabi/signed"
 
@@ -21,13 +21,13 @@ func init() {
 	Logger.SetLevel(logrus.FatalLevel)
 }
 
-func generateKeys(t *testing.T) (*keys.PrivateKey, *keys.PublicKey) {
+func generateKeys(t *testing.T) (*gabikeys.PrivateKey, *gabikeys.PublicKey) {
 	N, p, q, err := generateGroup()
 	require.NoError(t, err)
 	ecdsa, err := signed.GenerateKey()
 	require.NoError(t, err)
 
-	sk := &keys.PrivateKey{
+	sk := &gabikeys.PrivateKey{
 		Counter: 0,
 		ECDSA:   ecdsa,
 		PPrime:  p,
@@ -35,7 +35,7 @@ func generateKeys(t *testing.T) (*keys.PrivateKey, *keys.PublicKey) {
 		N:       N,
 	}
 	sk.Order = new(big.Int).Mul(sk.PPrime, sk.QPrime)
-	pk := &keys.PublicKey{
+	pk := &gabikeys.PublicKey{
 		Counter: 0,
 		ECDSA:   &ecdsa.PublicKey,
 		N:       N,
@@ -81,7 +81,7 @@ func TestNonRevocationProof(t *testing.T) {
 	ecdsa, err := signed.GenerateKey()
 	require.NoError(t, err)
 
-	sk := &keys.PrivateKey{
+	sk := &gabikeys.PrivateKey{
 		Counter: 0,
 		ECDSA:   ecdsa,
 		PPrime:  p,
@@ -89,7 +89,7 @@ func TestNonRevocationProof(t *testing.T) {
 		N:       N,
 	}
 	sk.Order = new(big.Int).Mul(sk.PPrime, sk.QPrime)
-	pk := &keys.PublicKey{
+	pk := &gabikeys.PublicKey{
 		Counter: 0,
 		ECDSA:   &ecdsa.PublicKey,
 		N:       N,
@@ -101,7 +101,7 @@ func TestNonRevocationProof(t *testing.T) {
 	require.False(t, testProof(t, pk, sk, false))
 }
 
-func testProof(t *testing.T, pk *keys.PublicKey, sk *keys.PrivateKey, valid bool) bool {
+func testProof(t *testing.T, pk *gabikeys.PublicKey, sk *gabikeys.PrivateKey, valid bool) bool {
 
 	acc := &Accumulator{Nu: common.RandomQR(sk.N)}
 
@@ -163,7 +163,7 @@ func TestAccumulatorRemove(t *testing.T) {
 	require.Equal(t, 0, new(big.Int).Exp(newAcc.Nu, e, pk.N).Cmp(acc.Nu))
 }
 
-func revoke(t *testing.T, acc *Accumulator, parent *Event, sk *keys.PrivateKey) (*Accumulator, *Event) {
+func revoke(t *testing.T, acc *Accumulator, parent *Event, sk *gabikeys.PrivateKey) (*Accumulator, *Event) {
 	e, err := common.RandomPrimeInRange(rand.Reader, 3, Parameters.AttributeSize)
 	require.NoError(t, err)
 	acc, event, err := acc.Remove(sk, e, parent)
@@ -171,7 +171,7 @@ func revoke(t *testing.T, acc *Accumulator, parent *Event, sk *keys.PrivateKey) 
 	return acc, event
 }
 
-func generateUpdate(t *testing.T) (*Update, *keys.PublicKey, *keys.PrivateKey, *Accumulator) {
+func generateUpdate(t *testing.T) (*Update, *gabikeys.PublicKey, *gabikeys.PrivateKey, *Accumulator) {
 	sk, pk := generateKeys(t)
 
 	update, err := NewAccumulator(sk)

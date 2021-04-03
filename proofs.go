@@ -6,8 +6,8 @@ package gabi
 
 import (
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/internal/common"
-	"github.com/privacybydesign/gabi/keys"
 	"github.com/privacybydesign/gabi/rangeproof"
 	"github.com/privacybydesign/gabi/revocation"
 
@@ -16,10 +16,10 @@ import (
 
 // Proof represents a non-interactive zero-knowledge proof
 type Proof interface {
-	VerifyWithChallenge(pk *keys.PublicKey, reconstructedChallenge *big.Int) bool
+	VerifyWithChallenge(pk *gabikeys.PublicKey, reconstructedChallenge *big.Int) bool
 	SecretKeyResponse() *big.Int
-	ChallengeContribution(pk *keys.PublicKey) ([]*big.Int, error)
-	MergeProofP(proofP *ProofP, pk *keys.PublicKey)
+	ChallengeContribution(pk *gabikeys.PublicKey) ([]*big.Int, error)
+	MergeProofP(proofP *ProofP, pk *gabikeys.PublicKey)
 }
 
 // createChallenge creates a challenge based on context, nonce and the
@@ -43,7 +43,7 @@ type ProofU struct {
 	MUserResponses map[int]*big.Int `json:"m_user_responses,omitempty"`
 }
 
-func (p *ProofU) MergeProofP(proofP *ProofP, pk *keys.PublicKey) {
+func (p *ProofU) MergeProofP(proofP *ProofP, pk *gabikeys.PublicKey) {
 	p.U.Mod(
 		p.U.Mul(p.U, proofP.P),
 		pk.N,
@@ -52,7 +52,7 @@ func (p *ProofU) MergeProofP(proofP *ProofP, pk *keys.PublicKey) {
 }
 
 // Verify verifies whether the proof is correct.
-func (p *ProofU) Verify(pk *keys.PublicKey, context, nonce *big.Int) bool {
+func (p *ProofU) Verify(pk *gabikeys.PublicKey, context, nonce *big.Int) bool {
 	contrib, err := p.ChallengeContribution(pk)
 	if err != nil {
 		return false
@@ -61,7 +61,7 @@ func (p *ProofU) Verify(pk *keys.PublicKey, context, nonce *big.Int) bool {
 }
 
 // correctResponseSizes checks the sizes of the elements in the ProofU proof.
-func (p *ProofU) correctResponseSizes(pk *keys.PublicKey) bool {
+func (p *ProofU) correctResponseSizes(pk *gabikeys.PublicKey) bool {
 	maximum := new(big.Int).Lsh(big.NewInt(1), pk.Params.LvPrimeCommit+1)
 	maximum.Sub(maximum, big.NewInt(1))
 	minimum := new(big.Int).Neg(maximum)
@@ -70,13 +70,13 @@ func (p *ProofU) correctResponseSizes(pk *keys.PublicKey) bool {
 }
 
 // VerifyWithChallenge verifies whether the proof is correct.
-func (p *ProofU) VerifyWithChallenge(pk *keys.PublicKey, reconstructedChallenge *big.Int) bool {
+func (p *ProofU) VerifyWithChallenge(pk *gabikeys.PublicKey, reconstructedChallenge *big.Int) bool {
 	return p.correctResponseSizes(pk) && p.C.Cmp(reconstructedChallenge) == 0
 }
 
 // reconstructUcommit reconstructs U from the information in the proof and the
 // provided public key.
-func (p *ProofU) reconstructUcommit(pk *keys.PublicKey) *big.Int {
+func (p *ProofU) reconstructUcommit(pk *gabikeys.PublicKey) *big.Int {
 	// Reconstruct Ucommit
 	// U_commit = U^{-C} * S^{VPrimeResponse} * R_0^{SResponse}
 	Uc := common.ModPow(p.U, new(big.Int).Neg(p.C), pk.N)
@@ -106,7 +106,7 @@ func (p *ProofU) Challenge() *big.Int {
 
 // ChallengeContribution returns the contribution of this proof to the
 // challenge.
-func (p *ProofU) ChallengeContribution(pk *keys.PublicKey) ([]*big.Int, error) {
+func (p *ProofU) ChallengeContribution(pk *gabikeys.PublicKey) ([]*big.Int, error) {
 	return []*big.Int{p.U, p.reconstructUcommit(pk)}, nil
 }
 
@@ -118,7 +118,7 @@ type ProofS struct {
 
 // Verify verifies the proof agains the given public key, signature, context,
 // and nonce.
-func (p *ProofS) Verify(pk *keys.PublicKey, signature *CLSignature, context, nonce *big.Int) bool {
+func (p *ProofS) Verify(pk *gabikeys.PublicKey, signature *CLSignature, context, nonce *big.Int) bool {
 	// Reconstruct A_commit
 	// ACommit = A^{C + EResponse * e}
 	exponent := new(big.Int).Mul(p.EResponse, signature.E)
@@ -148,11 +148,11 @@ type ProofD struct {
 	cachedRangeStructures map[int][]*rangeproof.ProofStructure
 }
 
-func (p *ProofD) MergeProofP(proofP *ProofP, pk *keys.PublicKey) {
+func (p *ProofD) MergeProofP(proofP *ProofP, pk *gabikeys.PublicKey) {
 	p.SecretKeyResponse().Add(p.SecretKeyResponse(), proofP.SResponse)
 }
 
-func (p *ProofD) reconstructRangeProofStructures(pk *keys.PublicKey) error {
+func (p *ProofD) reconstructRangeProofStructures(pk *gabikeys.PublicKey) error {
 	p.cachedRangeStructures = make(map[int][]*rangeproof.ProofStructure)
 	for index, proofs := range p.RangeProofs {
 		p.cachedRangeStructures[index] = []*rangeproof.ProofStructure{}
@@ -168,7 +168,7 @@ func (p *ProofD) reconstructRangeProofStructures(pk *keys.PublicKey) error {
 }
 
 // correctResponseSizes checks the sizes of the elements in the ProofD proof.
-func (p *ProofD) correctResponseSizes(pk *keys.PublicKey) bool {
+func (p *ProofD) correctResponseSizes(pk *gabikeys.PublicKey) bool {
 	// Check range on the AResponses
 	maximum := new(big.Int).Lsh(big.NewInt(1), pk.Params.LmCommit+1)
 	maximum.Sub(maximum, big.NewInt(1))
@@ -193,7 +193,7 @@ func (p *ProofD) correctResponseSizes(pk *keys.PublicKey) bool {
 
 // reconstructZ reconstructs Z from the information in the proof and the
 // provided public key.
-func (p *ProofD) reconstructZ(pk *keys.PublicKey) *big.Int {
+func (p *ProofD) reconstructZ(pk *gabikeys.PublicKey) *big.Int {
 	// known = Z / ( prod_{disclosed} R_i^{a_i} * A^{2^{l_e - 1}} )
 	numerator := new(big.Int).Lsh(big.NewInt(1), pk.Params.Le-1)
 	numerator.Exp(p.A, numerator, pk.N)
@@ -222,7 +222,7 @@ func (p *ProofD) reconstructZ(pk *keys.PublicKey) *big.Int {
 }
 
 // Verify verifies the proof against the given public key, context, and nonce.
-func (p *ProofD) Verify(pk *keys.PublicKey, context, nonce1 *big.Int, issig bool) bool {
+func (p *ProofD) Verify(pk *gabikeys.PublicKey, context, nonce1 *big.Int, issig bool) bool {
 	contrib, err := p.ChallengeContribution(pk)
 	if err != nil {
 		return false
@@ -236,7 +236,7 @@ func (p *ProofD) HasNonRevocationProof() bool {
 
 // Verify verifies the proof against the given public key and the provided
 // reconstruted challenge.
-func (p *ProofD) VerifyWithChallenge(pk *keys.PublicKey, reconstructedChallenge *big.Int) bool {
+func (p *ProofD) VerifyWithChallenge(pk *gabikeys.PublicKey, reconstructedChallenge *big.Int) bool {
 	var notrevoked bool
 	// Validate non-revocation
 	if p.HasNonRevocationProof() {
@@ -257,7 +257,7 @@ func (p *ProofD) VerifyWithChallenge(pk *keys.PublicKey, reconstructedChallenge 
 
 // ChallengeContribution returns the contribution of this proof to the
 // challenge.
-func (p *ProofD) ChallengeContribution(pk *keys.PublicKey) ([]*big.Int, error) {
+func (p *ProofD) ChallengeContribution(pk *gabikeys.PublicKey) ([]*big.Int, error) {
 	l := []*big.Int{p.A, p.reconstructZ(pk)}
 	if p.NonRevocationProof != nil {
 		revIdx := p.revocationAttrIndex()
@@ -338,5 +338,5 @@ type ProofPCommitment struct {
 
 // Generate nonce for use in proofs
 func GenerateNonce() (*big.Int, error) {
-	return common.RandomBigInt(keys.DefaultSystemParameters[2048].Lstatzk)
+	return common.RandomBigInt(gabikeys.DefaultSystemParameters[2048].Lstatzk)
 }

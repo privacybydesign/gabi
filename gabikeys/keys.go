@@ -1,4 +1,4 @@
-package keys
+package gabikeys
 
 import (
 	"crypto/ecdsa"

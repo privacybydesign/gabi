@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/go-errors/errors"
-	"github.com/privacybydesign/gabi/keys"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/internal/common"
 	"github.com/privacybydesign/gabi/revocation"
 )
@@ -67,7 +67,7 @@ type IssueSignatureMessage struct {
 }
 
 // Commits to the provided secret and user's share of random blind attributes "msg"
-func userCommitment(pk *keys.PublicKey, secret *big.Int, vPrime *big.Int, msg map[int]*big.Int) (U *big.Int) {
+func userCommitment(pk *gabikeys.PublicKey, secret *big.Int, vPrime *big.Int, msg map[int]*big.Int) (U *big.Int) {
 	// U = S^{vPrime} * R0^{secret} * Ri^{mi}
 	U = new(big.Int).Exp(pk.S, vPrime, pk.N)
 	U.Mul(U, new(big.Int).Exp(pk.R[0], secret, pk.N))
@@ -81,7 +81,7 @@ func userCommitment(pk *keys.PublicKey, secret *big.Int, vPrime *big.Int, msg ma
 // NewCredentialBuilder creates a new credential builder.
 // The resulting credential builder is already committed to the provided secret.
 // arg blind: list of indices of random blind attributes (exlcuding the secret key)
-func NewCredentialBuilder(pk *keys.PublicKey, context, secret *big.Int, nonce2 *big.Int, blind []int) *CredentialBuilder {
+func NewCredentialBuilder(pk *gabikeys.PublicKey, context, secret *big.Int, nonce2 *big.Int, blind []int) *CredentialBuilder {
 	vPrime, _ := common.RandomBigInt(pk.Params.LvPrime)
 	mUser := make(map[int]*big.Int, len(blind))
 	for _, i := range blind {
@@ -201,7 +201,7 @@ type CredentialBuilder struct {
 	uCommit      *big.Int
 	skRandomizer *big.Int
 
-	pk         *keys.PublicKey
+	pk         *gabikeys.PublicKey
 	context    *big.Int
 	proofPcomm *ProofPCommitment
 
@@ -218,7 +218,7 @@ func (b *CredentialBuilder) MergeProofPCommitment(commitment *ProofPCommitment) 
 }
 
 // PublicKey returns the Idemix public key against which the credential will verify.
-func (b *CredentialBuilder) PublicKey() *keys.PublicKey {
+func (b *CredentialBuilder) PublicKey() *gabikeys.PublicKey {
 	return b.pk
 }
 

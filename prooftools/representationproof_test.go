@@ -4,15 +4,15 @@ import (
 	"testing"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/keyproof"
-	"github.com/privacybydesign/gabi/keys"
 	"github.com/privacybydesign/gabi/prooftools"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 var (
-	testPubK1, testPubK2 *keys.PublicKey
+	testPubK1, testPubK2 *gabikeys.PublicKey
 )
 
 const (
@@ -178,9 +178,9 @@ func TestRepresentationProofComplex(t *testing.T) {
 
 func setupParameters(t *testing.T) {
 	var err error
-	testPubK1, err = keys.NewPublicKeyFromXML(xmlPubKey1)
+	testPubK1, err = gabikeys.NewPublicKeyFromXML(xmlPubKey1)
 	require.NoError(t, err)
-	testPubK2, err = keys.NewPublicKeyFromXML(xmlPubKey2)
+	testPubK2, err = gabikeys.NewPublicKeyFromXML(xmlPubKey2)
 	require.NoError(t, err)
 }
 
