@@ -9,7 +9,6 @@ import (
 	"github.com/privacybydesign/gabi/internal/common"
 	"github.com/privacybydesign/gabi/keyproof"
 	"github.com/privacybydesign/gabi/keys"
-	"github.com/privacybydesign/gabi/prooftools"
 	"github.com/privacybydesign/gabi/safeprime"
 	"github.com/privacybydesign/gabi/signed"
 
@@ -114,7 +113,7 @@ func testProof(t *testing.T, pk *keys.PublicKey, sk *keys.PrivateKey, valid bool
 	}
 
 	witn.randomizer = NewProofRandomizer()
-	bases := keyproof.NewBaseMerge((*prooftools.PublicKeyGroup)(pk), (*accumulator)(acc))
+	bases := keyproof.NewBaseMerge(pk, (*accumulator)(acc))
 	require.Equal(t, valid, proofstructure.isTrue((*witness)(witn), acc.Nu, sk.N), "statement to prove ")
 
 	list, commit := proofstructure.commitmentsFromSecrets(pk, []*big.Int{}, &bases, (*witness)(witn))

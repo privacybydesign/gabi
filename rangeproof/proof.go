@@ -269,7 +269,7 @@ func (s *ProofStructure) CommitmentsFromSecrets(g *keys.PublicKey, m, mRandomize
 		commit.c[i].Mod(commit.c[i], g.N)
 	}
 
-	bases := keyproof.NewBaseMerge((*prooftools.PublicKeyGroup)(g), commit)
+	bases := keyproof.NewBaseMerge(g, commit)
 
 	contributions := []*big.Int{}
 	contributions = s.mCorrect.CommitmentsFromSecrets(g, contributions, &bases, commit)
@@ -336,7 +336,7 @@ func (s *ProofStructure) VerifyProofStructure(g *keys.PublicKey, p *Proof) bool 
 }
 
 func (s *ProofStructure) CommitmentsFromProof(g *keys.PublicKey, p *Proof, challenge *big.Int) []*big.Int {
-	bases := keyproof.NewBaseMerge((*prooftools.PublicKeyGroup)(g), (*proof)(p))
+	bases := keyproof.NewBaseMerge(g, (*proof)(p))
 
 	contributions := []*big.Int{}
 	contributions = s.mCorrect.CommitmentsFromProof(g, contributions, challenge, &bases, (*proof)(p))

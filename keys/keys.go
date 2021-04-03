@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/privacybydesign/gabi/big"
@@ -516,4 +517,47 @@ func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, e
 	}
 
 	return priv, pubk, nil
+}
+
+func (pubk *PublicKey) Base(name string) *big.Int {
+	if name == "Z" {
+		return pubk.Z
+	}
+	if name == "S" {
+		return pubk.S
+	}
+	if name == "G" {
+		return pubk.G
+	}
+	if name == "H" {
+		return pubk.H
+	}
+	if name[0] == 'R' {
+		i, err := strconv.Atoi(name[1:])
+		if err != nil || i < 0 || i >= len(pubk.R) {
+			return nil
+		}
+		return pubk.R[i]
+	}
+	return nil
+}
+
+func (pubk *PublicKey) Exp(ret *big.Int, name string, exp, n *big.Int) bool {
+	base := pubk.Base(name)
+	if base == nil {
+		return false
+	}
+	ret.Exp(base, exp, n)
+	return true
+}
+
+func (pubk *PublicKey) Names() []string {
+	names := []string{"Z", "S"}
+	if pubk.G != nil && pubk.H != nil {
+		names = append(names, "G", "H")
+	}
+	for i := range pubk.R {
+		names = append(names, fmt.Sprintf("R%d", i))
+	}
+	return names
 }
