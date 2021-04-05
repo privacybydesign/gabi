@@ -610,6 +610,25 @@ func TestRangeProofDefault(t *testing.T) {
 	assert.True(t, proof.RangeProofs[1][0].ProvesStatement(1, new(big.Int).Sub(testAttributes1[0], big.NewInt(63))))
 }
 
+func TestRangeProofEqual(t *testing.T) {
+	context, _ := common.RandomBigInt(testPubK1.Params.Lh)
+	nonce, _ := common.RandomBigInt(testPubK1.Params.Lstatzk)
+	secret, _ := common.RandomBigInt(testPubK1.Params.Lm)
+
+	rangeStatement := RangeStatement{
+		Factor: 1,
+		Bound:  new(big.Int).Set(testAttributes1[0]),
+	}
+
+	issuer := NewIssuer(testPrivK1, testPubK1, context)
+	cred := createCredential(t, context, secret, issuer)
+
+	proof, err := cred.CreateDisclosureProof([]int{2}, map[int][]*RangeStatement{1: {&rangeStatement}}, false, context, nonce)
+	require.NoError(t, err)
+	assert.True(t, proof.Verify(testPubK1, context, nonce, false))
+	assert.True(t, proof.RangeProofs[1][0].ProvesStatement(1, new(big.Int).Set(testAttributes1[0])))
+}
+
 func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 	keylength := 1024
 	context, _ := common.RandomBigInt(gabikeys.DefaultSystemParameters[keylength].Lh)

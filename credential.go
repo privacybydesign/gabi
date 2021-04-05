@@ -23,9 +23,9 @@ type Credential struct {
 	nonrevCache chan *NonRevocationProofBuilder
 }
 
-// Statement that relevant attribute satisfies factor*m-bound > 0, and that
-// factor*m-bound can be split into squares with given splitter
-// Defaults to four square splitter when splitter not specified
+// RangeStatement states that an attribute m satisfies factor*m-bound >= 0, and that factor*m-bound
+// can be split into squares with the given splitter. E.g. if factor = 1 then m >= k. Defaults to
+// four square splitter when splitter is not specified.
 type RangeStatement struct {
 	Factor int
 	Bound  *big.Int
@@ -116,7 +116,12 @@ func isUndisclosedAttribute(disclosedAttributes []int, attribute int) bool {
 
 // CreateDisclosureProof creates a disclosure proof (ProofD) voor the provided
 // indices of disclosed attributes.
-func (ic *Credential) CreateDisclosureProof(disclosedAttributes []int, rangeStatements map[int][]*RangeStatement, nonrev bool, context, nonce1 *big.Int) (*ProofD, error) {
+func (ic *Credential) CreateDisclosureProof(
+	disclosedAttributes []int,
+	rangeStatements map[int][]*RangeStatement,
+	nonrev bool,
+	context, nonce1 *big.Int,
+) (*ProofD, error) {
 	builder, err := ic.CreateDisclosureProofBuilder(disclosedAttributes, rangeStatements, nonrev)
 	if err != nil {
 		return nil, err
@@ -131,7 +136,11 @@ func (ic *Credential) CreateDisclosureProof(disclosedAttributes []int, rangeStat
 // CreateDisclosureProofBuilder produces a DisclosureProofBuilder, an object to
 // hold the state in the protocol for producing a disclosure proof that is
 // linked to other proofs.
-func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int, rangeStatements map[int][]*RangeStatement, nonrev bool) (*DisclosureProofBuilder, error) {
+func (ic *Credential) CreateDisclosureProofBuilder(
+	disclosedAttributes []int,
+	rangeStatements map[int][]*RangeStatement,
+	nonrev bool,
+) (*DisclosureProofBuilder, error) {
 	d := &DisclosureProofBuilder{}
 	d.z = big.NewInt(1)
 	d.pk = ic.Pk
