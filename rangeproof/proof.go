@@ -11,86 +11,98 @@ import (
 	"github.com/privacybydesign/gabi/zkproof"
 )
 
-// This subpackage of gabi implements a variation of the inequality/range proof protocol given in section 6.2.6/6.3.6 of "
-// Specification of the Identity Mixer Cryptographic Library
-// Version 2.3.0"
-//
-// The following changes were made:
-//  - There is no direct support for the > and < operators, the end user should do boundary adjustment for this themselves
-//  - There is support for sum of 3 squares as well as sum of 4 squares for proving the delta is positive
-//  - There is no separate commitment to the difference between bound and attribute value.
-//
-// This results in that our code proves the following substatement:
-// C_i = R^d_i S^v_i
-// R^k \product_i C_i^d_i = R^a*m S^v_5
-//
-// where k, a are fixed constants specified in the proof structure
-// d_i are values such that a*m-k = \sum_i d_i^2
-// v_i are computational hiders for the d_i
-// v_5 = \sum_i d_i *v_i
-// m is the attribute value
-//
-//
-// The proof of soundness for this protocol is relatively straightforward, but as we are not aware of its occurence in literature,
-// we provide it here for completeness:
-// ----
-//
-// First note that we can assume a=1 without loss of generality. Then we define:
-//
-// Adversary A: Turing machine taking as starting input S, R, Z, n, and k, then participates as receiver in an issuance protocol to
-// obtain a CL signature on m < k, then participates as prover in a proving protocol showing a CL-signature on m', as well as
-// providing bases C1, C2, C3 and proving knowledge of d1, d2, d3, v1, v2, v3, v5 such that
-// C1 = R^d1 S^v1
-// C2 = R^d2 S^v2
-// C3 = R^d3 S^v3
-// C1^d1 C2^d2 C3^d3 R^k = R^m' S^v5
-// with succes probability at least epsilon, where epsilon is a non-neglible function of log(n).
-//
-// Theorem:
-// Existence of adversary A contradicts the strong RSA assumption.
-//
-// Proof:
-//
-// From A we can derive two turing machines F and G
-//
-// F:
-// Run A, then rewind to extract the full CL signature on m'. Then return that signature if m != m', fail otherwise
-//
-// G:
-// Run A, then rewind to extract m', d1, d2, d3, v1, v2, v3, v5. Then return m, d1, d2, d3, v1, v2, v3, v5 iff m == m', fail otherwise
-//
-// By construction at least one of F, G will succeed with probability at least epsilon/2
-//
-// By theorem 1 of "A Signature Scheme with Efficient Protocols" by Camenisch and Lysyanskaya (CL03), existence of F with non-neglible
-// succes probability contradicts the strong RSA assumption.
-//
-// Next, let us show that existence of G with non-neglible succes probability also contradicts the strong RSA assumption. Let (n, u)
-// be a flexible RSA problem. We choose random prime e > 4, random integers r1, r2, k, and m>k, and random element v in QRn. We then let
-// S = u^e
-// R = S^r1
-// Z = S^r2
-// and present S,R,Z,n as public key to the adversary, together with k.
-//
-// We then use our knowledge of the e-th roots of S, R, and Z, together with our ability to extract v' from G to issue the signature on
-// m similar to the approach taken in the proofs of lemma's 3-5 in CL03
-// Next, we provide k and receive back m, d1, d2, d3, v1, v2, v3 and v5, for which it holds that
-// R^(d1^2+d2^2+d3^2+k-m) = S^(v5-d1*v1+d2*v2+d3*v3).
-//
-// Since k > m, and since d1, d2, d3 are real, we have d1^2+d2^2+d3^2+k-m > 0. Now either phi(n) divides d1^2+d2^2+d3^2+k-m, or
-// v5-d1*v1+d2*v2+d3*v3 is not zero. If phi(n) divides d1^2+d2^2+d3^2+k-m, then by Lemma 11 in CL03, we can factor n and trivially
-// solve the instance.
-//
-// Otherwise, we now have nonzero a = d1^2+d2^2+d3^2+k-m, and b = v5-d1*v1+d2*v2+d3*v3, such that R^a = S^b. Since e does not divide phi(n)
-// (otherwise, we could just factor n again, this time by lemma 12 in CL03), this also implies u^(r1*a) = u^b. Since a and b are bounded
-// (each of their components is proven to be smaller than a bound during the ZKP), we can take r1 large enough to guarantee r1*a > b.
-// Then r1*a-b > 0, and by multiplication by u^-b, we get u^(r1*a-b) = 1, hence phi(n) | r1*a-b, which means we can factor n and use
-// that to solve the flexible RSA problem.
-//
-// This shows existence of G with non-neglible succes probability also contradicts strong RSA, hence existence of A contradicts
-// the strong RSA assumption.
-//
-// The techniques used to fake issuance can be generalized to multiple issuances using techiques similar to those used in CL03 for lemmas 3-5,
-// the rest of the proof then needs e to be replaced with E, the product of all used e_i's.
+/*
+This subpackage of gabi implements a variation of the inequality/range proof protocol given in
+section 6.2.6/6.3.6 of "Specification of the Identity Mixer Cryptographic Library Version 2.3.0".
+
+Specifically, given an attribute m; a value k; and a number a equal to -1 or 1, this subpackage
+allows clients to prove that a*m - k >= 0, by writing the left hand side as a sum of squares, and
+then proving knowledge of the square roots of these squares. From this, the verifier can infer that
+a*m - k must be positive.
+
+The following changes were made with respect to the Identity Mixer specification:
+- There is no direct support for the > and < operators: the end user should do boundary adjustment
+  for this themselves.
+- There is support for sum of 3 squares as well as sum of 4 squares, for space optimization.
+- There is no separate commitment to the difference between bound and attribute value.
+
+This results in that our code proves the following substatements:
+
+    C_i = R^(d_i) S^(v_i)
+    R^k \product_i C_i^(d_i) = R^(a*m) S^(v_5)
+
+where
+- m is the attribute value,
+- k, a are fixed constants specified in the proof structure,
+- d_i are values such that a*m - k = \sum_i (d_i)^2,
+- v_i are computational hiders for the d_i,
+- v_5 = \sum_i d_i * v_i.
+
+The proof of soundness for this protocol is relatively straightforward, but as we are not aware of
+its occurence in literature, we provide it here for completeness.
+
+---
+
+First note that we can assume a=1 without loss of generality. Then we define Adversary A as a
+probabilistic polynomial-time algorithm that acts as follows:
+- it takes as starting input S, R, Z, n, and k,
+- it participates as the receiver in the issuance protocol to obtain a CL signature on m < k,
+- it participates as prover in the proving protocol showing a CL signature on m', as well as
+  providing bases C1, C2, C3 and proving knowledge of d1, d2, d3, v1, v2, v3, v5 such that
+   * C1 = R^d1 S^v1
+   * C2 = R^d2 S^v2
+   * C3 = R^d3 S^v3
+   * C1^d1 C2^d2 C3^d3 R^k = R^m' S^v5,
+  with success probability at least epsilon, where epsilon is a non-neglible function of log(n).
+
+Theorem: the existence of Adversary A contradicts the strong RSA assumption.
+
+Proof: From A we can derive two probabilistic polynomial-time algorithms F and G
+
+- F: Run A, then rewind to extract the full CL signature on m'. Then return that signature if
+  m != m', fail otherwise
+- G: Run A, then rewind to extract m', d1, d2, d3, v1, v2, v3, v5. Then return m, d1, d2, d3,
+  v1, v2, v3, v5 iff m == m', fail otherwise
+
+By construction at least one of F, G will succeed with probability at least epsilon/2.
+
+By theorem 1 of "A Signature Scheme with Efficient Protocols" by Camenisch and Lysyanskaya (CL03),
+the existence of F with non-neglible success probability contradicts the strong RSA assumption.
+
+Next, let us show that existence of G with non-neglible success probability also contradicts the
+strong RSA assumption. Let (n, u) be a flexible RSA problem. We choose random prime e > 4, random
+integers r1, r2, k, and m>k, and random element v in QRn. We then let
+- S = u^e
+- R = S^r1
+- Z = S^r2,
+and present S,R,Z,n as public key to the adversary, together with k.
+
+We then use our knowledge of the e-th roots of S, R, and Z, together with our ability to extract v'
+from G to issue the signature on m similar to the approach taken in the proofs of lemmas 3-5 in
+CL03. Next, we provide k and receive back m, d1, d2, d3, v1, v2, v3 and v5, for which it holds that
+R^(d1^2+d2^2+d3^2+k-m) = S^(v5-d1*v1+d2*v2+d3*v3).
+
+Since k > m, and since d1, d2, d3 are real, we have d1^2+d2^2+d3^2+k-m > 0. Now either phi(n)
+divides d1^2+d2^2+d3^2+k-m, or v5-d1*v1+d2*v2+d3*v3 is not zero. If phi(n) divides
+d1^2+d2^2+d3^2+k-m, then by Lemma 11 in CL03, we can factor n and trivially solve the instance.
+
+Otherwise, we now have nonzero a = d1^2+d2^2+d3^2+k-m, and b = v5-d1*v1+d2*v2+d3*v3, such that
+R^a = S^b. Since e does not divide phi(n) (otherwise, we could just factor n again, this time by
+lemma 12 in CL03), this also implies u^(r1*a) = u^b. Since a and b are bounded (each of their
+components is proven to be smaller than a bound during the ZKP), we can take r1 large enough to
+guarantee r1*a > b. Then r1*a-b > 0, and by multiplication by u^-b, we get u^(r1*a-b) = 1, hence
+phi(n) | r1*a-b, which means we can factor n and use that to solve the flexible RSA problem.
+
+This shows that the existence of algorithm G with non-neglible success probability also contradicts
+strong RSA, hence the existence of algorithm A contradicts the strong RSA assumption.
+
+Notes:
+- The techniques used to fake issuance can be generalized to multiple issuances using techiques
+  similar to those used in CL03 for lemmas 3-5; the rest of the proof then needs e to be replaced
+  with E, the product of all used e_i's.
+- This proof nowhere uses that the amount of squares we use is three; hence it also works when using
+  four squares.
+*/
 
 type (
 	ProofStructure struct {
