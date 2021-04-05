@@ -219,7 +219,7 @@ func (s *ProofStructure) CommitmentsFromSecrets(g *gabikeys.PublicKey, m, mRando
 	d.Sub(d, s.k)
 
 	if d.Sign() < 0 {
-		return nil, nil, errors.New("Requested inequality does not hold")
+		return nil, nil, errors.New("requested inequality does not hold")
 	}
 
 	commit := &proofCommit{
@@ -232,14 +232,14 @@ func (s *ProofStructure) CommitmentsFromSecrets(g *gabikeys.PublicKey, m, mRando
 		return nil, nil, err
 	}
 	if len(commit.d) != len(s.cRep) {
-		return nil, nil, errors.New("Split function returned wrong number of results")
+		return nil, nil, errors.New("split function returned wrong number of results")
 	}
 
 	// Check d values and generate randomizers for them
 	commit.dRandomizers = make([]*big.Int, len(commit.d))
 	for i, v := range commit.d {
 		if v.BitLen() > int(s.ld) {
-			return nil, nil, errors.New("Split function returned oversized d")
+			return nil, nil, errors.New("split function returned oversized d")
 		}
 		commit.dRandomizers[i], err = common.RandomBigInt(s.ld + g.Params.Lh + g.Params.Lstatzk)
 		if err != nil {
@@ -282,7 +282,7 @@ func (s *ProofStructure) CommitmentsFromSecrets(g *gabikeys.PublicKey, m, mRando
 
 	bases := zkproof.NewBaseMerge(g, commit)
 
-	contributions := []*big.Int{}
+	var contributions []*big.Int
 	contributions = s.mCorrect.CommitmentsFromSecrets(g, contributions, &bases, commit)
 	for i := range commit.d {
 		contributions = s.cRep[i].CommitmentsFromSecrets(g, contributions, &bases, commit)
@@ -349,7 +349,7 @@ func (s *ProofStructure) VerifyProofStructure(g *gabikeys.PublicKey, p *Proof) b
 func (s *ProofStructure) CommitmentsFromProof(g *gabikeys.PublicKey, p *Proof, challenge *big.Int) []*big.Int {
 	bases := zkproof.NewBaseMerge(g, (*proof)(p))
 
-	contributions := []*big.Int{}
+	var contributions []*big.Int
 	contributions = s.mCorrect.CommitmentsFromProof(g, contributions, challenge, &bases, (*proof)(p))
 	for i := range s.cRep {
 		contributions = s.cRep[i].CommitmentsFromProof(g, contributions, challenge, &bases, (*proof)(p))
@@ -378,7 +378,7 @@ func (p *Proof) ExtractStructure(index int, g *gabikeys.PublicKey) (*ProofStruct
 	//  the proof statement trivial (it either always or never holds)
 	if p.K == nil || p.Ld > g.Params.Lm || len(p.Cs) < 3 || len(p.Cs) > 4 ||
 		p.K.BitLen() > int(g.Params.Lm+strconv.IntSize) {
-		return nil, errors.New("Invalid proof")
+		return nil, errors.New("invalid proof")
 	}
 	return newWithParams(index, p.A, p.K, nil, len(p.Cs), p.Ld), nil
 }

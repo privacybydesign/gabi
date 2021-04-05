@@ -46,7 +46,7 @@ func (t *SquaresTable) Split(delta *big.Int) ([]*big.Int, error) {
 	t_ := *t
 	v := delta.Int64()
 	if !delta.IsInt64() || v < 0 || v >= int64(len(t_)) || v%4 != 2 {
-		return nil, errors.New("Value outside of table range")
+		return nil, errors.New("value outside of table range")
 	}
 
 	v = (v - 2) / 4
