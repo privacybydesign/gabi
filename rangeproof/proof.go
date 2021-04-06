@@ -105,13 +105,13 @@ Notes:
 */
 
 type (
-	// Statement states that an attribute m satisfies factor*m-bound >= 0, and that factor*m-bound
-	// can be split into squares with the given splitter. E.g. if factor = 1 then m >= k. Defaults to
+	// Statement states that an attribute m satisfies Factor*m-Bound >= 0, and that Factor*m-Bound
+	// can be split into squares with the given Splitter. E.g. if Factor = 1 then m >= k. Defaults to
 	// four square splitter when splitter is not specified.
 	Statement struct {
-		Factor int
-		Bound  *big.Int
-		Split  SquareSplitter
+		Factor   int
+		Bound    *big.Int
+		Splitter SquareSplitter
 	}
 
 	StatementType int

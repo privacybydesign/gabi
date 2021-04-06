@@ -154,7 +154,7 @@ func (ic *Credential) CreateDisclosureProofBuilder(
 				return nil, errors.New("Range statements on revealed attributes are not supported")
 			}
 			for _, statement := range statements {
-				split := statement.Split
+				split := statement.Splitter
 				if split == nil {
 					split = &rangeproof.FourSquaresSplitter{}
 				}

@@ -571,7 +571,7 @@ func createCredential(t *testing.T, context, secret *big.Int, issuer *Issuer) *C
 
 func TestRangeProof(t *testing.T) {
 	statement := rangeproof.NewStatement(rangeproof.LesserOrEqual, new(big.Int).Sub(testAttributes1[0], big.NewInt(63)))
-	statement.Split = rangeproof.GenerateSquaresTable(65535)
+	statement.Splitter = rangeproof.GenerateSquaresTable(65535)
 	testRangeProofs(t, []*rangeproof.Statement{
 		statement,
 	})
