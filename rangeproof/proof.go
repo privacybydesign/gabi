@@ -166,13 +166,13 @@ const (
 	LesserOrEqual
 )
 
-func NewStatement(typ StatementType, bound *big.Int, splitter SquareSplitter) *Statement {
+func NewStatement(typ StatementType, bound *big.Int) *Statement {
 	b := new(big.Int).Set(bound)
 	switch typ {
 	case LesserOrEqual:
-		return &Statement{Factor: 1, Bound: b, Split: splitter}
+		return &Statement{Factor: 1, Bound: b}
 	case GreaterOrEqual:
-		return &Statement{Factor: -1, Bound: b.Neg(b), Split: splitter}
+		return &Statement{Factor: -1, Bound: b.Neg(b)}
 	default:
 		return nil
 	}
