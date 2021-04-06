@@ -130,9 +130,9 @@ type (
 
 	Proof struct {
 		// Actual proof responses
-		Cs         []*big.Int `json:"C"`
-		DResponses []*big.Int `json:"d"`
-		VResponses []*big.Int `json:"v"`
+		Cs         []*big.Int `json:"Cs"`
+		DResponses []*big.Int `json:"ds"`
+		VResponses []*big.Int `json:"vs"`
 		V5Response *big.Int   `json:"v5"`
 		MResponse  *big.Int   `json:"-"`
 
