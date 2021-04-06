@@ -570,97 +570,53 @@ func createCredential(t *testing.T, context, secret *big.Int, issuer *Issuer) *C
 }
 
 func TestRangeProof(t *testing.T) {
-	context, _ := common.RandomBigInt(testPubK1.Params.Lh)
-	nonce, _ := common.RandomBigInt(testPubK1.Params.Lstatzk)
-	secret, _ := common.RandomBigInt(testPubK1.Params.Lm)
-
-	table := rangeproof.GenerateSquaresTable(65535)
-
-	rangeStatement := rangeproof.Statement{
-		Factor: 1,
-		Bound:  new(big.Int).Sub(testAttributes1[0], big.NewInt(63)),
-		Split:  table,
-	}
-
-	issuer := NewIssuer(testPrivK1, testPubK1, context)
-	cred := createCredential(t, context, secret, issuer)
-
-	proof, err := cred.CreateDisclosureProof([]int{2}, map[int][]*rangeproof.Statement{1: {&rangeStatement}}, false, context, nonce)
-	require.NoError(t, err)
-	assert.True(t, proof.Verify(testPubK1, context, nonce, false))
-	assert.True(t, proof.RangeProofs[1][0].ProvesStatement(1, new(big.Int).Sub(testAttributes1[0], big.NewInt(63))))
+	statement := rangeproof.NewStatement(rangeproof.LesserOrEqual, new(big.Int).Sub(testAttributes1[0], big.NewInt(63)))
+	statement.Split = rangeproof.GenerateSquaresTable(65535)
+	testRangeProofs(t, []*rangeproof.Statement{
+		statement,
+	})
 }
 
 func TestRangeProofDefault(t *testing.T) {
-	context, _ := common.RandomBigInt(testPubK1.Params.Lh)
-	nonce, _ := common.RandomBigInt(testPubK1.Params.Lstatzk)
-	secret, _ := common.RandomBigInt(testPubK1.Params.Lm)
-
-	rangeStatement := rangeproof.Statement{
-		Factor: 1,
-		Bound:  new(big.Int).Sub(testAttributes1[0], big.NewInt(63)),
-	}
-
-	issuer := NewIssuer(testPrivK1, testPubK1, context)
-	cred := createCredential(t, context, secret, issuer)
-
-	proof, err := cred.CreateDisclosureProof([]int{2}, map[int][]*rangeproof.Statement{1: {&rangeStatement}}, false, context, nonce)
-	require.NoError(t, err)
-	assert.True(t, proof.Verify(testPubK1, context, nonce, false))
-	assert.True(t, proof.RangeProofs[1][0].ProvesStatement(1, new(big.Int).Sub(testAttributes1[0], big.NewInt(63))))
+	testRangeProofs(t, []*rangeproof.Statement{
+		rangeproof.NewStatement(rangeproof.LesserOrEqual, new(big.Int).Sub(testAttributes1[0], big.NewInt(63))),
+	})
 }
 
 func TestRangeProofEqual(t *testing.T) {
-	context, _ := common.RandomBigInt(testPubK1.Params.Lh)
-	nonce, _ := common.RandomBigInt(testPubK1.Params.Lstatzk)
-	secret, _ := common.RandomBigInt(testPubK1.Params.Lm)
-
-	rangeStatement := rangeproof.Statement{
-		Factor: 1,
-		Bound:  new(big.Int).Set(testAttributes1[0]),
-	}
-
-	issuer := NewIssuer(testPrivK1, testPubK1, context)
-	cred := createCredential(t, context, secret, issuer)
-
-	proof, err := cred.CreateDisclosureProof([]int{2}, map[int][]*rangeproof.Statement{1: {&rangeStatement}}, false, context, nonce)
-	require.NoError(t, err)
-	assert.True(t, proof.Verify(testPubK1, context, nonce, false))
-	assert.True(t, proof.RangeProofs[1][0].ProvesStatement(1, new(big.Int).Set(testAttributes1[0])))
+	testRangeProofs(t, []*rangeproof.Statement{
+		rangeproof.NewStatement(rangeproof.LesserOrEqual, new(big.Int).Set(testAttributes1[0])),
+	})
 }
 
 func TestRangeProofGreaterOrEqual(t *testing.T) {
-	context, _ := common.RandomBigInt(testPubK1.Params.Lh)
-	nonce, _ := common.RandomBigInt(testPubK1.Params.Lstatzk)
-	secret, _ := common.RandomBigInt(testPubK1.Params.Lm)
-
-	rangeStatement := rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Add(testAttributes1[0], big.NewInt(63)), nil)
-
-	issuer := NewIssuer(testPrivK1, testPubK1, context)
-	cred := createCredential(t, context, secret, issuer)
-
-	proof, err := cred.CreateDisclosureProof([]int{2}, map[int][]*rangeproof.Statement{1: {rangeStatement}}, false, context, nonce)
-	require.NoError(t, err)
-	assert.True(t, proof.Verify(testPubK1, context, nonce, false))
-	assert.True(t, proof.RangeProofs[1][0].Proves(rangeStatement))
+	testRangeProofs(t, []*rangeproof.Statement{
+		rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Add(testAttributes1[0], big.NewInt(63))),
+	})
 }
 
 func TestRangeProofMultiple(t *testing.T) {
+	testRangeProofs(t, []*rangeproof.Statement{
+		rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Add(testAttributes1[0], big.NewInt(63))),
+		rangeproof.NewStatement(rangeproof.LesserOrEqual, new(big.Int).Sub(testAttributes1[0], big.NewInt(63))),
+	})
+}
+
+func testRangeProofs(t *testing.T, statements []*rangeproof.Statement) {
 	context, _ := common.RandomBigInt(testPubK1.Params.Lh)
 	nonce, _ := common.RandomBigInt(testPubK1.Params.Lstatzk)
 	secret, _ := common.RandomBigInt(testPubK1.Params.Lm)
 
-	rangeStatement1 := rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Add(testAttributes1[0], big.NewInt(63)), nil)
-	rangeStatement2 := rangeproof.NewStatement(rangeproof.LesserOrEqual, new(big.Int).Sub(testAttributes1[0], big.NewInt(63)), nil)
-
 	issuer := NewIssuer(testPrivK1, testPubK1, context)
 	cred := createCredential(t, context, secret, issuer)
 
-	proof, err := cred.CreateDisclosureProof([]int{2}, map[int][]*rangeproof.Statement{1: {rangeStatement1, rangeStatement2}}, false, context, nonce)
+	proof, err := cred.CreateDisclosureProof([]int{2}, map[int][]*rangeproof.Statement{1: statements}, false, context, nonce)
 	require.NoError(t, err)
 	assert.True(t, proof.Verify(testPubK1, context, nonce, false))
-	assert.True(t, proof.RangeProofs[1][0].Proves(rangeStatement1))
-	assert.True(t, proof.RangeProofs[1][1].Proves(rangeStatement2))
+
+	for i, statement := range statements {
+		assert.True(t, proof.RangeProofs[1][i].Proves(statement))
+	}
 }
 
 func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
