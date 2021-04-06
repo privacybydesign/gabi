@@ -629,6 +629,40 @@ func TestRangeProofEqual(t *testing.T) {
 	assert.True(t, proof.RangeProofs[1][0].ProvesStatement(1, new(big.Int).Set(testAttributes1[0])))
 }
 
+func TestRangeProofGreaterOrEqual(t *testing.T) {
+	context, _ := common.RandomBigInt(testPubK1.Params.Lh)
+	nonce, _ := common.RandomBigInt(testPubK1.Params.Lstatzk)
+	secret, _ := common.RandomBigInt(testPubK1.Params.Lm)
+
+	rangeStatement := rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Add(testAttributes1[0], big.NewInt(63)), nil)
+
+	issuer := NewIssuer(testPrivK1, testPubK1, context)
+	cred := createCredential(t, context, secret, issuer)
+
+	proof, err := cred.CreateDisclosureProof([]int{2}, map[int][]*rangeproof.Statement{1: {rangeStatement}}, false, context, nonce)
+	require.NoError(t, err)
+	assert.True(t, proof.Verify(testPubK1, context, nonce, false))
+	assert.True(t, proof.RangeProofs[1][0].Proves(rangeStatement))
+}
+
+func TestRangeProofMultiple(t *testing.T) {
+	context, _ := common.RandomBigInt(testPubK1.Params.Lh)
+	nonce, _ := common.RandomBigInt(testPubK1.Params.Lstatzk)
+	secret, _ := common.RandomBigInt(testPubK1.Params.Lm)
+
+	rangeStatement1 := rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Add(testAttributes1[0], big.NewInt(63)), nil)
+	rangeStatement2 := rangeproof.NewStatement(rangeproof.LesserOrEqual, new(big.Int).Sub(testAttributes1[0], big.NewInt(63)), nil)
+
+	issuer := NewIssuer(testPrivK1, testPubK1, context)
+	cred := createCredential(t, context, secret, issuer)
+
+	proof, err := cred.CreateDisclosureProof([]int{2}, map[int][]*rangeproof.Statement{1: {rangeStatement1, rangeStatement2}}, false, context, nonce)
+	require.NoError(t, err)
+	assert.True(t, proof.Verify(testPubK1, context, nonce, false))
+	assert.True(t, proof.RangeProofs[1][0].Proves(rangeStatement1))
+	assert.True(t, proof.RangeProofs[1][1].Proves(rangeStatement2))
+}
+
 func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 	keylength := 1024
 	context, _ := common.RandomBigInt(gabikeys.DefaultSystemParameters[keylength].Lh)
