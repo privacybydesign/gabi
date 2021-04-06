@@ -487,7 +487,10 @@ func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, e
 	primeSize := param.Ln / 2
 	var x *big.Int
 	for {
-		x, _ = common.RandomBigInt(primeSize)
+		x, err = common.RandomBigInt(primeSize)
+		if err != nil {
+			return nil, nil, err
+		}
 		if x.Cmp(big.NewInt(2)) > 0 && x.Cmp(pubk.N) < 0 {
 			break
 		}
@@ -503,7 +506,10 @@ func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, e
 
 		var x *big.Int
 		for {
-			x, _ = common.RandomBigInt(primeSize)
+			x, err = common.RandomBigInt(primeSize)
+			if err != nil {
+				return nil, nil, err
+			}
 			if x.Cmp(big.NewInt(2)) > 0 && x.Cmp(pubk.N) < 0 {
 				break
 			}

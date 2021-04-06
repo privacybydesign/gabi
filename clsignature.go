@@ -38,7 +38,10 @@ func signMessageBlockAndCommitment(sk *gabikeys.PrivateKey, pk *gabikeys.PublicK
 		return nil, err
 	}
 
-	vTilde, _ := common.RandomBigInt(pk.Params.Lv - 1)
+	vTilde, err := common.RandomBigInt(pk.Params.Lv - 1)
+	if err != nil {
+		return nil, err
+	}
 	twoLv := new(big.Int).Lsh(big.NewInt(1), pk.Params.Lv-1)
 	v := new(big.Int).Add(twoLv, vTilde)
 
@@ -99,11 +102,14 @@ func (s *CLSignature) Verify(pk *gabikeys.PublicKey, ms []*big.Int) bool {
 }
 
 // Randomize returns a randomized copy of the signature.
-func (s *CLSignature) Randomize(pk *gabikeys.PublicKey) *CLSignature {
-	r, _ := common.RandomBigInt(pk.Params.LRA)
+func (s *CLSignature) Randomize(pk *gabikeys.PublicKey) (*CLSignature, error) {
+	r, err := common.RandomBigInt(pk.Params.LRA)
+	if err != nil {
+		return nil, err
+	}
 	APrime := new(big.Int).Mul(s.A, new(big.Int).Exp(pk.S, r, pk.N))
 	APrime.Mod(APrime, pk.N)
 	t := new(big.Int).Mul(s.E, r)
 	VPrime := new(big.Int).Sub(s.V, t)
-	return &CLSignature{A: APrime, E: new(big.Int).Set(s.E), V: VPrime}
+	return &CLSignature{A: APrime, E: new(big.Int).Set(s.E), V: VPrime}, nil
 }

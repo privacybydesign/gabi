@@ -124,7 +124,10 @@ func (builders ProofBuilderList) Challenge(context, nonce *big.Int, issig bool) 
 	// So we should take it, and hence also its commitment, to fit within the smallest size -
 	// otherwise it will be too big so that we cannot perform the range proof showing
 	// that it is not too big.
-	skCommitment, _ := common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].LmCommit)
+	skCommitment, err := common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].LmCommit)
+	if err != nil {
+		return nil, err
+	}
 
 	commitmentValues := make([]*big.Int, 0, len(builders)*2)
 	for _, pb := range builders {

@@ -135,16 +135,29 @@ func (ic *Credential) CreateDisclosureProofBuilder(
 	d := &DisclosureProofBuilder{}
 	d.z = big.NewInt(1)
 	d.pk = ic.Pk
-	d.randomizedSignature = ic.Signature.Randomize(ic.Pk)
-	d.eCommit, _ = common.RandomBigInt(ic.Pk.Params.LeCommit)
-	d.vCommit, _ = common.RandomBigInt(ic.Pk.Params.LvCommit)
+	var err error
+	d.randomizedSignature, err = ic.Signature.Randomize(ic.Pk)
+	if err != nil {
+		return nil, err
+	}
+	d.eCommit, err = common.RandomBigInt(ic.Pk.Params.LeCommit)
+	if err != nil {
+		return nil, err
+	}
+	d.vCommit, err = common.RandomBigInt(ic.Pk.Params.LvCommit)
+	if err != nil {
+		return nil, err
+	}
 
 	d.attrRandomizers = make(map[int]*big.Int)
 	d.disclosedAttributes = disclosedAttributes
 	d.undisclosedAttributes = getUndisclosedAttributes(disclosedAttributes, len(ic.Attributes))
 	d.attributes = ic.Attributes
 	for _, v := range d.undisclosedAttributes {
-		d.attrRandomizers[v], _ = common.RandomBigInt(ic.Pk.Params.LmCommit)
+		d.attrRandomizers[v], err = common.RandomBigInt(ic.Pk.Params.LmCommit)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if rangeStatements != nil {

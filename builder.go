@@ -81,11 +81,17 @@ func userCommitment(pk *gabikeys.PublicKey, secret *big.Int, vPrime *big.Int, ms
 // NewCredentialBuilder creates a new credential builder.
 // The resulting credential builder is already committed to the provided secret.
 // arg blind: list of indices of random blind attributes (exlcuding the secret key)
-func NewCredentialBuilder(pk *gabikeys.PublicKey, context, secret *big.Int, nonce2 *big.Int, blind []int) *CredentialBuilder {
-	vPrime, _ := common.RandomBigInt(pk.Params.LvPrime)
+func NewCredentialBuilder(pk *gabikeys.PublicKey, context, secret *big.Int, nonce2 *big.Int, blind []int) (*CredentialBuilder, error) {
+	vPrime, err := common.RandomBigInt(pk.Params.LvPrime)
+	if err != nil {
+		return nil, err
+	}
 	mUser := make(map[int]*big.Int, len(blind))
 	for _, i := range blind {
-		mUser[i+1], _ = common.RandomBigInt(pk.Params.Lm - 1)
+		mUser[i+1], err = common.RandomBigInt(pk.Params.Lm - 1)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Commit to secret and, optionally, user's shares of random blind attributes
@@ -100,17 +106,20 @@ func NewCredentialBuilder(pk *gabikeys.PublicKey, context, secret *big.Int, nonc
 		uCommit: big.NewInt(1),
 		nonce2:  nonce2,
 		mUser:   mUser,
-	}
+	}, nil
 }
 
 // CommitToSecretAndProve creates the response to the initial challenge nonce
 // nonce1 sent by the issuer. The response consists of a commitment to the
 // secret (set on creation of the builder, see NewBuilder) and a proof of
 // correctness of this commitment.
-func (b *CredentialBuilder) CommitToSecretAndProve(nonce1 *big.Int) *IssueCommitmentMessage {
-	proofU := b.proveCommitment(nonce1)
+func (b *CredentialBuilder) CommitToSecretAndProve(nonce1 *big.Int) (*IssueCommitmentMessage, error) {
+	proofU, err := b.proveCommitment(nonce1)
+	if err != nil {
+		return nil, err
+	}
 
-	return &IssueCommitmentMessage{U: b.u, Proofs: ProofList{proofU}, Nonce2: b.nonce2}
+	return &IssueCommitmentMessage{U: b.u, Proofs: ProofList{proofU}, Nonce2: b.nonce2}, nil
 }
 
 // CreateIssueCommitmentMessage creates the IssueCommitmentMessage based on the
@@ -182,11 +191,17 @@ func (b *CredentialBuilder) ConstructCredential(msg *IssueSignatureMessage, attr
 }
 
 // Creates a proofU using a provided nonce
-func (b *CredentialBuilder) proveCommitment(nonce1 *big.Int) Proof {
-	sCommit, _ := common.RandomBigInt(b.pk.Params.LsCommit)
-	contrib, _ := b.Commit(map[string]*big.Int{"secretkey": sCommit}) // never errors, returns error to comply with interface
+func (b *CredentialBuilder) proveCommitment(nonce1 *big.Int) (Proof, error) {
+	sCommit, err := common.RandomBigInt(b.pk.Params.LsCommit)
+	if err != nil {
+		return nil, err
+	}
+	contrib, err := b.Commit(map[string]*big.Int{"secretkey": sCommit})
+	if err != nil {
+		return nil, err
+	}
 	c := createChallenge(b.context, nonce1, contrib, false)
-	return b.CreateProof(c)
+	return b.CreateProof(c), nil
 }
 
 // CredentialBuilder is a temporary object to hold some state for the protocol
@@ -226,10 +241,17 @@ func (b *CredentialBuilder) PublicKey() *gabikeys.PublicKey {
 // Optionally commits to the user shares of random blind attributes if any are present.
 func (b *CredentialBuilder) Commit(randomizers map[string]*big.Int) ([]*big.Int, error) {
 	b.skRandomizer = randomizers["secretkey"]
-	b.vPrimeCommit, _ = common.RandomBigInt(b.pk.Params.LvPrimeCommit)
+	var err error
+	b.vPrimeCommit, err = common.RandomBigInt(b.pk.Params.LvPrimeCommit)
+	if err != nil {
+		return nil, err
+	}
 	b.mUserCommit = make(map[int]*big.Int)
 	for i := range b.mUser {
-		b.mUserCommit[i], _ = common.RandomBigInt(b.pk.Params.LmCommit)
+		b.mUserCommit[i], err = common.RandomBigInt(b.pk.Params.LmCommit)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// U_commit = U_commit * S^{v_prime_commit} * R_0^{s_commit}
