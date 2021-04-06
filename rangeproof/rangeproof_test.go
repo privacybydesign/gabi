@@ -115,7 +115,8 @@ func (_ *bruteForce4) Ld() uint {
 func testRangeProofWithSplitter(t *testing.T, split rangeproof.SquareSplitter) {
 	g := setupPubkey(t)
 
-	s := rangeproof.New(1, 1, big.NewInt(45), split)
+	s, err := rangeproof.New(1, 1, big.NewInt(45), split)
+	require.NoError(t, err)
 
 	m := big.NewInt(112)
 	mRandomizer, err := common.RandomBigInt(g.Params.Lm + g.Params.Lh + g.Params.Lstatzk)
@@ -151,7 +152,8 @@ func TestRangeProofUsingSumFourSquareAlg(t *testing.T) {
 func TestRangeProofExtractStructure(t *testing.T) {
 	g := setupPubkey(t)
 
-	s := rangeproof.New(1, 1, big.NewInt(45), &bruteForce3{})
+	s, err := rangeproof.New(1, 1, big.NewInt(45), &bruteForce3{})
+	require.NoError(t, err)
 
 	m := big.NewInt(112)
 	mRandomizer, err := common.RandomBigInt(g.Params.Lm + g.Params.Lh + g.Params.Lstatzk)
@@ -187,7 +189,8 @@ func TestRangeProofExtractStructure(t *testing.T) {
 func TestRangeProofInvalidStatement(t *testing.T) {
 	g := setupPubkey(t)
 
-	s := rangeproof.New(1, 1, big.NewInt(113), &bruteForce3{})
+	s, err := rangeproof.New(1, 1, big.NewInt(113), &bruteForce3{})
+	require.NoError(t, err)
 
 	m := big.NewInt(112)
 	mRandomizer, err := common.RandomBigInt(g.Params.Lm + g.Params.Lh + g.Params.Lstatzk)
@@ -219,7 +222,8 @@ func (t *testSplit) Ld() uint {
 func TestRangeProofMisbehavingSplit(t *testing.T) {
 	g := setupPubkey(t)
 
-	s := rangeproof.New(1, 1, big.NewInt(45), &testSplit{val: nil, e: errors.New("test"), n: 4, ld: 8})
+	s, err := rangeproof.New(1, 1, big.NewInt(45), &testSplit{val: nil, e: errors.New("test"), n: 4, ld: 8})
+	require.NoError(t, err)
 
 	m := big.NewInt(112)
 	mRandomizer, err := common.RandomBigInt(g.Params.Lm + g.Params.Lh + g.Params.Lstatzk)
@@ -227,15 +231,18 @@ func TestRangeProofMisbehavingSplit(t *testing.T) {
 	_, _, err = s.CommitmentsFromSecrets(g, m, mRandomizer)
 	assert.Error(t, err)
 
-	s = rangeproof.New(1, 1, big.NewInt(45), &testSplit{val: []*big.Int{big.NewInt(512), big.NewInt(512), big.NewInt(512)}, e: nil, n: 3, ld: 8})
+	s, err = rangeproof.New(1, 1, big.NewInt(45), &testSplit{val: []*big.Int{big.NewInt(512), big.NewInt(512), big.NewInt(512)}, e: nil, n: 3, ld: 8})
+	require.NoError(t, err)
 	_, _, err = s.CommitmentsFromSecrets(g, m, mRandomizer)
 	assert.Error(t, err)
 
-	s = rangeproof.New(1, 1, big.NewInt(45), &testSplit{val: []*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)}, e: nil, n: 4, ld: 8})
+	s, err = rangeproof.New(1, 1, big.NewInt(45), &testSplit{val: []*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)}, e: nil, n: 4, ld: 8})
+	require.NoError(t, err)
 	_, _, err = s.CommitmentsFromSecrets(g, m, mRandomizer)
 	assert.Error(t, err)
 
-	s = rangeproof.New(1, 1, big.NewInt(45), &testSplit{val: []*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)}, e: nil, n: 3, ld: 8})
+	s, err = rangeproof.New(1, 1, big.NewInt(45), &testSplit{val: []*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)}, e: nil, n: 3, ld: 8})
+	require.NoError(t, err)
 	secretList, commit, err := s.CommitmentsFromSecrets(g, m, mRandomizer)
 	require.NoError(t, err)
 	proof := s.BuildProof(commit, big.NewInt(1234567))
@@ -247,7 +254,8 @@ func TestRangeProofMisbehavingSplit(t *testing.T) {
 func TestVerifyProofStructure(t *testing.T) {
 	g := setupPubkey(t)
 
-	s := rangeproof.New(1, 1, big.NewInt(45), &bruteForce3{})
+	s, err := rangeproof.New(1, 1, big.NewInt(45), &bruteForce3{})
+	require.NoError(t, err)
 
 	m := big.NewInt(112)
 	mRandomizer, err := common.RandomBigInt(g.Params.Lm + g.Params.Lh + g.Params.Lstatzk)

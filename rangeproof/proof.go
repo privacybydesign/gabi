@@ -16,9 +16,9 @@ This subpackage of gabi implements a variation of the inequality/range proof pro
 section 6.2.6/6.3.6 of "Specification of the Identity Mixer Cryptographic Library Version 2.3.0".
 
 Specifically, given an attribute m; a value k; and a number a equal to -1 or 1, this subpackage
-allows clients to prove that a*m - k >= 0, by writing the left hand side as a sum of squares, and
+allows clients to prove that a(m - k) >= 0, by writing the left hand side as a sum of squares, and
 then proving knowledge of the square roots of these squares. From this, the verifier can infer that
-a*m - k must be positive.
+a(m - k) must be non-negative, i.e. m >= k or m <= k if a = 1 or -1 respectively.
 
 The following changes were made with respect to the Identity Mixer specification:
 - There is no direct support for the > and < operators: the end user should do boundary adjustment
@@ -29,12 +29,12 @@ The following changes were made with respect to the Identity Mixer specification
 This results in that our code proves the following substatements:
 
     C_i = R^(d_i) S^(v_i)
-    R^k \product_i C_i^(d_i) = R^(a*m) S^(v_5)
+    R^(a*k) \product_i C_i^(d_i) = R^(a*m) S^(v_5)
 
 where
 - m is the attribute value,
 - k, a are fixed constants specified in the proof structure,
-- d_i are values such that a*m - k = \sum_i (d_i)^2,
+- d_i are values such that a(m - k) = \sum_i (d_i)^2,
 - v_i are computational hiders for the d_i,
 - v_5 = \sum_i d_i * v_i.
 
@@ -172,38 +172,47 @@ func NewStatement(typ StatementType, bound *big.Int) *Statement {
 	case LesserOrEqual:
 		return &Statement{Factor: 1, Bound: b}
 	case GreaterOrEqual:
-		return &Statement{Factor: -1, Bound: b.Neg(b)}
+		return &Statement{Factor: -1, Bound: b}
 	default:
 		return nil
 	}
 }
 
-// Create a new proof structure for proving a statement of form a*m - k >= 0
-//  splitter describes the method used for splitting numbers into sum of squares
-//  lh is the size of the challenge
-//  lm the size of m, and also used as the number of bits for computational hiding
-//  lstatzk the number of bits of statistical hiding to use
-func New(index, a int, k *big.Int, split SquareSplitter) *ProofStructure {
-	if split.SquareCount() == 3 {
-		// Not all numbers can be written as sum of 3 squares, but n for which n == 2 (mod 4) can
-		// so ensure that a*m-k falls into that category
-		a *= 4
-		k = new(big.Int).Mul(k, big.NewInt(4)) // ensure we dont overwrite callers copy of k
-		k.Sub(k, big.NewInt(2))
+// Create a new proof structure for proving a statement of the form factor(m - bound) >= 0.
+//
+// index specifies the index of the attribute.
+// splitter describes the method used for splitting numbers into sum of squares.
+func New(index, factor int, bound *big.Int, splitter SquareSplitter) (*ProofStructure, error) {
+	if factor != 1 && factor != -1 {
+		return nil, errors.New("factor must be either 1 or -1")
 	}
 
-	return newWithParams(index, a, k, split, split.SquareCount(), split.Ld())
+	if splitter.SquareCount() == 3 {
+		// Not all numbers can be written as sum of 3 squares, but n for which n == 2 (mod 4) can
+		// so ensure that factor(m-bound) falls into that category
+		factor *= 4
+		bound = new(big.Int).Mul(bound, big.NewInt(4)) // ensure we dont overwrite callers copy of bound
+		bound.Sub(bound, big.NewInt(2))
+	}
+
+	return newWithParams(index, factor, bound, splitter, splitter.SquareCount(), splitter.Ld())
 }
 
-func newWithParams(index, a int, k *big.Int, split SquareSplitter, nSplit int, ld uint) *ProofStructure {
+func newWithParams(index, a int, k *big.Int, split SquareSplitter, nSplit int, ld uint) (*ProofStructure, error) {
 	if nSplit > 4 {
-		panic("No support for range proofs with delta split in more than 4 squares")
+		return nil, errors.New("no support for range proofs with delta split in more than 4 squares")
 	}
 
+	var exp *big.Int
+	if a > 0 {
+		exp = new(big.Int).Neg(k)
+	} else {
+		exp = new(big.Int).Set(k)
+	}
 	result := &ProofStructure{
 		mCorrect: zkproof.QrRepresentationProofStructure{
 			Lhs: []zkproof.LhsContribution{
-				{Base: fmt.Sprintf("R%d", index), Power: new(big.Int).Neg(k)},
+				{Base: fmt.Sprintf("R%d", index), Power: exp},
 			},
 			Rhs: []zkproof.RhsContribution{
 				{Base: "S", Secret: "v5", Power: -1},
@@ -237,14 +246,18 @@ func newWithParams(index, a int, k *big.Int, split SquareSplitter, nSplit int, l
 		})
 	}
 
-	return result
+	return result, nil
 }
 
 func (s *ProofStructure) CommitmentsFromSecrets(g *gabikeys.PublicKey, m, mRandomizer *big.Int) ([]*big.Int, *ProofCommit, error) {
 	var err error
 
 	d := new(big.Int).Mul(m, big.NewInt(int64(s.a)))
-	d.Sub(d, s.k)
+	if s.a > 0 {
+		d.Sub(d, s.k)
+	} else {
+		d.Add(d, s.k)
+	}
 
 	if d.Sign() < 0 {
 		return nil, nil, errors.New("requested inequality does not hold")
@@ -412,7 +425,7 @@ func (p *Proof) ExtractStructure(index int, g *gabikeys.PublicKey) (*ProofStruct
 		p.K.BitLen() > int(g.Params.Lm+strconv.IntSize) {
 		return nil, errors.New("invalid proof")
 	}
-	return newWithParams(index, p.A, p.K, nil, len(p.Cs), p.Ld), nil
+	return newWithParams(index, p.A, p.K, nil, len(p.Cs), p.Ld)
 }
 
 // ---

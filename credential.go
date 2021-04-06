@@ -158,8 +158,11 @@ func (ic *Credential) CreateDisclosureProofBuilder(
 				if split == nil {
 					split = &rangeproof.FourSquaresSplitter{}
 				}
-				d.rpStructures[index] = append(d.rpStructures[index],
-					rangeproof.New(index, statement.Factor, statement.Bound, split))
+				structure, err := rangeproof.New(index, statement.Factor, statement.Bound, split)
+				if err != nil {
+					return nil, err
+				}
+				d.rpStructures[index] = append(d.rpStructures[index], structure)
 			}
 		}
 	}
