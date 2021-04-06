@@ -1,7 +1,6 @@
 package rangeproof
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 
@@ -9,6 +8,8 @@ import (
 	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/internal/common"
 	"github.com/privacybydesign/gabi/zkproof"
+
+	"github.com/go-errors/errors"
 )
 
 /*

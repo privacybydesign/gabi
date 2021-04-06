@@ -1,10 +1,10 @@
 package rangeproof
 
 import (
-	"errors"
-
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
+
+	"github.com/go-errors/errors"
 )
 
 // SquareSplitter provides a combined interface for all facets describing a method for spliting positive numbers into a sum of squares.

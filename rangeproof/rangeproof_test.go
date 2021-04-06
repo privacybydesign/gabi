@@ -1,7 +1,6 @@
 package rangeproof_test
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/privacybydesign/gabi/big"
@@ -10,6 +9,8 @@ import (
 	"github.com/privacybydesign/gabi/rangeproof"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/go-errors/errors"
 )
 
 const (
