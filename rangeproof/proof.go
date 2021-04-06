@@ -105,6 +105,17 @@ Notes:
 */
 
 type (
+	// Statement states that an attribute m satisfies factor*m-bound >= 0, and that factor*m-bound
+	// can be split into squares with the given splitter. E.g. if factor = 1 then m >= k. Defaults to
+	// four square splitter when splitter is not specified.
+	Statement struct {
+		Factor int
+		Bound  *big.Int
+		Split  SquareSplitter
+	}
+
+	StatementType int
+
 	ProofStructure struct {
 		cRep     []zkproof.QrRepresentationProofStructure
 		mCorrect zkproof.QrRepresentationProofStructure
@@ -149,6 +160,23 @@ type (
 	proof       Proof
 	proofCommit ProofCommit
 )
+
+const (
+	GreaterOrEqual StatementType = iota
+	LesserOrEqual
+)
+
+func NewStatement(typ StatementType, bound *big.Int, splitter SquareSplitter) *Statement {
+	b := new(big.Int).Set(bound)
+	switch typ {
+	case LesserOrEqual:
+		return &Statement{Factor: 1, Bound: b, Split: splitter}
+	case GreaterOrEqual:
+		return &Statement{Factor: -1, Bound: b.Neg(b), Split: splitter}
+	default:
+		return nil
+	}
+}
 
 // Create a new proof structure for proving a statement of form a*m - k >= 0
 //  splitter describes the method used for splitting numbers into sum of squares
@@ -366,6 +394,10 @@ func (p *Proof) ProvesStatement(a int, k *big.Int) bool {
 		k.Sub(k, big.NewInt(2))
 	}
 	return a == p.A && k.Cmp(p.K) == 0
+}
+
+func (p *Proof) Proves(statement *Statement) bool {
+	return p.ProvesStatement(statement.Factor, statement.Bound)
 }
 
 // Extract proof structure from proof

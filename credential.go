@@ -23,15 +23,6 @@ type Credential struct {
 	nonrevCache chan *NonRevocationProofBuilder
 }
 
-// RangeStatement states that an attribute m satisfies factor*m-bound >= 0, and that factor*m-bound
-// can be split into squares with the given splitter. E.g. if factor = 1 then m >= k. Defaults to
-// four square splitter when splitter is not specified.
-type RangeStatement struct {
-	Factor int
-	Bound  *big.Int
-	Split  rangeproof.SquareSplitter
-}
-
 // DisclosureProofBuilder is an object that holds the state for the protocol to
 // produce a disclosure proof.
 type DisclosureProofBuilder struct {
@@ -118,7 +109,7 @@ func isUndisclosedAttribute(disclosedAttributes []int, attribute int) bool {
 // indices of disclosed attributes.
 func (ic *Credential) CreateDisclosureProof(
 	disclosedAttributes []int,
-	rangeStatements map[int][]*RangeStatement,
+	rangeStatements map[int][]*rangeproof.Statement,
 	nonrev bool,
 	context, nonce1 *big.Int,
 ) (*ProofD, error) {
@@ -138,7 +129,7 @@ func (ic *Credential) CreateDisclosureProof(
 // linked to other proofs.
 func (ic *Credential) CreateDisclosureProofBuilder(
 	disclosedAttributes []int,
-	rangeStatements map[int][]*RangeStatement,
+	rangeStatements map[int][]*rangeproof.Statement,
 	nonrev bool,
 ) (*DisclosureProofBuilder, error) {
 	d := &DisclosureProofBuilder{}
