@@ -187,6 +187,10 @@ func New(index, factor int, bound *big.Int, splitter SquareSplitter) (*ProofStru
 		return nil, errors.New("factor must be either 1 or -1")
 	}
 
+	if splitter == nil {
+		splitter = &FourSquaresSplitter{}
+	}
+
 	if splitter.SquareCount() == 3 {
 		// Not all numbers can be written as sum of 3 squares, but n for which n == 2 (mod 4) can
 		// so ensure that factor(m-bound) falls into that category
@@ -247,6 +251,10 @@ func newWithParams(index, a int, k *big.Int, split SquareSplitter, nSplit int, l
 	}
 
 	return result, nil
+}
+
+func (statement *Statement) ProofStructure(index int) (*ProofStructure, error) {
+	return New(index, statement.Factor, statement.Bound, statement.Splitter)
 }
 
 func (s *ProofStructure) CommitmentsFromSecrets(g *gabikeys.PublicKey, m, mRandomizer *big.Int) ([]*big.Int, *ProofCommit, error) {
