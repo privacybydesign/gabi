@@ -167,6 +167,10 @@ const (
 	LesserOrEqual
 )
 
+var (
+	ErrFalseStatement = errors.New("requested inequality does not hold")
+)
+
 func NewStatement(typ StatementType, bound *big.Int) *Statement {
 	switch typ {
 	case GreaterOrEqual:
@@ -268,7 +272,7 @@ func (s *ProofStructure) CommitmentsFromSecrets(g *gabikeys.PublicKey, m, mRando
 	}
 
 	if d.Sign() < 0 {
-		return nil, nil, errors.New("requested inequality does not hold")
+		return nil, nil, ErrFalseStatement
 	}
 
 	commit := &proofCommit{

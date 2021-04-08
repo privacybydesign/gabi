@@ -623,31 +623,37 @@ func createCredential(t *testing.T, context, secret *big.Int, issuer *Issuer) *C
 var squaresTable = rangeproof.GenerateSquaresTable(65535)
 
 func TestRangeProofGreaterOrEqual(t *testing.T) {
-	testRangeProofs(t, []*rangeproof.Statement{
+	testRangeProofs(t, true, []*rangeproof.Statement{
 		rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Sub(testAttributes1[0], big.NewInt(63))),
 	})
 }
 
 func TestRangeProofEqual(t *testing.T) {
-	testRangeProofs(t, []*rangeproof.Statement{
+	testRangeProofs(t, true, []*rangeproof.Statement{
 		rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Set(testAttributes1[0])),
 	})
 }
 
 func TestRangeProofLesserOrEqual(t *testing.T) {
-	testRangeProofs(t, []*rangeproof.Statement{
+	testRangeProofs(t, true, []*rangeproof.Statement{
 		rangeproof.NewStatement(rangeproof.LesserOrEqual, new(big.Int).Add(testAttributes1[0], big.NewInt(63))),
 	})
 }
 
 func TestRangeProofMultiple(t *testing.T) {
-	testRangeProofs(t, []*rangeproof.Statement{
+	testRangeProofs(t, true, []*rangeproof.Statement{
 		rangeproof.NewStatement(rangeproof.LesserOrEqual, new(big.Int).Add(testAttributes1[0], big.NewInt(63))),
 		rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Sub(testAttributes1[0], big.NewInt(63))),
 	})
 }
 
-func testRangeProofs(t *testing.T, statements []*rangeproof.Statement) {
+func TestRangeProofFalseStatement(t *testing.T) {
+	testRangeProofs(t, false, []*rangeproof.Statement{
+		rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Add(testAttributes1[0], big.NewInt(63))),
+	})
+}
+
+func testRangeProofs(t *testing.T, trueStatements bool, statements []*rangeproof.Statement) {
 	for _, splitter := range []rangeproof.SquareSplitter{nil, squaresTable} {
 		context, err := common.RandomBigInt(testPubK1.Params.Lh)
 		assert.NoError(t, err)
@@ -666,6 +672,12 @@ func testRangeProofs(t *testing.T, statements []*rangeproof.Statement) {
 		proof, err := cred.CreateDisclosureProof(
 			[]int{2}, map[int][]*rangeproof.Statement{1: statements}, false, context, nonce,
 		)
+
+		if !trueStatements {
+			require.Equal(t, rangeproof.ErrFalseStatement, err)
+			continue
+		}
+
 		require.NoError(t, err)
 		assert.True(t, proof.Verify(testPubK1, context, nonce, false))
 
