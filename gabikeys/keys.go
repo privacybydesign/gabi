@@ -80,7 +80,7 @@ func NewPrivateKey(p, q *big.Int, ecdsa string, counter uint, expiryDate time.Ti
 		ECDSAString: ecdsa,
 	}
 
-	sk.cacheOrder()
+	sk.Order = new(big.Int).Mul(sk.PPrime, sk.QPrime)
 	if err := sk.parseRevocationKey(); err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func NewPrivateKeyFromXML(xmlInput string, demo bool) (*PrivateKey, error) {
 	}
 
 	privk.N = new(big.Int).Mul(privk.P, privk.Q)
-	privk.cacheOrder()
+	privk.Order = new(big.Int).Mul(privk.PPrime, privk.QPrime)
 	if err := privk.parseRevocationKey(); err != nil {
 		return nil, err
 	}
@@ -143,10 +143,6 @@ func (privk *PrivateKey) Validate() error {
 		return errors.New("Q is not a safe prime")
 	}
 	return nil
-}
-
-func (privk *PrivateKey) cacheOrder() {
-	privk.Order = new(big.Int).Mul(privk.PPrime, privk.QPrime)
 }
 
 // Print prints the key to stdout.
