@@ -175,7 +175,7 @@ func NewStatement(typ StatementType, bound *big.Int) *Statement {
 //
 // index specifies the index of the attribute.
 // splitter describes the method used for splitting numbers into sum of squares.
-func New(index, factor int, bound *big.Int, splitter SquareSplitter) (*ProofStructure, error) {
+func NewProofStructure(index, factor int, bound *big.Int, splitter SquareSplitter) (*ProofStructure, error) {
 	if factor != 1 && factor != -1 {
 		return nil, errors.New("factor must be either 1 or -1")
 	}
@@ -247,7 +247,7 @@ func newWithParams(index, a int, k *big.Int, split SquareSplitter, nSplit int, l
 }
 
 func (statement *Statement) ProofStructure(index int) (*ProofStructure, error) {
-	return New(index, statement.Factor, statement.Bound, statement.Splitter)
+	return NewProofStructure(index, statement.Factor, statement.Bound, statement.Splitter)
 }
 
 func (s *ProofStructure) CommitmentsFromSecrets(g *gabikeys.PublicKey, m, mRandomizer *big.Int) ([]*big.Int, *ProofCommit, error) {
