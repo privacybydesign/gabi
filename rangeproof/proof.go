@@ -163,12 +163,20 @@ type (
 )
 
 const (
-	LesserOrEqual  StatementType = 1
-	GreaterOrEqual StatementType = -1
+	GreaterOrEqual StatementType = iota
+	LesserOrEqual
 )
 
 func NewStatement(typ StatementType, bound *big.Int) *Statement {
-	return &Statement{Factor: int(typ), Bound: new(big.Int).Set(bound)}
+	b := new(big.Int).Set(bound)
+	switch typ {
+	case LesserOrEqual:
+		return &Statement{Factor: 1, Bound: b}
+	case GreaterOrEqual:
+		return &Statement{Factor: -1, Bound: b}
+	default:
+		return nil
+	}
 }
 
 // Create a new proof structure for proving a statement of the form factor(m - bound) >= 0.
