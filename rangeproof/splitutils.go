@@ -7,17 +7,21 @@ import (
 	"github.com/go-errors/errors"
 )
 
-// SquareSplitter provides a combined interface for all facets describing a method for spliting positive numbers into a sum of squares.
-type SquareSplitter interface {
-	// Number of bits per square
-	Ld() uint
-	// Number of squares in result
-	SquareCount() int
-	// Actual splitting function, on input delta, should return array x such that sum_i x_i^2 = delta and len(x) = SquareCount()
-	Split(*big.Int) ([]*big.Int, error)
-}
+type (
+	// SquareSplitter provides a combined interface for all facets describing a method for spliting positive numbers into a sum of squares.
+	SquareSplitter interface {
+		// Number of bits per square
+		Ld() uint
+		// Number of squares in result
+		SquareCount() int
+		// Actual splitting function, on input delta, should return array x such that sum_i x_i^2 = delta and len(x) = SquareCount()
+		Split(*big.Int) ([]*big.Int, error)
+	}
 
-type SquaresTable [][]int64
+	SquaresTable [][]int64
+
+	FourSquaresSplitter struct{}
+)
 
 // Generate lookup table for splitting numbers into 3 squares containing entries up-to and including limit
 // takes O(n^3/2)
@@ -71,8 +75,6 @@ func (t *SquaresTable) Ld() uint {
 	}
 	return ld + 1 // compensate for extra bit due to 3-square correction
 }
-
-type FourSquaresSplitter struct{}
 
 func (_ *FourSquaresSplitter) Split(delta *big.Int) ([]*big.Int, error) {
 	a, b, c, d := common.SumFourSquares(delta)
