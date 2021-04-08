@@ -188,10 +188,7 @@ func (privk *PrivateKey) WriteToFile(filename string, forceOverwrite bool) (int6
 }
 
 func (privk *PrivateKey) parseRevocationKey() error {
-	if privk.ECDSA != nil {
-		return nil
-	}
-	if !privk.RevocationSupported() {
+	if privk.ECDSA != nil || !privk.RevocationSupported() {
 		return nil
 	}
 	bts, err := base64.StdEncoding.DecodeString(privk.ECDSAString)
@@ -312,10 +309,7 @@ func NewPublicKeyFromFile(filename string) (*PublicKey, error) {
 }
 
 func (pubk *PublicKey) parseRevocationKey() error {
-	if pubk.ECDSA != nil {
-		return nil
-	}
-	if !pubk.RevocationSupported() {
+	if pubk.ECDSA != nil || !pubk.RevocationSupported() {
 		return nil
 	}
 	bts, err := base64.StdEncoding.DecodeString(pubk.ECDSAString)
