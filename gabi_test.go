@@ -622,28 +622,28 @@ func createCredential(t *testing.T, context, secret *big.Int, issuer *Issuer) *C
 
 var squaresTable = rangeproof.GenerateSquaresTable(65535)
 
-func TestRangeProofLesserOrEqual(t *testing.T) {
+func TestRangeProofGreaterOrEqual(t *testing.T) {
 	testRangeProofs(t, []*rangeproof.Statement{
-		rangeproof.NewStatement(rangeproof.LesserOrEqual, new(big.Int).Sub(testAttributes1[0], big.NewInt(63))),
+		rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Sub(testAttributes1[0], big.NewInt(63))),
 	})
 }
 
 func TestRangeProofEqual(t *testing.T) {
 	testRangeProofs(t, []*rangeproof.Statement{
-		rangeproof.NewStatement(rangeproof.LesserOrEqual, new(big.Int).Set(testAttributes1[0])),
+		rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Set(testAttributes1[0])),
 	})
 }
 
-func TestRangeProofGreaterOrEqual(t *testing.T) {
+func TestRangeProofLesserOrEqual(t *testing.T) {
 	testRangeProofs(t, []*rangeproof.Statement{
-		rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Add(testAttributes1[0], big.NewInt(63))),
+		rangeproof.NewStatement(rangeproof.LesserOrEqual, new(big.Int).Add(testAttributes1[0], big.NewInt(63))),
 	})
 }
 
 func TestRangeProofMultiple(t *testing.T) {
 	testRangeProofs(t, []*rangeproof.Statement{
-		rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Add(testAttributes1[0], big.NewInt(63))),
-		rangeproof.NewStatement(rangeproof.LesserOrEqual, new(big.Int).Sub(testAttributes1[0], big.NewInt(63))),
+		rangeproof.NewStatement(rangeproof.LesserOrEqual, new(big.Int).Add(testAttributes1[0], big.NewInt(63))),
+		rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Sub(testAttributes1[0], big.NewInt(63))),
 	})
 }
 

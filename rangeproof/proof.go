@@ -168,12 +168,11 @@ const (
 )
 
 func NewStatement(typ StatementType, bound *big.Int) *Statement {
-	b := new(big.Int).Set(bound)
 	switch typ {
-	case LesserOrEqual:
-		return &Statement{Factor: 1, Bound: b}
 	case GreaterOrEqual:
-		return &Statement{Factor: -1, Bound: b}
+		return &Statement{Factor: 1, Bound: new(big.Int).Set(bound)}
+	case LesserOrEqual:
+		return &Statement{Factor: -1, Bound: new(big.Int).Set(bound)}
 	default:
 		return nil
 	}
