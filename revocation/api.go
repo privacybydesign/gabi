@@ -193,7 +193,7 @@ func (acc *Accumulator) Sign(sk *gabikeys.PrivateKey) (*SignedAccumulator, error
 
 // Remove generates a new accumulator with the specified e removed from it.
 func (acc *Accumulator) Remove(sk *gabikeys.PrivateKey, e *big.Int, parent *Event) (*Accumulator, *Event, error) {
-	eInverse, ok := common.ModInverse(e, new(big.Int).Mul(sk.PPrime, sk.QPrime))
+	eInverse, ok := common.ModInverse(e, sk.Order)
 	if !ok {
 		// since N = P*Q and P, Q prime, e has no inverse if and only if e equals either P or Q
 		return nil, nil, errors.New("revocation attribute has no inverse")

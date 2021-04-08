@@ -22,7 +22,7 @@ func init() {
 }
 
 func generateKeys(t *testing.T) (*gabikeys.PrivateKey, *gabikeys.PublicKey) {
-	N, p, q, err := generateGroup()
+	N, pprime, qprime, err := generateGroup()
 	require.NoError(t, err)
 	ecdsa, err := signed.GenerateKey()
 	require.NoError(t, err)
@@ -30,8 +30,8 @@ func generateKeys(t *testing.T) (*gabikeys.PrivateKey, *gabikeys.PublicKey) {
 	sk := &gabikeys.PrivateKey{
 		Counter: 0,
 		ECDSA:   ecdsa,
-		PPrime:  p,
-		QPrime:  q,
+		PPrime:  pprime,
+		QPrime:  qprime,
 		N:       N,
 	}
 	sk.Order = new(big.Int).Mul(sk.PPrime, sk.QPrime)
