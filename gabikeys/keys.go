@@ -516,26 +516,24 @@ func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, e
 }
 
 func (pubk *PublicKey) Base(name string) *big.Int {
-	if name == "Z" {
+	switch {
+	case name == "Z":
 		return pubk.Z
-	}
-	if name == "S" {
+	case name == "S":
 		return pubk.S
-	}
-	if name == "G" {
+	case name == "G":
 		return pubk.G
-	}
-	if name == "H" {
+	case name == "H":
 		return pubk.H
-	}
-	if name[0] == 'R' {
+	case name[0] == 'R':
 		i, err := strconv.Atoi(name[1:])
 		if err != nil || i < 0 || i >= len(pubk.R) {
 			return nil
 		}
 		return pubk.R[i]
+	default:
+		return nil
 	}
-	return nil
 }
 
 func (pubk *PublicKey) Exp(ret *big.Int, name string, exp, n *big.Int) bool {
