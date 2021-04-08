@@ -311,7 +311,8 @@ func TestProofS(t *testing.T) {
 	sig, _, err := issuer.signCommitmentAndAttributes(U, testAttributes1, nil)
 	assert.NoError(t, err)
 
-	proof := issuer.proveSignature(sig, nonce)
+	proof, err := issuer.proveSignature(sig, nonce)
+	assert.NoError(t, err)
 
 	assert.True(t, proof.Verify(testPubK, sig, context, nonce), "ProofS does not verify, whereas is should.")
 

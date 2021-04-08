@@ -1,9 +1,13 @@
 package common
 
-import "crypto/sha256"
-import "encoding/asn1"
-import "github.com/privacybydesign/gabi/big"
-import gobig "math/big"
+import (
+	"crypto/sha256"
+	"encoding/asn1"
+
+	"github.com/privacybydesign/gabi/big"
+
+	gobig "math/big"
+)
 
 // hashCommit computes the sha256 hash over the asn1 representation of a slice
 // of big integers and returns a positive big integer that can be represented
@@ -24,11 +28,13 @@ func HashCommit(values []*big.Int, issig bool) *big.Int {
 	for i, v := range values {
 		tmp[i+offset] = v.Go()
 	}
-	r, _ := asn1.Marshal(tmp)
+	r, err := asn1.Marshal(tmp)
+	if err != nil {
+		panic(err) // Marshal should never error, so panic if it does
+	}
 
-	h := sha256.New()
-	_, _ = h.Write(r)
-	return new(big.Int).SetBytes(h.Sum(nil))
+	sha := sha256.Sum256(r)
+	return new(big.Int).SetBytes(sha[:])
 }
 
 // GetHashNumber uses a hash to generate random numbers of a given bitlength in the fiat-shamir heuristic

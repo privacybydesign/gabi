@@ -7,6 +7,7 @@ package gabi
 import (
 	"crypto/rand"
 
+	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/internal/common"
@@ -49,7 +50,10 @@ func signMessageBlockAndCommitment(sk *gabikeys.PrivateKey, pk *gabikeys.PublicK
 	numerator := new(big.Int).Exp(pk.S, v, pk.N)
 	numerator.Mul(numerator, R).Mul(numerator, U).Mod(numerator, pk.N)
 
-	invNumerator, _ := common.ModInverse(numerator, pk.N)
+	invNumerator, ok := common.ModInverse(numerator, pk.N)
+	if !ok {
+		return nil, errors.New("failed to invert mod n")
+	}
 	Q := new(big.Int).Mul(pk.Z, invNumerator)
 	Q.Mod(Q, pk.N)
 
@@ -58,7 +62,10 @@ func signMessageBlockAndCommitment(sk *gabikeys.PrivateKey, pk *gabikeys.PublicK
 		return nil, err
 	}
 
-	d, _ := common.ModInverse(e, sk.Order)
+	d, ok := common.ModInverse(e, sk.Order)
+	if !ok {
+		return nil, errors.New("failed to invert mod order")
+	}
 	A := new(big.Int).Exp(Q, d, pk.N)
 
 	// TODO: this is probably open to side channel attacks, maybe use a

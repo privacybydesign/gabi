@@ -36,7 +36,10 @@ func (i *Issuer) IssueSignature(U *big.Int, attributes []*big.Int, witness *revo
 	if err != nil {
 		return nil, err
 	}
-	proof := i.proveSignature(signature, nonce2)
+	proof, err := i.proveSignature(signature, nonce2)
+	if err != nil {
+		return nil, err
+	}
 	return &IssueSignatureMessage{Signature: signature, Proof: proof, NonRevocationWitness: witness, MIssuer: mIssuer}, nil
 }
 
@@ -71,29 +74,36 @@ func (i *Issuer) signCommitmentAndAttributes(U *big.Int, attributes []*big.Int, 
 
 // randomElementMultiplicativeGroup returns a random element in the
 // multiplicative group Z_{modulus}^*.
-func randomElementMultiplicativeGroup(modulus *big.Int) *big.Int {
+func randomElementMultiplicativeGroup(modulus *big.Int) (*big.Int, error) {
 	r := big.NewInt(0)
 	t := new(big.Int)
+	var err error
 	for r.Sign() <= 0 || t.GCD(nil, nil, r, modulus).Cmp(big.NewInt(1)) != 0 {
 		// TODO: for memory/cpu efficiency re-use r's memory. See Go's
 		// implementation for finding a random prime.
-		r, _ = big.RandInt(rand.Reader, modulus)
+		r, err = big.RandInt(rand.Reader, modulus)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return r
+	return r, nil
 }
 
 // proveSignature returns a proof of knowledge of $e^{-1}$ in the signature.
-func (i *Issuer) proveSignature(signature *CLSignature, nonce2 *big.Int) *ProofS {
+func (i *Issuer) proveSignature(signature *CLSignature, nonce2 *big.Int) (*ProofS, error) {
 	Q := new(big.Int).Exp(signature.A, signature.E, i.Pk.N)
 	groupModulus := new(big.Int).Mul(i.Sk.PPrime, i.Sk.QPrime)
 	d := new(big.Int).ModInverse(signature.E, groupModulus)
 
-	eCommit := randomElementMultiplicativeGroup(groupModulus)
+	eCommit, err := randomElementMultiplicativeGroup(groupModulus)
+	if err != nil {
+		return nil, err
+	}
 	ACommit := new(big.Int).Exp(Q, eCommit, i.Pk.N)
 
 	c := common.HashCommit([]*big.Int{i.Context, Q, signature.A, nonce2, ACommit}, false)
 	eResponse := new(big.Int).Mul(c, d)
 	eResponse.Sub(eCommit, eResponse).Mod(eResponse, groupModulus)
 
-	return &ProofS{c, eResponse}
+	return &ProofS{c, eResponse}, nil
 }
