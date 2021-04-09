@@ -5,12 +5,13 @@ import (
 	"testing"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/zkproof"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestExpStepAFlow(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for expStepA proof testing")
 
 	Follower.(*TestFollower).count = 0
@@ -23,8 +24,8 @@ func TestExpStepAFlow(t *testing.T) {
 	_, prePedersen := prePedersens.commitmentsFromSecrets(g, nil, big.NewInt(5))
 	_, postPedersen := postPedersens.commitmentsFromSecrets(g, nil, big.NewInt(5))
 
-	bases := NewBaseMerge(&g, &bitPedersen, &prePedersen, &postPedersen)
-	secrets := NewSecretMerge(&bitPedersen, &prePedersen, &postPedersen)
+	bases := zkproof.NewBaseMerge(&g, &bitPedersen, &prePedersen, &postPedersen)
+	secrets := zkproof.NewSecretMerge(&bitPedersen, &prePedersen, &postPedersen)
 
 	s := newExpStepAStructure("bit", "pre", "post")
 
@@ -47,7 +48,7 @@ func TestExpStepAFlow(t *testing.T) {
 	postProof := postPedersens.buildProof(g, big.NewInt(12345), postPedersen)
 	postProof.setName("post")
 
-	proofBases := NewBaseMerge(&g, &bitProof, &preProof, &postProof)
+	proofBases := zkproof.NewBaseMerge(&g, &bitProof, &preProof, &postProof)
 
 	listProof := s.commitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &proofBases, proof)
 
@@ -56,7 +57,7 @@ func TestExpStepAFlow(t *testing.T) {
 }
 
 func TestExpStepAFake(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for expStepA proof testing")
 
 	s := newExpStepAStructure("bit", "pre", "post")
@@ -66,7 +67,7 @@ func TestExpStepAFake(t *testing.T) {
 }
 
 func TestExpStepAJSON(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for expStepA proof testing")
 
 	s := newExpStepAStructure("bit", "pre", "post")
@@ -83,7 +84,7 @@ func TestExpStepAJSON(t *testing.T) {
 }
 
 func TestExpStepAVerifyStructure(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for expStepA proof testing")
 
 	s := newExpStepAStructure("bit", "pre", "post")

@@ -3,6 +3,7 @@ package keyproof
 import (
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
+	"github.com/privacybydesign/gabi/zkproof"
 )
 
 type (
@@ -18,18 +19,18 @@ type (
 	}
 )
 
-func newSecret(g group, name string, value *big.Int) secret {
+func newSecret(g zkproof.Group, name string, value *big.Int) secret {
 	return secret{
 		name,
 		new(big.Int).Set(value),
-		common.FastRandomBigInt(g.order),
+		common.FastRandomBigInt(g.Order),
 	}
 }
 
-func (s *secret) buildProof(g group, challenge *big.Int) Proof {
+func (s *secret) buildProof(g zkproof.Group, challenge *big.Int) Proof {
 	return Proof{
 		s.name,
-		new(big.Int).Mod(new(big.Int).Sub(s.randomizerv, new(big.Int).Mul(s.secretv, challenge)), g.order),
+		new(big.Int).Mod(new(big.Int).Sub(s.randomizerv, new(big.Int).Mul(s.secretv, challenge)), g.Order),
 	}
 }
 
@@ -37,10 +38,10 @@ func (p *Proof) verifyStructure() bool {
 	return p.Result != nil
 }
 
-func fakeProof(g group) Proof {
+func fakeProof(g zkproof.Group) Proof {
 	return Proof{
 		"",
-		common.FastRandomBigInt(g.order),
+		common.FastRandomBigInt(g.Order),
 	}
 }
 

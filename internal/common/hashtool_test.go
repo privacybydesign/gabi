@@ -1,7 +1,10 @@
 package common
 
-import "testing"
-import "github.com/privacybydesign/gabi/big"
+import (
+	"testing"
+
+	"github.com/privacybydesign/gabi/big"
+)
 
 func TestHashCommit(t *testing.T) {
 	listA := []*big.Int{
@@ -17,33 +20,16 @@ func TestHashCommit(t *testing.T) {
 
 	listB := []*big.Int{
 		big.NewInt(1),
-		nil,
-		big.NewInt(3),
+		big.NewInt(2),
 	}
 	hashB := HashCommit(listB, false)
 	if hashB == nil {
-		t.Error("Failed to generate hash for B")
-		return
-	}
-
-	listC := []*big.Int{
-		big.NewInt(1),
-		big.NewInt(2),
-	}
-	hashC := HashCommit(listC, false)
-	if hashC == nil {
 		t.Error("Failed to generate hash for C")
 		return
 	}
 
 	if hashA.Cmp(hashB) == 0 {
-		t.Error("Hashes for A and B coincide")
-	}
-	if hashA.Cmp(hashC) == 0 {
 		t.Error("Hashes for A and C coincide")
-	}
-	if hashB.Cmp(hashC) == 0 {
-		t.Error("Hashes for B and C coincide")
 	}
 }
 

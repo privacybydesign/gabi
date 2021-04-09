@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/zkproof"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -14,7 +15,7 @@ func TestIsSquareProof(t *testing.T) {
 	const a = 36
 	const b = 49
 
-	g, gok := buildGroup(big.NewInt(1439))
+	g, gok := zkproof.BuildGroup(big.NewInt(1439))
 	require.True(t, gok, "Failed to setup group for Range proof testing")
 
 	Follower.(*TestFollower).count = 0
@@ -43,7 +44,7 @@ func TestIsSquareProofStructure(t *testing.T) {
 	const a = 36
 	const b = 49
 
-	g, gok := buildGroup(big.NewInt(1439))
+	g, gok := zkproof.BuildGroup(big.NewInt(1439))
 	require.True(t, gok, "Failed to setup group for Range proof testing")
 
 	s := newIsSquareProofStructure(big.NewInt(p*q), []*big.Int{big.NewInt(a), big.NewInt(b)})

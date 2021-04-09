@@ -5,12 +5,13 @@ import (
 	"testing"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/zkproof"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAdditionProofFlow(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for Addition proof testing")
 
 	Follower.(*TestFollower).count = 0
@@ -30,8 +31,8 @@ func TestAdditionProofFlow(t *testing.T) {
 	_, mod := mods.commitmentsFromSecrets(g, []*big.Int{}, big.NewInt(n))
 	_, result := results.commitmentsFromSecrets(g, []*big.Int{}, big.NewInt(d))
 
-	bases := NewBaseMerge(&g, &a1, &a2, &mod, &result)
-	secrets := NewSecretMerge(&a1, &a2, &mod, &result)
+	bases := zkproof.NewBaseMerge(&g, &a1, &a2, &mod, &result)
+	secrets := zkproof.NewSecretMerge(&a1, &a2, &mod, &result)
 
 	s := newAdditionProofStructure("a1", "a2", "mod", "result", 3)
 	assert.True(t, s.isTrue(&secrets), "Incorrectly assessed proof setup as incorrect.")
@@ -53,8 +54,8 @@ func TestAdditionProofFlow(t *testing.T) {
 	resultproof := results.buildProof(g, big.NewInt(12345), result)
 	resultproof.setName("result")
 
-	basesProof := NewBaseMerge(&g, &a1proof, &a2proof, &modproof, &resultproof)
-	proofdata := NewProofMerge(&a1proof, &a2proof, &modproof, &resultproof)
+	basesProof := zkproof.NewBaseMerge(&g, &a1proof, &a2proof, &modproof, &resultproof)
+	proofdata := zkproof.NewProofMerge(&a1proof, &a2proof, &modproof, &resultproof)
 
 	assert.True(t, s.verifyProofStructure(proof), "Proof structure marked as invalid.")
 
@@ -65,7 +66,7 @@ func TestAdditionProofFlow(t *testing.T) {
 }
 
 func TestAdditionProofVerifyStructure(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for Multiplication proof testing")
 
 	var proof AdditionProof
@@ -85,7 +86,7 @@ func TestAdditionProofVerifyStructure(t *testing.T) {
 }
 
 func TestAdditionProofFake(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for Multiplication proof testing")
 
 	s := newAdditionProofStructure("a1", "a2", "mod", "result", 3)
@@ -95,7 +96,7 @@ func TestAdditionProofFake(t *testing.T) {
 }
 
 func TestAdditionProofJSON(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for Multiplication proof testing")
 
 	s := newAdditionProofStructure("a1", "a2", "mod", "result", 3)

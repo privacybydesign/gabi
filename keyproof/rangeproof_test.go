@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/zkproof"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -69,17 +70,17 @@ func listCmp(a []*big.Int, b []*big.Int) bool {
 }
 
 func TestRangeProofBasic(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for Range proof testing")
 
 	Follower.(*TestFollower).count = 0
 
 	var s rangeProofStructure
-	s.Lhs = []LhsContribution{
-		LhsContribution{"x", big.NewInt(1)},
+	s.Lhs = []zkproof.LhsContribution{
+		zkproof.LhsContribution{"x", big.NewInt(1)},
 	}
-	s.Rhs = []RhsContribution{
-		RhsContribution{"g", "x", 1},
+	s.Rhs = []zkproof.RhsContribution{
+		zkproof.RhsContribution{"g", "x", 1},
 	}
 	s.rangeSecret = "x"
 	s.l1 = 3
@@ -93,12 +94,12 @@ func TestRangeProofBasic(t *testing.T) {
 
 	var commit RangeTestCommit
 	commit.commits = map[string]*big.Int{
-		"x": new(big.Int).Exp(g.g, big.NewInt(7), g.p),
+		"x": new(big.Int).Exp(g.G, big.NewInt(7), g.P),
 	}
 
-	bases := NewBaseMerge(&g, &commit)
+	bases := zkproof.NewBaseMerge(&g, &commit)
 
-	assert.True(t, s.isTrue(g, &bases, &secret), "Statement incorrectly declared false")
+	assert.True(t, s.IsTrue(g, &bases, &secret), "Statement incorrectly declared false")
 
 	listSecret, rpcommit := s.commitmentsFromSecrets(g, []*big.Int{}, &bases, &secret)
 
@@ -117,18 +118,18 @@ func TestRangeProofBasic(t *testing.T) {
 }
 
 func TestRangeProofComplex(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for Range proof testing")
 
 	Follower.(*TestFollower).count = 0
 
 	var s rangeProofStructure
-	s.Lhs = []LhsContribution{
-		LhsContribution{"c", big.NewInt(1)},
+	s.Lhs = []zkproof.LhsContribution{
+		zkproof.LhsContribution{"c", big.NewInt(1)},
 	}
-	s.Rhs = []RhsContribution{
-		RhsContribution{"g", "x", 1},
-		RhsContribution{"h", "xh", 1},
+	s.Rhs = []zkproof.RhsContribution{
+		zkproof.RhsContribution{"g", "x", 1},
+		zkproof.RhsContribution{"h", "xh", 1},
 	}
 	s.l1 = 3
 	s.l2 = 2
@@ -144,14 +145,14 @@ func TestRangeProofComplex(t *testing.T) {
 	commit.commits = map[string]*big.Int{
 		"c": new(big.Int).Mod(
 			new(big.Int).Mul(
-				new(big.Int).Exp(g.g, big.NewInt(7), g.p),
-				new(big.Int).Exp(g.h, big.NewInt(21), g.p)),
-			g.p),
+				new(big.Int).Exp(g.G, big.NewInt(7), g.P),
+				new(big.Int).Exp(g.H, big.NewInt(21), g.P)),
+			g.P),
 	}
 
-	bases := NewBaseMerge(&g, &commit)
+	bases := zkproof.NewBaseMerge(&g, &commit)
 
-	assert.True(t, s.isTrue(g, &bases, &secret), "Statement incorrectly declared false")
+	assert.True(t, s.IsTrue(g, &bases, &secret), "Statement incorrectly declared false")
 
 	listSecret, rpcommit := s.commitmentsFromSecrets(g, []*big.Int{}, &bases, &secret)
 
@@ -172,12 +173,12 @@ func TestRangeProofComplex(t *testing.T) {
 func TestRangeProofVerifyStructureEmpty(t *testing.T) {
 	var proof RangeProof
 	var s rangeProofStructure
-	s.Lhs = []LhsContribution{
-		LhsContribution{"c", big.NewInt(1)},
+	s.Lhs = []zkproof.LhsContribution{
+		zkproof.LhsContribution{"c", big.NewInt(1)},
 	}
-	s.Rhs = []RhsContribution{
-		RhsContribution{"g", "x", 1},
-		RhsContribution{"h", "xh", 1},
+	s.Rhs = []zkproof.RhsContribution{
+		zkproof.RhsContribution{"g", "x", 1},
+		zkproof.RhsContribution{"h", "xh", 1},
 	}
 	s.l1 = 3
 	s.l2 = 2
@@ -188,12 +189,12 @@ func TestRangeProofVerifyStructureEmpty(t *testing.T) {
 func TestRangeProofVerifyStructureMissingVar(t *testing.T) {
 	var proof RangeProof
 	var s rangeProofStructure
-	s.Lhs = []LhsContribution{
-		LhsContribution{"c", big.NewInt(1)},
+	s.Lhs = []zkproof.LhsContribution{
+		zkproof.LhsContribution{"c", big.NewInt(1)},
 	}
-	s.Rhs = []RhsContribution{
-		RhsContribution{"g", "x", 1},
-		RhsContribution{"h", "xh", 1},
+	s.Rhs = []zkproof.RhsContribution{
+		zkproof.RhsContribution{"g", "x", 1},
+		zkproof.RhsContribution{"h", "xh", 1},
 	}
 	s.l1 = 3
 	s.l2 = 2
@@ -213,12 +214,12 @@ func TestRangeProofVerifyStructureMissingVar(t *testing.T) {
 func TestRangeProofVerifyStructureTooShortVar(t *testing.T) {
 	var proof RangeProof
 	var s rangeProofStructure
-	s.Lhs = []LhsContribution{
-		LhsContribution{"c", big.NewInt(1)},
+	s.Lhs = []zkproof.LhsContribution{
+		zkproof.LhsContribution{"c", big.NewInt(1)},
 	}
-	s.Rhs = []RhsContribution{
-		RhsContribution{"g", "x", 1},
-		RhsContribution{"h", "xh", 1},
+	s.Rhs = []zkproof.RhsContribution{
+		zkproof.RhsContribution{"g", "x", 1},
+		zkproof.RhsContribution{"h", "xh", 1},
 	}
 	s.l1 = 3
 	s.l2 = 2
@@ -245,12 +246,12 @@ func TestRangeProofVerifyStructureTooShortVar(t *testing.T) {
 func TestRangeProofVerifyStructureMissingNo(t *testing.T) {
 	var proof RangeProof
 	var s rangeProofStructure
-	s.Lhs = []LhsContribution{
-		LhsContribution{"c", big.NewInt(1)},
+	s.Lhs = []zkproof.LhsContribution{
+		zkproof.LhsContribution{"c", big.NewInt(1)},
 	}
-	s.Rhs = []RhsContribution{
-		RhsContribution{"g", "x", 1},
-		RhsContribution{"h", "xh", 1},
+	s.Rhs = []zkproof.RhsContribution{
+		zkproof.RhsContribution{"g", "x", 1},
+		zkproof.RhsContribution{"h", "xh", 1},
 	}
 	s.l1 = 3
 	s.l2 = 2
@@ -276,16 +277,16 @@ func TestRangeProofVerifyStructureMissingNo(t *testing.T) {
 }
 
 func TestRangeProofFake(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for Range proof testing")
 
 	var s rangeProofStructure
-	s.Lhs = []LhsContribution{
-		LhsContribution{"c", big.NewInt(1)},
+	s.Lhs = []zkproof.LhsContribution{
+		zkproof.LhsContribution{"c", big.NewInt(1)},
 	}
-	s.Rhs = []RhsContribution{
-		RhsContribution{"g", "x", 1},
-		RhsContribution{"h", "xh", 1},
+	s.Rhs = []zkproof.RhsContribution{
+		zkproof.RhsContribution{"g", "x", 1},
+		zkproof.RhsContribution{"h", "xh", 1},
 	}
 	s.l1 = 3
 	s.l2 = 2
@@ -295,16 +296,16 @@ func TestRangeProofFake(t *testing.T) {
 }
 
 func TestRangeProofJSON(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for Range proof testing")
 
 	var s rangeProofStructure
-	s.Lhs = []LhsContribution{
-		LhsContribution{"c", big.NewInt(1)},
+	s.Lhs = []zkproof.LhsContribution{
+		zkproof.LhsContribution{"c", big.NewInt(1)},
 	}
-	s.Rhs = []RhsContribution{
-		RhsContribution{"g", "x", 1},
-		RhsContribution{"h", "xh", 1},
+	s.Rhs = []zkproof.RhsContribution{
+		zkproof.RhsContribution{"g", "x", 1},
+		zkproof.RhsContribution{"h", "xh", 1},
 	}
 	s.l1 = 3
 	s.l2 = 2

@@ -7,7 +7,9 @@ package gabi
 import (
 	"crypto/rand"
 
+	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/internal/common"
 )
 
@@ -16,7 +18,7 @@ import (
 //   R[1]^{exps[1]}*...*R[k]^{exps[k]} (mod N)
 // with R and N coming from the public key. The exponents are hashed if their length
 // exceeds the maximum message length from the public key.
-func RepresentToPublicKey(pk *PublicKey, exps []*big.Int) (*big.Int, error) {
+func RepresentToPublicKey(pk *gabikeys.PublicKey, exps []*big.Int) (*big.Int, error) {
 	return common.RepresentToBases(pk.R, exps, pk.N, pk.Params.Lm), nil
 }
 
@@ -30,14 +32,17 @@ type CLSignature struct {
 
 // SignMessageBlock signs a message block (ms) and a commitment (U) using the
 // Camenisch-Lysyanskaya signature scheme as used in the IdeMix system.
-func signMessageBlockAndCommitment(sk *PrivateKey, pk *PublicKey, U *big.Int, ms []*big.Int) (
+func signMessageBlockAndCommitment(sk *gabikeys.PrivateKey, pk *gabikeys.PublicKey, U *big.Int, ms []*big.Int) (
 	*CLSignature, error) {
 	R, err := RepresentToPublicKey(pk, ms)
 	if err != nil {
 		return nil, err
 	}
 
-	vTilde, _ := common.RandomBigInt(pk.Params.Lv - 1)
+	vTilde, err := common.RandomBigInt(pk.Params.Lv - 1)
+	if err != nil {
+		return nil, err
+	}
 	twoLv := new(big.Int).Lsh(big.NewInt(1), pk.Params.Lv-1)
 	v := new(big.Int).Add(twoLv, vTilde)
 
@@ -45,7 +50,10 @@ func signMessageBlockAndCommitment(sk *PrivateKey, pk *PublicKey, U *big.Int, ms
 	numerator := new(big.Int).Exp(pk.S, v, pk.N)
 	numerator.Mul(numerator, R).Mul(numerator, U).Mod(numerator, pk.N)
 
-	invNumerator, _ := common.ModInverse(numerator, pk.N)
+	invNumerator, ok := common.ModInverse(numerator, pk.N)
+	if !ok {
+		return nil, errors.New("failed to invert mod n")
+	}
 	Q := new(big.Int).Mul(pk.Z, invNumerator)
 	Q.Mod(Q, pk.N)
 
@@ -54,7 +62,10 @@ func signMessageBlockAndCommitment(sk *PrivateKey, pk *PublicKey, U *big.Int, ms
 		return nil, err
 	}
 
-	d, _ := common.ModInverse(e, sk.order)
+	d, ok := common.ModInverse(e, sk.Order)
+	if !ok {
+		return nil, errors.New("failed to invert mod order")
+	}
 	A := new(big.Int).Exp(Q, d, pk.N)
 
 	// TODO: this is probably open to side channel attacks, maybe use a
@@ -65,13 +76,13 @@ func signMessageBlockAndCommitment(sk *PrivateKey, pk *PublicKey, U *big.Int, ms
 
 // SignMessageBlock signs a message block (ms) using the Camenisch-Lysyanskaya
 // signature scheme as used in the IdeMix system.
-func SignMessageBlock(sk *PrivateKey, pk *PublicKey, ms []*big.Int) (*CLSignature, error) {
+func SignMessageBlock(sk *gabikeys.PrivateKey, pk *gabikeys.PublicKey, ms []*big.Int) (*CLSignature, error) {
 	return signMessageBlockAndCommitment(sk, pk, big.NewInt(1), ms)
 }
 
 // Verify checks whether the signature is correct while being given a public key
 // and the messages.
-func (s *CLSignature) Verify(pk *PublicKey, ms []*big.Int) bool {
+func (s *CLSignature) Verify(pk *gabikeys.PublicKey, ms []*big.Int) bool {
 	// First check that e is in the range [2^{l_e - 1}, 2^{l_e - 1} + 2^{l_e_prime - 1}]
 	start := new(big.Int).Lsh(big.NewInt(1), pk.Params.Le-1)
 	end := new(big.Int).Lsh(big.NewInt(1), pk.Params.LePrime-1)
@@ -98,11 +109,14 @@ func (s *CLSignature) Verify(pk *PublicKey, ms []*big.Int) bool {
 }
 
 // Randomize returns a randomized copy of the signature.
-func (s *CLSignature) Randomize(pk *PublicKey) *CLSignature {
-	r, _ := common.RandomBigInt(pk.Params.LRA)
+func (s *CLSignature) Randomize(pk *gabikeys.PublicKey) (*CLSignature, error) {
+	r, err := common.RandomBigInt(pk.Params.LRA)
+	if err != nil {
+		return nil, err
+	}
 	APrime := new(big.Int).Mul(s.A, new(big.Int).Exp(pk.S, r, pk.N))
 	APrime.Mod(APrime, pk.N)
 	t := new(big.Int).Mul(s.E, r)
 	VPrime := new(big.Int).Sub(s.V, t)
-	return &CLSignature{A: APrime, E: new(big.Int).Set(s.E), V: VPrime}
+	return &CLSignature{A: APrime, E: new(big.Int).Set(s.E), V: VPrime}, nil
 }

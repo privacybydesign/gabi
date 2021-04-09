@@ -7,15 +7,16 @@ package gabi
 import (
 	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/internal/common"
 )
 
 // ProofBuilder is an interface for a proof builder. That is, an object to hold
 // the state to build a list of bounded proofs (see ProofList).
 type ProofBuilder interface {
-	Commit(randomizers map[string]*big.Int) []*big.Int
+	Commit(randomizers map[string]*big.Int) ([]*big.Int, error)
 	CreateProof(challenge *big.Int) Proof
-	PublicKey() *PublicKey
+	PublicKey() *gabikeys.PublicKey
 	MergeProofPCommitment(commitment *ProofPCommitment)
 }
 
@@ -53,7 +54,7 @@ func (pl ProofList) GetFirstProofU() (*ProofU, error) {
 
 // challengeContributions collects and returns all the challenge contributions
 // of the proofs contained in the proof list.
-func (pl ProofList) challengeContributions(publicKeys []*PublicKey, context, nonce *big.Int) ([]*big.Int, error) {
+func (pl ProofList) challengeContributions(publicKeys []*gabikeys.PublicKey, context, nonce *big.Int) ([]*big.Int, error) {
 	contributions := make([]*big.Int, 0, len(pl)*2)
 	for i, proof := range pl {
 		contrib, err := proof.ChallengeContribution(publicKeys[i])
@@ -73,7 +74,7 @@ func (pl ProofList) challengeContributions(publicKeys []*PublicKey, context, non
 // the same secret key (i.e. it should be verified that all proofs use either none,
 // or one and the same keyshare server).
 // An empty ProofList is not considered valid.
-func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, issig bool, keyshareServers []string) bool {
+func (pl ProofList) Verify(publicKeys []*gabikeys.PublicKey, context, nonce *big.Int, issig bool, keyshareServers []string) bool {
 	if len(pl) == 0 ||
 		len(pl) != len(publicKeys) ||
 		len(keyshareServers) > 0 && len(pl) != len(keyshareServers) {
@@ -118,20 +119,27 @@ func (pl ProofList) Verify(publicKeys []*PublicKey, context, nonce *big.Int, iss
 	return true
 }
 
-func (builders ProofBuilderList) Challenge(context, nonce *big.Int, issig bool) *big.Int {
+func (builders ProofBuilderList) Challenge(context, nonce *big.Int, issig bool) (*big.Int, error) {
 	// The secret key may be used across credentials supporting different attribute sizes.
 	// So we should take it, and hence also its commitment, to fit within the smallest size -
 	// otherwise it will be too big so that we cannot perform the range proof showing
 	// that it is not too big.
-	skCommitment, _ := common.RandomBigInt(DefaultSystemParameters[1024].LmCommit)
+	skCommitment, err := common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].LmCommit)
+	if err != nil {
+		return nil, err
+	}
 
 	commitmentValues := make([]*big.Int, 0, len(builders)*2)
 	for _, pb := range builders {
-		commitmentValues = append(commitmentValues, pb.Commit(map[string]*big.Int{"secretkey": skCommitment})...)
+		contributions, err := pb.Commit(map[string]*big.Int{"secretkey": skCommitment})
+		if err != nil {
+			return nil, err
+		}
+		commitmentValues = append(commitmentValues, contributions...)
 	}
 
 	// Create a shared challenge
-	return createChallenge(context, nonce, commitmentValues, issig)
+	return createChallenge(context, nonce, commitmentValues, issig), nil
 }
 
 func (builders ProofBuilderList) BuildDistributedProofList(
@@ -155,8 +163,14 @@ func (builders ProofBuilderList) BuildDistributedProofList(
 // BuildProofList builds a list of bounded proofs. For this it is given a list
 // of ProofBuilders. Examples of proof builders are CredentialBuilder and
 // DisclosureProofBuilder.
-func (builders ProofBuilderList) BuildProofList(context, nonce *big.Int, issig bool) ProofList {
-	challenge := builders.Challenge(context, nonce, issig)
-	list, _ := builders.BuildDistributedProofList(challenge, nil)
-	return list
+func (builders ProofBuilderList) BuildProofList(context, nonce *big.Int, issig bool) (ProofList, error) {
+	challenge, err := builders.Challenge(context, nonce, issig)
+	if err != nil {
+		return nil, err
+	}
+	list, err := builders.BuildDistributedProofList(challenge, nil)
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
 }

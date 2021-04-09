@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/zkproof"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,7 +16,7 @@ func TestExpProofFlow(t *testing.T) {
 	const n = 11
 	const r = -1
 
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for exp proof testing")
 
 	Follower.(*TestFollower).count = 0
@@ -30,8 +31,8 @@ func TestExpProofFlow(t *testing.T) {
 	_, nPedersen := nPedersens.commitmentsFromSecrets(g, nil, big.NewInt(n))
 	_, rPedersen := rPedersens.commitmentsFromSecrets(g, nil, big.NewInt(r))
 
-	bases := NewBaseMerge(&g, &aPedersen, &bPedersen, &nPedersen, &rPedersen)
-	secrets := NewSecretMerge(&aPedersen, &bPedersen, &nPedersen, &rPedersen)
+	bases := zkproof.NewBaseMerge(&g, &aPedersen, &bPedersen, &nPedersen, &rPedersen)
+	secrets := zkproof.NewSecretMerge(&aPedersen, &bPedersen, &nPedersen, &rPedersen)
 
 	s := newExpProofStructure("a", "b", "n", "r", 4)
 
@@ -56,8 +57,8 @@ func TestExpProofFlow(t *testing.T) {
 	rProof := rPedersens.buildProof(g, big.NewInt(12345), rPedersen)
 	rProof.setName("r")
 
-	proofBases := NewBaseMerge(&g, &aProof, &bProof, &nProof, &rProof)
-	proofs := NewProofMerge(&aProof, &bProof, &nProof, &rProof)
+	proofBases := zkproof.NewBaseMerge(&g, &aProof, &bProof, &nProof, &rProof)
+	proofs := zkproof.NewProofMerge(&aProof, &bProof, &nProof, &rProof)
 
 	listProof := s.commitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &proofBases, &proofs, proof)
 
@@ -66,7 +67,7 @@ func TestExpProofFlow(t *testing.T) {
 }
 
 func TestExpProofFake(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for exp proof testing")
 
 	s := newExpProofStructure("a", "b", "n", "r", 4)
@@ -76,7 +77,7 @@ func TestExpProofFake(t *testing.T) {
 }
 
 func TestExpProofJSON(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for exp proof testing")
 
 	s := newExpProofStructure("a", "b", "n", "r", 4)
@@ -93,7 +94,7 @@ func TestExpProofJSON(t *testing.T) {
 }
 
 func TestExpProofVerifyStructure(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for exp proof testing")
 
 	s := newExpProofStructure("a", "b", "n", "r", 4)

@@ -6,8 +6,9 @@ import (
 
 	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/internal/common"
-	"github.com/privacybydesign/gabi/keyproof"
+	"github.com/privacybydesign/gabi/zkproof"
 )
 
 /*
@@ -86,14 +87,14 @@ type (
 		cu, cr, nu  *big.Int
 		secrets     map[string]*big.Int
 		randomizers map[string]*big.Int
-		g           *qrGroup
+		g           *gabikeys.PublicKey
 		sacc        *SignedAccumulator
 	}
 
 	proofStructure struct {
-		cr  qrRepresentationProofStructure
-		nu  qrRepresentationProofStructure
-		one qrRepresentationProofStructure
+		cr  zkproof.QrRepresentationProofStructure
+		nu  zkproof.QrRepresentationProofStructure
+		one zkproof.QrRepresentationProofStructure
 	}
 
 	// We implement the keyproof interfaces, containing exported methods, without exposing those
@@ -103,7 +104,6 @@ type (
 	proofCommit ProofCommit
 	accumulator Accumulator
 	witness     Witness
-	qrGroup     QrGroup
 )
 
 var (
@@ -123,26 +123,26 @@ var (
 	bigOne         = big.NewInt(1)
 	secretNames    = []string{"alpha", "beta", "delta", "epsilon", "zeta"}
 	proofstructure = proofStructure{
-		cr: qrRepresentationProofStructure{
-			Lhs: []keyproof.LhsContribution{{Base: "cr", Power: bigOne}},
-			Rhs: []keyproof.RhsContribution{
-				{Base: "g", Secret: "epsilon", Power: 1}, // r2
-				{Base: "h", Secret: "zeta", Power: 1},    // r3
+		cr: zkproof.QrRepresentationProofStructure{
+			Lhs: []zkproof.LhsContribution{{Base: "cr", Power: bigOne}},
+			Rhs: []zkproof.RhsContribution{
+				{Base: "G", Secret: "epsilon", Power: 1}, // r2
+				{Base: "H", Secret: "zeta", Power: 1},    // r3
 			},
 		},
-		nu: qrRepresentationProofStructure{
-			Lhs: []keyproof.LhsContribution{{Base: "nu", Power: bigOne}},
-			Rhs: []keyproof.RhsContribution{
+		nu: zkproof.QrRepresentationProofStructure{
+			Lhs: []zkproof.LhsContribution{{Base: "nu", Power: bigOne}},
+			Rhs: []zkproof.RhsContribution{
 				{Base: "cu", Secret: "alpha", Power: 1}, // e
-				{Base: "h", Secret: "beta", Power: -1},  // e r2
+				{Base: "H", Secret: "beta", Power: -1},  // e r2
 			},
 		},
-		one: qrRepresentationProofStructure{
-			Lhs: []keyproof.LhsContribution{{Base: "one", Power: bigOne}},
-			Rhs: []keyproof.RhsContribution{
+		one: zkproof.QrRepresentationProofStructure{
+			Lhs: []zkproof.LhsContribution{{Base: "one", Power: bigOne}},
+			Rhs: []zkproof.RhsContribution{
 				{Base: "cr", Secret: "alpha", Power: 1}, // e
-				{Base: "g", Secret: "beta", Power: -1},  // e r2
-				{Base: "h", Secret: "delta", Power: -1}, // e r3
+				{Base: "G", Secret: "beta", Power: -1},  // e r2
+				{Base: "H", Secret: "delta", Power: -1}, // e r3
 			},
 		},
 	}
@@ -164,7 +164,7 @@ func NewProofRandomizer() *big.Int {
 }
 
 // RandomWitness returns a new random Witness valid against the specified Accumulator.
-func RandomWitness(sk *PrivateKey, acc *Accumulator) (*Witness, error) {
+func RandomWitness(sk *gabikeys.PrivateKey, acc *Accumulator) (*Witness, error) {
 	e, err := common.RandomPrimeInRange(rand.Reader, 3, Parameters.AttributeSize)
 	if err != nil {
 		return nil, err
@@ -173,26 +173,26 @@ func RandomWitness(sk *PrivateKey, acc *Accumulator) (*Witness, error) {
 }
 
 // NewProofCommit performs the first move in the Schnorr zero-knowledge protocol: committing to randomizers.
-func NewProofCommit(grp *QrGroup, witn *Witness, randomizer *big.Int) ([]*big.Int, *ProofCommit, error) {
+func NewProofCommit(key *gabikeys.PublicKey, witn *Witness, randomizer *big.Int) ([]*big.Int, *ProofCommit, error) {
 	Logger.Tracef("revocation.NewProofCommit()")
 	defer Logger.Tracef("revocation.NewProofCommit() done")
 	witn.randomizer = randomizer
 	if randomizer == nil {
 		witn.randomizer = NewProofRandomizer()
 	}
-	if !proofstructure.isTrue((*witness)(witn), witn.SignedAccumulator.Accumulator.Nu, grp.N) {
+	if !proofstructure.isTrue((*witness)(witn), witn.SignedAccumulator.Accumulator.Nu, key.N) {
 		return nil, nil, errors.New("non-revocation relation does not hold")
 	}
 
-	bases := keyproof.NewBaseMerge((*qrGroup)(grp), &accumulator{Nu: witn.SignedAccumulator.Accumulator.Nu})
-	list, commit := proofstructure.commitmentsFromSecrets((*qrGroup)(grp), []*big.Int{}, &bases, (*witness)(witn))
+	bases := zkproof.NewBaseMerge(key, &accumulator{Nu: witn.SignedAccumulator.Accumulator.Nu})
+	list, commit := proofstructure.commitmentsFromSecrets(key, []*big.Int{}, &bases, (*witness)(witn))
 	commit.sacc = witn.SignedAccumulator
 	return list, (*ProofCommit)(&commit), nil
 }
 
 // SetExpected sets certain values of the proof to expected values, inferred from the containing proofs,
 // before verification.
-func (p *Proof) SetExpected(pk *PublicKey, challenge, response *big.Int) error {
+func (p *Proof) SetExpected(pk *gabikeys.PublicKey, challenge, response *big.Int) error {
 	acc, err := p.SignedAccumulator.UnmarshalVerify(pk)
 	if err != nil {
 		return err
@@ -203,12 +203,12 @@ func (p *Proof) SetExpected(pk *PublicKey, challenge, response *big.Int) error {
 	return nil
 }
 
-func (p *Proof) ChallengeContributions(grp *QrGroup) []*big.Int {
-	return proofstructure.commitmentsFromProof((*qrGroup)(grp), []*big.Int{},
-		p.Challenge, (*qrGroup)(grp), (*proof)(p), (*proof)(p))
+func (p *Proof) ChallengeContributions(key *gabikeys.PublicKey) []*big.Int {
+	return proofstructure.commitmentsFromProof(key, []*big.Int{},
+		p.Challenge, key, (*proof)(p), (*proof)(p))
 }
 
-func (p *Proof) VerifyWithChallenge(pk *PublicKey, reconstructedChallenge *big.Int) bool {
+func (p *Proof) VerifyWithChallenge(pk *gabikeys.PublicKey, reconstructedChallenge *big.Int) bool {
 	if !proofstructure.verifyProofStructure((*proof)(p)) {
 		return false
 	}
@@ -256,8 +256,8 @@ func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
 	c.sacc = witness.SignedAccumulator
 
 	commit := (*proofCommit)(c)
-	b := keyproof.NewBaseMerge(c.g, commit)
-	l := proofstructure.nu.commitmentsFromSecrets(c.g, []*big.Int{}, &b, commit)
+	b := zkproof.NewBaseMerge(c.g, commit)
+	l := proofstructure.nu.CommitmentsFromSecrets(c.g, []*big.Int{}, &b, commit)
 
 	commitments[1] = c.cu
 	commitments[2] = witness.SignedAccumulator.Accumulator.Nu
@@ -267,7 +267,7 @@ func (c *ProofCommit) Update(commitments []*big.Int, witness *Witness) {
 // Update updates the witness using the specified update data from the issuer,
 // after which the witness can be used to prove nonrevocation against the latest Accumulator
 // (contained in the update message).
-func (w *Witness) Update(pk *PublicKey, update *Update) error {
+func (w *Witness) Update(pk *gabikeys.PublicKey, update *Update) error {
 	Logger.Tracef("revocation.Witness.Update()")
 	defer Logger.Tracef("revocation.Witness.Update() done")
 
@@ -304,11 +304,11 @@ func (w *Witness) Update(pk *PublicKey, update *Update) error {
 	// u' = u^b * newNu^a mod n
 	newU := new(big.Int)
 	newU.Mul(
-		new(big.Int).Exp(w.U, &b, pk.Group.N),
-		new(big.Int).Exp(newAcc.Nu, &a, pk.Group.N),
-	).Mod(newU, pk.Group.N)
+		new(big.Int).Exp(w.U, &b, pk.N),
+		new(big.Int).Exp(newAcc.Nu, &a, pk.N),
+	).Mod(newU, pk.N)
 
-	if !verify(newU, w.E, newAcc, pk.Group) {
+	if !verify(newU, w.E, newAcc, pk) {
 		return errors.New("nonrevocation witness invalidated by update")
 	}
 
@@ -321,12 +321,12 @@ func (w *Witness) Update(pk *PublicKey, update *Update) error {
 }
 
 // Verify the witness against its SignedAccumulator.
-func (w *Witness) Verify(pk *PublicKey) error {
+func (w *Witness) Verify(pk *gabikeys.PublicKey) error {
 	_, err := w.SignedAccumulator.UnmarshalVerify(pk)
 	if err != nil {
 		return err
 	}
-	if !verify(w.U, w.E, w.SignedAccumulator.Accumulator, pk.Group) {
+	if !verify(w.U, w.E, w.SignedAccumulator.Accumulator, pk) {
 		return errors.New("invalid witness")
 	}
 	return nil
@@ -370,13 +370,12 @@ func (p *proof) ProofResult(name string) *big.Int {
 	return p.Responses[name]
 }
 
-func (p *proof) verify(pk *PublicKey) bool {
-	grp := (*qrGroup)(pk.Group)
-	commitments := proofstructure.commitmentsFromProof(grp, []*big.Int{}, p.Challenge, grp, p, p)
+func (p *proof) verify(pk *gabikeys.PublicKey) bool {
+	commitments := proofstructure.commitmentsFromProof(pk, []*big.Int{}, p.Challenge, pk, p, p)
 	return (*Proof)(p).VerifyWithChallenge(pk, common.HashCommit(commitments, false))
 }
 
-func (s *proofStructure) commitmentsFromSecrets(g *qrGroup, list []*big.Int, bases keyproof.BaseLookup, secretdata keyproof.SecretLookup) ([]*big.Int, proofCommit) {
+func (s *proofStructure) commitmentsFromSecrets(g *gabikeys.PublicKey, list []*big.Int, bases zkproof.BaseLookup, secretdata zkproof.SecretLookup) ([]*big.Int, proofCommit) {
 	commit := proofCommit{
 		g:           g,
 		secrets:     make(map[string]*big.Int, 5),
@@ -386,8 +385,12 @@ func (s *proofStructure) commitmentsFromSecrets(g *qrGroup, list []*big.Int, bas
 		nu:          bases.Base("nu"),
 	}
 
-	r2 := common.FastRandomBigInt(g.nDiv4)
-	r3 := common.FastRandomBigInt(g.nDiv4)
+	nDiv4 := new(big.Int).Div(g.N, big.NewInt(4))
+	nDiv4twoZk := new(big.Int).Mul(nDiv4, Parameters.twoZk)
+	nbDiv4twoZk := new(big.Int).Mul(nDiv4twoZk, Parameters.b)
+
+	r2 := common.FastRandomBigInt(nDiv4)
+	r3 := common.FastRandomBigInt(nDiv4)
 
 	alpha := secretdata.Secret("alpha")
 	commit.secrets["alpha"] = alpha
@@ -397,40 +400,40 @@ func (s *proofStructure) commitmentsFromSecrets(g *qrGroup, list []*big.Int, bas
 	commit.secrets["zeta"] = r3
 
 	commit.randomizers["alpha"] = secretdata.Randomizer("alpha")
-	commit.randomizers["beta"] = common.FastRandomBigInt(g.nbDiv4twoZk)
-	commit.randomizers["delta"] = common.FastRandomBigInt(g.nbDiv4twoZk)
-	commit.randomizers["epsilon"] = common.FastRandomBigInt(g.nDiv4twoZk)
-	commit.randomizers["zeta"] = common.FastRandomBigInt(g.nDiv4twoZk)
+	commit.randomizers["beta"] = common.FastRandomBigInt(nbDiv4twoZk)
+	commit.randomizers["delta"] = common.FastRandomBigInt(nbDiv4twoZk)
+	commit.randomizers["epsilon"] = common.FastRandomBigInt(nDiv4twoZk)
+	commit.randomizers["zeta"] = common.FastRandomBigInt(nDiv4twoZk)
 
 	var tmp big.Int
 
 	// Set C_r = g^r2 * h^r3
-	bases.Exp(commit.cr, "g", r2, g.N)
-	bases.Exp(&tmp, "h", r3, g.N)
+	bases.Exp(commit.cr, "G", r2, g.N)
+	bases.Exp(&tmp, "H", r3, g.N)
 	commit.cr.Mul(commit.cr, &tmp).Mod(commit.cr, g.N)
 	// Set C_u = u * h^r2
-	bases.Exp(&tmp, "h", r2, g.N)
+	bases.Exp(&tmp, "H", r2, g.N)
 	commit.cu.Mul(secretdata.Secret("u"), &tmp).Mod(commit.cu, g.N)
 
 	list = append(list, commit.cr, commit.cu, commit.nu)
 
-	b := keyproof.NewBaseMerge(bases, &commit)
-	list = s.cr.commitmentsFromSecrets(g, list, &b, &commit)
-	list = s.nu.commitmentsFromSecrets(g, list, &b, &commit)
-	list = s.one.commitmentsFromSecrets(g, list, &b, &commit)
+	b := zkproof.NewBaseMerge(bases, &commit)
+	list = s.cr.CommitmentsFromSecrets(g, list, &b, &commit)
+	list = s.nu.CommitmentsFromSecrets(g, list, &b, &commit)
+	list = s.one.CommitmentsFromSecrets(g, list, &b, &commit)
 
 	return list, commit
 }
 
-func (s *proofStructure) commitmentsFromProof(g *qrGroup, list []*big.Int, challenge *big.Int, bases keyproof.BaseLookup, proofdata keyproof.ProofLookup, proof *proof) []*big.Int {
-	proofs := keyproof.NewProofMerge(proof, proofdata)
+func (s *proofStructure) commitmentsFromProof(g *gabikeys.PublicKey, list []*big.Int, challenge *big.Int, bases zkproof.BaseLookup, proofdata zkproof.ProofLookup, proof *proof) []*big.Int {
+	proofs := zkproof.NewProofMerge(proof, proofdata)
 
-	b := keyproof.NewBaseMerge(g, &proofCommit{cr: proof.Cr, cu: proof.Cu, nu: proof.Nu})
+	b := zkproof.NewBaseMerge(g, &proofCommit{cr: proof.Cr, cu: proof.Cu, nu: proof.Nu})
 
 	list = append(list, proof.Cr, proof.Cu, proof.Nu)
-	list = s.cr.commitmentsFromProof(g, list, challenge, &b, &proofs)
-	list = s.nu.commitmentsFromProof(g, list, challenge, &b, &proofs)
-	list = s.one.commitmentsFromProof(g, list, challenge, &b, &proofs)
+	list = s.cr.CommitmentsFromProof(g, list, challenge, &b, &proofs)
+	list = s.nu.CommitmentsFromProof(g, list, challenge, &b, &proofs)
+	list = s.one.CommitmentsFromProof(g, list, challenge, &b, &proofs)
 
 	return list
 }
@@ -444,7 +447,7 @@ func (s *proofStructure) verifyProofStructure(p *proof) bool {
 	return p.Cr != nil && p.Cu != nil && p.Nu != nil && p.Challenge != nil
 }
 
-func (s *proofStructure) isTrue(secretdata keyproof.SecretLookup, nu, n *big.Int) bool {
+func (s *proofStructure) isTrue(secretdata zkproof.SecretLookup, nu, n *big.Int) bool {
 	return new(big.Int).
 		Exp(secretdata.Secret("u"), secretdata.Secret("alpha"), n).
 		Cmp(nu) == 0
@@ -489,13 +492,12 @@ func (w *witness) Randomizer(name string) *big.Int {
 
 // Helpers
 
-func verify(u, e *big.Int, acc *Accumulator, grp *QrGroup) bool {
+func verify(u, e *big.Int, acc *Accumulator, grp *gabikeys.PublicKey) bool {
 	return new(big.Int).Exp(u, e, grp.N).Cmp(acc.Nu) == 0
 }
 
-func newWitness(sk *PrivateKey, acc *Accumulator, e *big.Int) (*Witness, error) {
-	order := new(big.Int).Mul(sk.P, sk.Q)
-	eInverse, ok := common.ModInverse(e, order)
+func newWitness(sk *gabikeys.PrivateKey, acc *Accumulator, e *big.Int) (*Witness, error) {
+	eInverse, ok := common.ModInverse(e, sk.Order)
 	if !ok {
 		return nil, errors.New("failed to compute modular inverse")
 	}

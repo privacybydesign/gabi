@@ -7,14 +7,16 @@ package gabi
 import (
 	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/internal/common"
+	"github.com/privacybydesign/gabi/rangeproof"
 	"github.com/privacybydesign/gabi/revocation"
 )
 
 // Credential represents an Idemix credential.
 type Credential struct {
 	Signature            *CLSignature        `json:"signature"`
-	Pk                   *PublicKey          `json:"-"`
+	Pk                   *gabikeys.PublicKey `json:"-"`
 	Attributes           []*big.Int          `json:"attributes"`
 	NonRevocationWitness *revocation.Witness `json:"nonrevWitness,omitempty"`
 
@@ -30,13 +32,16 @@ type DisclosureProofBuilder struct {
 	z                     *big.Int
 	disclosedAttributes   []int
 	undisclosedAttributes []int
-	pk                    *PublicKey
+	pk                    *gabikeys.PublicKey
 	attributes            []*big.Int
 	nonrevBuilder         *NonRevocationProofBuilder
+
+	rpStructures map[int][]*rangeproof.ProofStructure
+	rpCommits    map[int][]*rangeproof.ProofCommit
 }
 
 type NonRevocationProofBuilder struct {
-	pk          *PublicKey
+	pk          *gabikeys.PublicKey
 	witness     *revocation.Witness
 	commit      *revocation.ProofCommit
 	commitments []*big.Int
@@ -60,11 +65,8 @@ func (b *NonRevocationProofBuilder) UpdateCommit(witness *revocation.Witness) er
 
 func (b *NonRevocationProofBuilder) Commit() ([]*big.Int, error) {
 	if b.commitments == nil {
-		revPk, err := b.pk.RevocationKey()
-		if err != nil {
-			return nil, err
-		}
-		b.commitments, b.commit, err = revocation.NewProofCommit(revPk.Group, b.witness, b.randomizer)
+		var err error
+		b.commitments, b.commit, err = revocation.NewProofCommit(b.pk, b.witness, b.randomizer)
 		if err != nil {
 			return nil, err
 		}
@@ -92,34 +94,86 @@ func getUndisclosedAttributes(disclosedAttributes []int, numAttributes int) []in
 	return r
 }
 
+// isUndisclosedAttribute computes, given the list of disclosed attributes, whether
+// attribute stays hidden
+func isUndisclosedAttribute(disclosedAttributes []int, attribute int) bool {
+	for _, v := range disclosedAttributes {
+		if v == attribute {
+			return false
+		}
+	}
+	return true
+}
+
 // CreateDisclosureProof creates a disclosure proof (ProofD) voor the provided
 // indices of disclosed attributes.
-func (ic *Credential) CreateDisclosureProof(disclosedAttributes []int, nonrev bool, context, nonce1 *big.Int) (*ProofD, error) {
-	builder, err := ic.CreateDisclosureProofBuilder(disclosedAttributes, nonrev)
+func (ic *Credential) CreateDisclosureProof(
+	disclosedAttributes []int,
+	rangeStatements map[int][]*rangeproof.Statement,
+	nonrev bool,
+	context, nonce1 *big.Int,
+) (*ProofD, error) {
+	builder, err := ic.CreateDisclosureProofBuilder(disclosedAttributes, rangeStatements, nonrev)
 	if err != nil {
 		return nil, err
 	}
-	challenge := ProofBuilderList{builder}.Challenge(context, nonce1, false)
+	challenge, err := ProofBuilderList{builder}.Challenge(context, nonce1, false)
+	if err != nil {
+		return nil, err
+	}
 	return builder.CreateProof(challenge).(*ProofD), nil
 }
 
 // CreateDisclosureProofBuilder produces a DisclosureProofBuilder, an object to
 // hold the state in the protocol for producing a disclosure proof that is
 // linked to other proofs.
-func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int, nonrev bool) (*DisclosureProofBuilder, error) {
+func (ic *Credential) CreateDisclosureProofBuilder(
+	disclosedAttributes []int,
+	rangeStatements map[int][]*rangeproof.Statement,
+	nonrev bool,
+) (*DisclosureProofBuilder, error) {
 	d := &DisclosureProofBuilder{}
 	d.z = big.NewInt(1)
 	d.pk = ic.Pk
-	d.randomizedSignature = ic.Signature.Randomize(ic.Pk)
-	d.eCommit, _ = common.RandomBigInt(ic.Pk.Params.LeCommit)
-	d.vCommit, _ = common.RandomBigInt(ic.Pk.Params.LvCommit)
+	var err error
+	d.randomizedSignature, err = ic.Signature.Randomize(ic.Pk)
+	if err != nil {
+		return nil, err
+	}
+	d.eCommit, err = common.RandomBigInt(ic.Pk.Params.LeCommit)
+	if err != nil {
+		return nil, err
+	}
+	d.vCommit, err = common.RandomBigInt(ic.Pk.Params.LvCommit)
+	if err != nil {
+		return nil, err
+	}
 
 	d.attrRandomizers = make(map[int]*big.Int)
 	d.disclosedAttributes = disclosedAttributes
 	d.undisclosedAttributes = getUndisclosedAttributes(disclosedAttributes, len(ic.Attributes))
 	d.attributes = ic.Attributes
 	for _, v := range d.undisclosedAttributes {
-		d.attrRandomizers[v], _ = common.RandomBigInt(ic.Pk.Params.LmCommit)
+		d.attrRandomizers[v], err = common.RandomBigInt(ic.Pk.Params.LmCommit)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if rangeStatements != nil {
+		d.rpStructures = make(map[int][]*rangeproof.ProofStructure)
+		for index, statements := range rangeStatements {
+			if !isUndisclosedAttribute(disclosedAttributes, index) {
+				return nil, errors.New("Range statements on revealed attributes are not supported")
+			}
+			for _, statement := range statements {
+				structure, err := statement.ProofStructure(index)
+				if err != nil {
+					return nil, err
+				}
+				d.rpStructures[index] = append(d.rpStructures[index], structure)
+			}
+		}
 	}
 
 	if !nonrev {
@@ -138,6 +192,7 @@ func (ic *Credential) CreateDisclosureProofBuilder(disclosedAttributes []int, no
 		return nil, err
 	}
 	d.attrRandomizers[revIdx] = d.nonrevBuilder.randomizer
+
 	return d, nil
 }
 
@@ -225,13 +280,13 @@ func (d *DisclosureProofBuilder) MergeProofPCommitment(commitment *ProofPCommitm
 }
 
 // PublicKey returns the Idemix public key against which this disclosure proof will verify.
-func (d *DisclosureProofBuilder) PublicKey() *PublicKey {
+func (d *DisclosureProofBuilder) PublicKey() *gabikeys.PublicKey {
 	return d.pk
 }
 
 // Commit commits to the first attribute (the secret) using the provided
 // randomizer.
-func (d *DisclosureProofBuilder) Commit(randomizers map[string]*big.Int) []*big.Int {
+func (d *DisclosureProofBuilder) Commit(randomizers map[string]*big.Int) ([]*big.Int, error) {
 	d.attrRandomizers[0] = randomizers["secretkey"]
 
 	// Z = A^{e_commit} * S^{v_commit}
@@ -254,7 +309,27 @@ func (d *DisclosureProofBuilder) Commit(randomizers map[string]*big.Int) []*big.
 		}
 		list = append(list, l...)
 	}
-	return list
+
+	if d.rpStructures != nil {
+		d.rpCommits = make(map[int][]*rangeproof.ProofCommit)
+		// we need guaranteed order on index
+		for index := 0; index < len(d.attributes); index++ {
+			structures, ok := d.rpStructures[index]
+			if !ok {
+				continue
+			}
+			for _, s := range structures {
+				contributions, commit, err := s.CommitmentsFromSecrets(d.pk, d.attributes[index], d.attrRandomizers[index])
+				if err != nil {
+					return nil, err
+				}
+				list = append(list, contributions...)
+				d.rpCommits[index] = append(d.rpCommits[index], commit)
+			}
+		}
+	}
+
+	return list, nil
 }
 
 // CreateProof creates a (disclosure) proof with the provided challenge.
@@ -286,6 +361,17 @@ func (d *DisclosureProofBuilder) CreateProof(challenge *big.Int) Proof {
 		delete(nonrevProof.Responses, "alpha") // reset from NonRevocationResponse during verification
 	}
 
+	var rangeProofs map[int][]*rangeproof.Proof
+	if d.rpStructures != nil {
+		rangeProofs = make(map[int][]*rangeproof.Proof)
+		for index, structures := range d.rpStructures {
+			for i, s := range structures {
+				rangeProofs[index] = append(rangeProofs[index],
+					s.BuildProof(d.rpCommits[index][i], challenge))
+			}
+		}
+	}
+
 	return &ProofD{
 		C:                  challenge,
 		A:                  d.randomizedSignature.A,
@@ -294,6 +380,7 @@ func (d *DisclosureProofBuilder) CreateProof(challenge *big.Int) Proof {
 		AResponses:         aResponses,
 		ADisclosed:         aDisclosed,
 		NonRevocationProof: nonrevProof,
+		RangeProofs:        rangeProofs,
 	}
 }
 
@@ -315,5 +402,5 @@ func (d *DisclosureProofBuilder) TimestampRequestContributions() (*big.Int, []*b
 
 // Generate secret attribute used prove ownership and links between credentials from the same user.
 func GenerateSecretAttribute() (*big.Int, error) {
-	return common.RandomBigInt(DefaultSystemParameters[1024].Lm)
+	return common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].Lm)
 }

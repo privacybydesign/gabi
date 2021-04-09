@@ -64,7 +64,6 @@ choice was made instead that the issuer is always the revocation authority.
 package revocation
 
 import (
-	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -76,6 +75,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/multiformats/go-multihash"
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/internal/common"
 	"github.com/privacybydesign/gabi/signed"
 	"github.com/sirupsen/logrus"
@@ -147,21 +147,6 @@ type (
 
 		randomizer *big.Int
 	}
-
-	// PrivateKey is the private key needed for revoking.
-	PrivateKey struct {
-		Counter uint
-		ECDSA   *ecdsa.PrivateKey
-		P, Q, N *big.Int
-	}
-
-	// PublicKey is the public key corresponding to PrivateKey, against which witness (zero-knowledge
-	// proofs) are verified (containing fixed data as opposed to the Accumulator).
-	PublicKey struct {
-		Counter uint
-		ECDSA   *ecdsa.PublicKey
-		Group   *QrGroup
-	}
 )
 
 const (
@@ -170,7 +155,7 @@ const (
 
 var Logger *logrus.Logger
 
-func NewAccumulator(sk *PrivateKey) (*Update, error) {
+func NewAccumulator(sk *gabikeys.PrivateKey) (*Update, error) {
 	empty := [32]byte{}
 	emptyhash, err := multihash.Encode(empty[:], HashAlgorithm)
 	initialEvent := &Event{
@@ -198,7 +183,7 @@ func NewAccumulator(sk *PrivateKey) (*Update, error) {
 }
 
 // Sign the accumulator into a SignedAccumulator (c.f. SignedAccumulator.UnmarshalVerify()).
-func (acc *Accumulator) Sign(sk *PrivateKey) (*SignedAccumulator, error) {
+func (acc *Accumulator) Sign(sk *gabikeys.PrivateKey) (*SignedAccumulator, error) {
 	sig, err := signed.MarshalSign(sk.ECDSA, acc)
 	if err != nil {
 		return nil, err
@@ -207,8 +192,8 @@ func (acc *Accumulator) Sign(sk *PrivateKey) (*SignedAccumulator, error) {
 }
 
 // Remove generates a new accumulator with the specified e removed from it.
-func (acc *Accumulator) Remove(sk *PrivateKey, e *big.Int, parent *Event) (*Accumulator, *Event, error) {
-	eInverse, ok := common.ModInverse(e, new(big.Int).Mul(sk.P, sk.Q))
+func (acc *Accumulator) Remove(sk *gabikeys.PrivateKey, e *big.Int, parent *Event) (*Accumulator, *Event, error) {
+	eInverse, ok := common.ModInverse(e, sk.Order)
 	if !ok {
 		// since N = P*Q and P, Q prime, e has no inverse if and only if e equals either P or Q
 		return nil, nil, errors.New("revocation attribute has no inverse")
@@ -230,7 +215,7 @@ func (acc *Accumulator) Remove(sk *PrivateKey, e *big.Int, parent *Event) (*Accu
 
 // UnmarshalVerify verifies the signature and unmarshals the accumulator
 // (c.f. Accumulator.Sign()).
-func (s *SignedAccumulator) UnmarshalVerify(pk *PublicKey) (*Accumulator, error) {
+func (s *SignedAccumulator) UnmarshalVerify(pk *gabikeys.PublicKey) (*Accumulator, error) {
 	if s.Accumulator != nil {
 		return s.Accumulator, nil
 	}
@@ -245,7 +230,7 @@ func (s *SignedAccumulator) UnmarshalVerify(pk *PublicKey) (*Accumulator, error)
 	return s.Accumulator, nil
 }
 
-func NewUpdate(sk *PrivateKey, acc *Accumulator, events []*Event) (*Update, error) {
+func NewUpdate(sk *gabikeys.PrivateKey, acc *Accumulator, events []*Event) (*Update, error) {
 	sacc, err := acc.Sign(sk)
 	if err != nil {
 		return nil, err
@@ -314,7 +299,7 @@ func (update *Update) UnmarshalCBOR(data []byte) error {
 // - the accumulator is validly signed
 // - the accumulator includes the hash of the last item in the hash chain
 // - the hash chain is valid (each chain item has the correct hash of its parent).
-func (update *Update) Verify(pk *PublicKey) (*Accumulator, error) {
+func (update *Update) Verify(pk *gabikeys.PublicKey) (*Accumulator, error) {
 	acc, err := update.SignedAccumulator.UnmarshalVerify(pk)
 	if err != nil {
 		return nil, err

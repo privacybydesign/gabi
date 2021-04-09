@@ -1,10 +1,7 @@
-// Copyright 2016 Maarten Everts. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
-package gabi
+package gabikeys
 
 import (
+	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/xml"
 	"fmt"
@@ -14,12 +11,53 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
-	"github.com/privacybydesign/gabi/revocation"
 	"github.com/privacybydesign/gabi/safeprime"
 	"github.com/privacybydesign/gabi/signed"
+
+	"github.com/go-errors/errors"
+)
+
+type (
+	// PublicKey represents an issuer's public key.
+	PublicKey struct {
+		XMLName     xml.Name    `xml:"http://www.zurich.ibm.com/security/idemix IssuerPublicKey"`
+		Counter     uint        `xml:"Counter"`
+		ExpiryDate  int64       `xml:"ExpiryDate"`
+		N           *big.Int    `xml:"Elements>n"` // Modulus n
+		Z           *big.Int    `xml:"Elements>Z"` // Generator Z
+		S           *big.Int    `xml:"Elements>S"` // Generator S
+		G           *big.Int    `xml:"Elements>G"` // Generator G for revocation
+		H           *big.Int    `xml:"Elements>H"` // Generator H for revocation
+		R           Bases       `xml:"Elements>Bases"`
+		EpochLength EpochLength `xml:"Features"`
+		ECDSAString string      `xml:"ECDSA,omitempty"`
+
+		ECDSA  *ecdsa.PublicKey  `xml:"-"`
+		Params *SystemParameters `xml:"-"`
+		Issuer string            `xml:"-"`
+	}
+
+	// PrivateKey represents an issuer's private key.
+	PrivateKey struct {
+		XMLName     xml.Name `xml:"http://www.zurich.ibm.com/security/idemix IssuerPrivateKey"`
+		Counter     uint     `xml:"Counter"`
+		ExpiryDate  int64    `xml:"ExpiryDate"`
+		P           *big.Int `xml:"Elements>p"`
+		Q           *big.Int `xml:"Elements>q"`
+		PPrime      *big.Int `xml:"Elements>pPrime"`
+		QPrime      *big.Int `xml:"Elements>qPrime"`
+		ECDSAString string   `xml:"ECDSA,omitempty"`
+
+		N     *big.Int          `xml:"-"`
+		ECDSA *ecdsa.PrivateKey `xml:"-"`
+		Order *big.Int          `xml:"-"`
+	}
+
+	Bases []*big.Int
+
+	EpochLength int
 )
 
 const (
@@ -29,36 +67,25 @@ const (
 	DefaultEpochLength = 432000
 )
 
-// PrivateKey represents an issuer's private key.
-type PrivateKey struct {
-	XMLName    xml.Name `xml:"http://www.zurich.ibm.com/security/idemix IssuerPrivateKey"`
-	Counter    uint     `xml:"Counter"`
-	ExpiryDate int64    `xml:"ExpiryDate"`
-	P          *big.Int `xml:"Elements>p"`
-	Q          *big.Int `xml:"Elements>q"`
-	PPrime     *big.Int `xml:"Elements>pPrime"`
-	QPrime     *big.Int `xml:"Elements>qPrime"`
-	order      *big.Int
-	ECDSA      string `xml:",omitempty"`
-
-	revocationKey *revocation.PrivateKey
-}
-
 // NewPrivateKey creates a new issuer private key using the provided parameters.
-func NewPrivateKey(p, q *big.Int, ecdsa string, counter uint, expiryDate time.Time) *PrivateKey {
+func NewPrivateKey(p, q *big.Int, ecdsa string, counter uint, expiryDate time.Time) (*PrivateKey, error) {
 	sk := PrivateKey{
-		P:          p,
-		Q:          q,
-		PPrime:     new(big.Int).Rsh(p, 1),
-		QPrime:     new(big.Int).Rsh(q, 1),
-		Counter:    counter,
-		ExpiryDate: expiryDate.Unix(),
-		ECDSA:      ecdsa,
+		P:           p,
+		Q:           q,
+		N:           new(big.Int).Mul(p, q),
+		PPrime:      new(big.Int).Rsh(p, 1),
+		QPrime:      new(big.Int).Rsh(q, 1),
+		Counter:     counter,
+		ExpiryDate:  expiryDate.Unix(),
+		ECDSAString: ecdsa,
 	}
 
-	sk.CacheOrder()
+	sk.Order = new(big.Int).Mul(sk.PPrime, sk.QPrime)
+	if err := sk.parseRevocationKey(); err != nil {
+		return nil, err
+	}
 
-	return &sk
+	return &sk, nil
 }
 
 // NewPrivateKeyFromXML creates a new issuer private key using the xml data
@@ -77,7 +104,12 @@ func NewPrivateKeyFromXML(xmlInput string, demo bool) (*PrivateKey, error) {
 		}
 	}
 
-	privk.CacheOrder()
+	privk.N = new(big.Int).Mul(privk.P, privk.Q)
+	privk.Order = new(big.Int).Mul(privk.PPrime, privk.QPrime)
+	if err := privk.parseRevocationKey(); err != nil {
+		return nil, err
+	}
+
 	return privk, nil
 }
 
@@ -111,18 +143,6 @@ func (privk *PrivateKey) Validate() error {
 		return errors.New("Q is not a safe prime")
 	}
 	return nil
-}
-
-func (privk *PrivateKey) CacheOrder() {
-	privk.order = new(big.Int).Mul(privk.PPrime, privk.QPrime)
-}
-
-func (privk *PrivateKey) RevocationGenerateWitness(accumulator *revocation.Accumulator) (*revocation.Witness, error) {
-	revkey, err := privk.RevocationKey()
-	if err != nil {
-		return nil, err
-	}
-	return revocation.RandomWitness(revkey, accumulator)
 }
 
 // Print prints the key to stdout.
@@ -167,32 +187,24 @@ func (privk *PrivateKey) WriteToFile(filename string, forceOverwrite bool) (int6
 	return privk.WriteTo(f)
 }
 
-func (privk *PrivateKey) RevocationKey() (*revocation.PrivateKey, error) {
-	if privk.revocationKey == nil {
-		if !privk.RevocationSupported() {
-			return nil, errors.New("private key does not support revocation")
-		}
-		bts, err := base64.StdEncoding.DecodeString(privk.ECDSA)
-		if err != nil {
-			return nil, err
-		}
-		key, err := signed.UnmarshalPrivateKey(bts)
-		if err != nil {
-			return nil, err
-		}
-		privk.revocationKey = &revocation.PrivateKey{
-			Counter: privk.Counter,
-			ECDSA:   key,
-			P:       privk.PPrime,
-			Q:       privk.QPrime,
-			N:       new(big.Int).Mul(privk.P, privk.Q),
-		}
+func (privk *PrivateKey) parseRevocationKey() error {
+	if privk.ECDSA != nil || !privk.RevocationSupported() {
+		return nil
 	}
-	return privk.revocationKey, nil
+	bts, err := base64.StdEncoding.DecodeString(privk.ECDSAString)
+	if err != nil {
+		return err
+	}
+	key, err := signed.UnmarshalPrivateKey(bts)
+	if err != nil {
+		return err
+	}
+	privk.ECDSA = key
+	return nil
 }
 
 func (privk *PrivateKey) RevocationSupported() bool {
-	return len(privk.ECDSA) > 0
+	return len(privk.ECDSAString) > 0
 }
 
 func GenerateRevocationKeypair(privk *PrivateKey, pubk *PublicKey) error {
@@ -213,120 +225,19 @@ func GenerateRevocationKeypair(privk *PrivateKey, pubk *PublicKey) error {
 		return err
 	}
 
-	privk.ECDSA = base64.StdEncoding.EncodeToString(dsabts)
-	pubk.ECDSA = base64.StdEncoding.EncodeToString(pubdsabts)
+	privk.ECDSAString = base64.StdEncoding.EncodeToString(dsabts)
+	privk.ECDSA = key
+	pubk.ECDSAString = base64.StdEncoding.EncodeToString(pubdsabts)
+	pubk.ECDSA = &key.PublicKey
 	pubk.G = common.RandomQR(pubk.N)
 	pubk.H = common.RandomQR(pubk.N)
 
 	return nil
 }
 
-// xmlBases is an auxiliary struct to encode/decode the odd way bases are
-// represented in the xml representation of public keys
-type xmlBases struct {
-	Num   int        `xml:"num,attr"`
-	Bases []*xmlBase `xml:",any"`
-}
-
-type xmlBase struct {
-	XMLName xml.Name
-	Bigint  string `xml:",innerxml"` // Has to be a string for ",innerxml" to work
-}
-
-// xmlFeatures is an auxiliary struct to make the XML encoding/decoding a bit
-// easier while keeping the struct for PublicKey somewhat simple.
-type xmlFeatures struct {
-	Epoch struct {
-		Length int `xml:"length,attr"`
-	}
-}
-
-// Bases is a type that is introduced to simplify the encoding/decoding of
-// a PublicKey whilst using the xml support of Go's standard library.
-type Bases []*big.Int
-
-// UnmarshalXML is an internal function to simplify decoding a PublicKey from
-// XML.
-func (bl *Bases) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
-	var t xmlBases
-
-	if err := d.DecodeElement(&t, &start); err != nil {
-		return err
-	}
-
-	arr := make([]*big.Int, t.Num)
-	for i := range arr {
-		arr[i], _ = new(big.Int).SetString(t.Bases[i].Bigint, 10)
-	}
-
-	*bl = Bases(arr)
-	return nil
-}
-
-// MarshalXML is an internal function to simplify encoding a PublicKey to XML.
-func (bl *Bases) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
-	l := len(*bl)
-	bases := make([]*xmlBase, l)
-
-	for i := range bases {
-		bases[i] = &xmlBase{
-			XMLName: xml.Name{Local: "Base_" + strconv.Itoa(i)},
-			Bigint:  (*bl)[i].String(),
-		}
-	}
-
-	t := xmlBases{
-		Num:   l,
-		Bases: bases,
-	}
-	return e.EncodeElement(t, start)
-}
-
-// EpochLength is a type that is introduced to simplify the encoding/decoding of
-// a PublicKey whilst using the xml support of Go's standard library.
-type EpochLength int
-
-// UnmarshalXML is an internal function to simplify decoding a PublicKey from
-// XML.
-func (el *EpochLength) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
-	var t xmlFeatures
-
-	if err := d.DecodeElement(&t, &start); err != nil {
-		return err
-	}
-	*el = EpochLength(t.Epoch.Length)
-	return nil
-}
-
-// MarshalXML is an internal function to simplify encoding a PublicKey to XML.
-func (el *EpochLength) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
-	var t xmlFeatures
-	t.Epoch.Length = int(*el)
-	return e.EncodeElement(t, start)
-}
-
-// PublicKey represents an issuer's public key.
-type PublicKey struct {
-	XMLName     xml.Name          `xml:"http://www.zurich.ibm.com/security/idemix IssuerPublicKey"`
-	Counter     uint              `xml:"Counter"`
-	ExpiryDate  int64             `xml:"ExpiryDate"`
-	N           *big.Int          `xml:"Elements>n"` // Modulus n
-	Z           *big.Int          `xml:"Elements>Z"` // Generator Z
-	S           *big.Int          `xml:"Elements>S"` // Generator S
-	G           *big.Int          `xml:"Elements>G"` // Generator G for revocation
-	H           *big.Int          `xml:"Elements>H"` // Generator H for revocation
-	R           Bases             `xml:"Elements>Bases"`
-	EpochLength EpochLength       `xml:"Features"`
-	Params      *SystemParameters `xml:"-"`
-	Issuer      string            `xml:"-"`
-	ECDSA       string            `xml:",omitempty"`
-
-	revocationKey *revocation.PublicKey
-}
-
 // NewPublicKey creates and returns a new public key based on the provided parameters.
-func NewPublicKey(N, Z, S, G, H *big.Int, R []*big.Int, ecdsa string, counter uint, expiryDate time.Time) *PublicKey {
-	return &PublicKey{
+func NewPublicKey(N, Z, S, G, H *big.Int, R []*big.Int, ecdsa string, counter uint, expiryDate time.Time) (*PublicKey, error) {
+	pk := &PublicKey{
 		Counter:     counter,
 		ExpiryDate:  expiryDate.Unix(),
 		N:           N,
@@ -337,8 +248,13 @@ func NewPublicKey(N, Z, S, G, H *big.Int, R []*big.Int, ecdsa string, counter ui
 		H:           H,
 		EpochLength: DefaultEpochLength,
 		Params:      DefaultSystemParameters[N.BitLen()],
-		ECDSA:       ecdsa,
+		ECDSAString: ecdsa,
 	}
+
+	if err := pk.parseRevocationKey(); err != nil {
+		return nil, err
+	}
+	return pk, nil
 }
 
 // NewPublicKeyFromXML creates a new issuer public key using the xml data
@@ -356,6 +272,9 @@ func NewPublicKeyFromBytes(bts []byte) (*PublicKey, error) {
 		pubk.Params = sysparam
 	} else {
 		return nil, fmt.Errorf("Unknown keylength %d", keylength)
+	}
+	if err = pubk.parseRevocationKey(); err != nil {
+		return nil, err
 	}
 	return pubk, nil
 }
@@ -383,36 +302,30 @@ func NewPublicKeyFromFile(filename string) (*PublicKey, error) {
 		return nil, err
 	}
 	pubk.Params = DefaultSystemParameters[pubk.N.BitLen()]
+	if err = pubk.parseRevocationKey(); err != nil {
+		return nil, err
+	}
 	return pubk, nil
 }
 
-func (pubk *PublicKey) RevocationKey() (*revocation.PublicKey, error) {
-	if pubk.revocationKey == nil {
-		if !pubk.RevocationSupported() {
-			return nil, errors.New("public key does not support revocation")
-		}
-		bts, err := base64.StdEncoding.DecodeString(pubk.ECDSA)
-		if err != nil {
-			return nil, err
-		}
-		dsakey, err := signed.UnmarshalPublicKey(bts)
-		if err != nil {
-			return nil, err
-		}
-		g := revocation.NewQrGroup(pubk.N)
-		g.G = pubk.G
-		g.H = pubk.H
-		pubk.revocationKey = &revocation.PublicKey{
-			Counter: pubk.Counter,
-			Group:   &g,
-			ECDSA:   dsakey,
-		}
+func (pubk *PublicKey) parseRevocationKey() error {
+	if pubk.ECDSA != nil || !pubk.RevocationSupported() {
+		return nil
 	}
-	return pubk.revocationKey, nil
+	bts, err := base64.StdEncoding.DecodeString(pubk.ECDSAString)
+	if err != nil {
+		return err
+	}
+	dsakey, err := signed.UnmarshalPublicKey(bts)
+	if err != nil {
+		return err
+	}
+	pubk.ECDSA = dsakey
+	return nil
 }
 
 func (pubk *PublicKey) RevocationSupported() bool {
-	return pubk.G != nil && pubk.H != nil && len(pubk.ECDSA) > 0
+	return pubk.G != nil && pubk.H != nil && len(pubk.ECDSAString) > 0
 }
 
 // Print prints the key to stdout.
@@ -520,16 +433,25 @@ func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, e
 	priv := &PrivateKey{
 		P:          p,
 		Q:          q,
+		N:          new(big.Int).Mul(p, q),
 		PPrime:     new(big.Int).Rsh(p, 1),
 		QPrime:     new(big.Int).Rsh(q, 1),
 		Counter:    counter,
 		ExpiryDate: expiryDate.Unix(),
 	}
-	priv.order = new(big.Int).Mul(priv.PPrime, priv.QPrime)
+	priv.Order = new(big.Int).Mul(priv.PPrime, priv.QPrime)
+	if err = priv.parseRevocationKey(); err != nil {
+		return nil, nil, err
+	}
 
 	// compute n
-	pubk := &PublicKey{Params: param, EpochLength: DefaultEpochLength, Counter: counter, ExpiryDate: expiryDate.Unix()}
-	pubk.N = new(big.Int).Mul(priv.P, priv.Q)
+	pubk := &PublicKey{
+		Params: param, EpochLength: DefaultEpochLength, Counter: counter, ExpiryDate: expiryDate.Unix(),
+	}
+	pubk.N = priv.N
+	if err = pubk.parseRevocationKey(); err != nil {
+		return nil, nil, err
+	}
 
 	// Find an acceptable value for S; we follow lead of the Silvia code here:
 	// Pick a random l_n value and check whether it is a quadratic residue modulo n
@@ -555,7 +477,10 @@ func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, e
 	primeSize := param.Ln / 2
 	var x *big.Int
 	for {
-		x, _ = common.RandomBigInt(primeSize)
+		x, err = common.RandomBigInt(primeSize)
+		if err != nil {
+			return nil, nil, err
+		}
 		if x.Cmp(big.NewInt(2)) > 0 && x.Cmp(pubk.N) < 0 {
 			break
 		}
@@ -571,7 +496,10 @@ func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, e
 
 		var x *big.Int
 		for {
-			x, _ = common.RandomBigInt(primeSize)
+			x, err = common.RandomBigInt(primeSize)
+			if err != nil {
+				return nil, nil, err
+			}
 			if x.Cmp(big.NewInt(2)) > 0 && x.Cmp(pubk.N) < 0 {
 				break
 			}
@@ -585,4 +513,45 @@ func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, e
 	}
 
 	return priv, pubk, nil
+}
+
+func (pubk *PublicKey) Base(name string) *big.Int {
+	switch {
+	case name == "Z":
+		return pubk.Z
+	case name == "S":
+		return pubk.S
+	case name == "G":
+		return pubk.G
+	case name == "H":
+		return pubk.H
+	case name[0] == 'R':
+		i, err := strconv.Atoi(name[1:])
+		if err != nil || i < 0 || i >= len(pubk.R) {
+			return nil
+		}
+		return pubk.R[i]
+	default:
+		return nil
+	}
+}
+
+func (pubk *PublicKey) Exp(ret *big.Int, name string, exp, n *big.Int) bool {
+	base := pubk.Base(name)
+	if base == nil {
+		return false
+	}
+	ret.Exp(base, exp, n)
+	return true
+}
+
+func (pubk *PublicKey) Names() []string {
+	names := []string{"Z", "S"}
+	if pubk.G != nil && pubk.H != nil {
+		names = append(names, "G", "H")
+	}
+	for i := range pubk.R {
+		names = append(names, fmt.Sprintf("R%d", i))
+	}
+	return names
 }

@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/zkproof"
 )
 
 type (
@@ -11,7 +12,7 @@ type (
 		bitname    string
 		mulname    string
 		myname     string
-		bitRep     RepresentationProofStructure
+		bitRep     zkproof.RepresentationProofStructure
 		mul        pedersenStructure
 		prePostMul multiplicationProofStructure
 	}
@@ -37,19 +38,19 @@ func newExpStepBStructure(bitname, prename, postname, mulname, modname string, b
 		mul:        newPedersenStructure(mulname),
 		prePostMul: newMultiplicationProofStructure(mulname, prename, modname, postname, bitlen),
 	}
-	structure.bitRep = RepresentationProofStructure{
-		[]LhsContribution{
+	structure.bitRep = zkproof.RepresentationProofStructure{
+		[]zkproof.LhsContribution{
 			{bitname, big.NewInt(1)},
 			{"g", big.NewInt(-1)},
 		},
-		[]RhsContribution{
+		[]zkproof.RhsContribution{
 			{"h", strings.Join([]string{bitname, "hider"}, "_"), 1},
 		},
 	}
 	return structure
 }
 
-func (s *expStepBStructure) commitmentsFromSecrets(g group, list []*big.Int, bases BaseLookup, secretdata SecretLookup) ([]*big.Int, expStepBCommit) {
+func (s *expStepBStructure) commitmentsFromSecrets(g zkproof.Group, list []*big.Int, bases zkproof.BaseLookup, secretdata zkproof.SecretLookup) ([]*big.Int, expStepBCommit) {
 	var commit expStepBCommit
 
 	// build up commit structure
@@ -58,18 +59,18 @@ func (s *expStepBStructure) commitmentsFromSecrets(g group, list []*big.Int, bas
 		secretdata.Secret(strings.Join([]string{s.mulname, "hider"}, "_")))
 
 	// Inner secrets
-	secrets := NewSecretMerge(&commit.mul, &commit.bit, secretdata)
+	secrets := zkproof.NewSecretMerge(&commit.mul, &commit.bit, secretdata)
 
 	// Generate commitment list
-	list = s.bitRep.commitmentsFromSecrets(g, list, bases, &secrets)
+	list = s.bitRep.CommitmentsFromSecrets(g, list, bases, &secrets)
 	list, commit.multiplicationCommit = s.prePostMul.commitmentsFromSecrets(g, list, bases, &secrets)
 
 	return list, commit
 }
 
-func (s *expStepBStructure) buildProof(g group, challenge *big.Int, commit expStepBCommit, secretdata SecretLookup) ExpStepBProof {
+func (s *expStepBStructure) buildProof(g zkproof.Group, challenge *big.Int, commit expStepBCommit, secretdata zkproof.SecretLookup) ExpStepBProof {
 	// inner secrets
-	secrets := NewSecretMerge(&commit.mul, &commit.bit, secretdata)
+	secrets := zkproof.NewSecretMerge(&commit.mul, &commit.bit, secretdata)
 
 	// Build proof
 	return ExpStepBProof{
@@ -79,7 +80,7 @@ func (s *expStepBStructure) buildProof(g group, challenge *big.Int, commit expSt
 	}
 }
 
-func (s *expStepBStructure) fakeProof(g group) ExpStepBProof {
+func (s *expStepBStructure) fakeProof(g zkproof.Group) ExpStepBProof {
 	return ExpStepBProof{
 		Bit:                 fakeProof(g),
 		Mul:                 s.mul.fakeProof(g),
@@ -97,21 +98,21 @@ func (s *expStepBStructure) verifyProofStructure(proof ExpStepBProof) bool {
 	return proof.Bit.verifyStructure()
 }
 
-func (s *expStepBStructure) commitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases BaseLookup, proof ExpStepBProof) []*big.Int {
+func (s *expStepBStructure) commitmentsFromProof(g zkproof.Group, list []*big.Int, challenge *big.Int, bases zkproof.BaseLookup, proof ExpStepBProof) []*big.Int {
 	// inner proof
 	proof.Bit.setName(strings.Join([]string{s.bitname, "hider"}, "_"))
 	proof.Mul.setName(s.mulname)
-	proofs := NewProofMerge(&proof.Bit, &proof.Mul)
+	proofs := zkproof.NewProofMerge(&proof.Bit, &proof.Mul)
 
 	// Generate commitments
 	list = s.mul.commitmentsFromProof(g, list, challenge, proof.Mul)
-	list = s.bitRep.commitmentsFromProof(g, list, challenge, bases, &proofs)
+	list = s.bitRep.CommitmentsFromProof(g, list, challenge, bases, &proofs)
 	list = s.prePostMul.commitmentsFromProof(g, list, challenge, bases, &proofs, proof.MultiplicationProof)
 
 	return list
 }
 
-func (s *expStepBStructure) isTrue(secretdata SecretLookup) bool {
+func (s *expStepBStructure) isTrue(secretdata zkproof.SecretLookup) bool {
 	if secretdata.Secret(s.bitname).Cmp(big.NewInt(1)) != 0 {
 		return false
 	}
@@ -123,5 +124,5 @@ func (s *expStepBStructure) numRangeProofs() int {
 }
 
 func (s *expStepBStructure) numCommitments() int {
-	return s.bitRep.numCommitments() + s.mul.numCommitments() + s.prePostMul.numCommitments()
+	return s.bitRep.NumCommitments() + s.mul.numCommitments() + s.prePostMul.numCommitments()
 }

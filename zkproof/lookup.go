@@ -1,11 +1,6 @@
-package keyproof
+package zkproof
 
-import (
-	"github.com/bwesterb/go-exptable"
-	"github.com/privacybydesign/gabi/big"
-
-	"fmt"
-)
+import "github.com/privacybydesign/gabi/big"
 
 type (
 	BaseLookup interface {
@@ -37,42 +32,6 @@ type (
 		parts []ProofLookup
 	}
 )
-
-func (g *group) Exp(ret *big.Int, name string, exp, P *big.Int) bool {
-	var table *exptable.Table
-	if name == "g" {
-		table = &g.gTable
-	} else if name == "h" {
-		table = &g.hTable
-	} else {
-		return false
-	}
-	var exp2 big.Int
-	if exp.Sign() == -1 {
-		exp2.Add(exp, g.order)
-		exp = &exp2
-	}
-	if exp.Cmp(g.order) >= 0 {
-		panic(fmt.Sprintf("scalar out of bounds: %v %v", exp, g.order))
-	}
-	// exp2.Mod(exp, g.order)
-	table.Exp(ret.Go(), exp.Go())
-	return true
-}
-
-func (g *group) Names() []string {
-	return []string{"g", "h"}
-}
-
-func (g *group) Base(name string) *big.Int {
-	if name == "g" {
-		return g.g
-	}
-	if name == "h" {
-		return g.h
-	}
-	return nil
-}
 
 func NewBaseMerge(parts ...BaseLookup) BaseMerge {
 	var result BaseMerge

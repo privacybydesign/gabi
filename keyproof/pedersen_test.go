@@ -5,12 +5,13 @@ import (
 	"testing"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/zkproof"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestPedersenProofFlow(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group")
 
 	s := newPedersenStructure("x")
@@ -37,7 +38,7 @@ func TestPedersenProofFlow(t *testing.T) {
 }
 
 func TestPedersenProofVerifyStructure(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for Representation proof testing")
 
 	s := newPedersenStructure("x")
@@ -56,7 +57,7 @@ func TestPedersenProofVerifyStructure(t *testing.T) {
 }
 
 func TestPedersenProofFake(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for Representation proof testing")
 
 	s := newPedersenStructure("x")
@@ -65,7 +66,7 @@ func TestPedersenProofFake(t *testing.T) {
 }
 
 func TestPedersenProofJSON(t *testing.T) {
-	g, gok := buildGroup(big.NewInt(47))
+	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for Representation proof testing")
 
 	s := newPedersenStructure("x")

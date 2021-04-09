@@ -3,11 +3,12 @@ package keyproof
 import (
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/internal/common"
+	"github.com/privacybydesign/gabi/zkproof"
 )
 
 type (
 	rangeProofStructure struct {
-		RepresentationProofStructure
+		zkproof.RepresentationProofStructure
 		rangeSecret string
 		l1          uint
 		l2          uint
@@ -27,7 +28,7 @@ type (
 	}
 )
 
-func (s *rangeProofStructure) commitmentsFromSecrets(g group, list []*big.Int, bases BaseLookup, secretdata SecretLookup) ([]*big.Int, rangeCommit) {
+func (s *rangeProofStructure) commitmentsFromSecrets(g zkproof.Group, list []*big.Int, bases zkproof.BaseLookup, secretdata zkproof.SecretLookup) ([]*big.Int, rangeCommit) {
 	var commit rangeCommitSecretLookup
 
 	// Build up commit datastructure
@@ -48,17 +49,17 @@ func (s *rangeProofStructure) commitmentsFromSecrets(g group, list []*big.Int, b
 				rval = common.FastRandomBigInt(genLimit)
 				rval.Sub(rval, genOffset)
 			} else {
-				rval = common.FastRandomBigInt(g.order)
+				rval = common.FastRandomBigInt(g.Order)
 			}
 			commit.commits[name] = append(clist, rval)
 		}
 	}
 
 	// Construct the commitments
-	secretMerge := NewSecretMerge(&commit, secretdata)
+	secretMerge := zkproof.NewSecretMerge(&commit, secretdata)
 	for i := 0; i < rangeProofIters; i++ {
 		commit.i = i
-		list = s.RepresentationProofStructure.commitmentsFromSecrets(g, list, bases, &secretMerge)
+		list = s.RepresentationProofStructure.CommitmentsFromSecrets(g, list, bases, &secretMerge)
 	}
 
 	// Call the logger
@@ -68,7 +69,7 @@ func (s *rangeProofStructure) commitmentsFromSecrets(g group, list []*big.Int, b
 	return list, commit.rangeCommit
 }
 
-func (s *rangeProofStructure) buildProof(g group, challenge *big.Int, commit rangeCommit, secretdata SecretLookup) RangeProof {
+func (s *rangeProofStructure) buildProof(g zkproof.Group, challenge *big.Int, commit rangeCommit, secretdata zkproof.SecretLookup) RangeProof {
 	// For every value, build up results, handling the secret data seperately
 	proof := RangeProof{map[string][]*big.Int{}}
 	for name, clist := range commit.commits {
@@ -92,7 +93,7 @@ func (s *rangeProofStructure) buildProof(g group, challenge *big.Int, commit ran
 			for i := 0; i < rangeProofIters; i++ {
 				var res *big.Int
 				if challenge.Bit(i) == 1 {
-					res = new(big.Int).Mod(new(big.Int).Sub(clist[i], secretdata.Secret(name)), g.order)
+					res = new(big.Int).Mod(new(big.Int).Sub(clist[i], secretdata.Secret(name)), g.Order)
 				} else {
 					res = new(big.Int).Set(clist[i])
 				}
@@ -105,7 +106,7 @@ func (s *rangeProofStructure) buildProof(g group, challenge *big.Int, commit ran
 	return proof
 }
 
-func (s *rangeProofStructure) fakeProof(g group) RangeProof {
+func (s *rangeProofStructure) fakeProof(g zkproof.Group) RangeProof {
 	// Some setup
 	genLimit := new(big.Int).Lsh(big.NewInt(1), s.l2+rangeProofEpsilon+1)
 
@@ -120,7 +121,7 @@ func (s *rangeProofStructure) fakeProof(g group) RangeProof {
 		} else {
 			rlist := []*big.Int{}
 			for i := 0; i < rangeProofIters; i++ {
-				rlist = append(rlist, common.FastRandomBigInt(g.order))
+				rlist = append(rlist, common.FastRandomBigInt(g.Order))
 			}
 			proof.Results[curRhs.Secret] = rlist
 		}
@@ -174,7 +175,7 @@ func (r *rangeProofResultLookup) ProofResult(name string) *big.Int {
 	return res
 }
 
-func (s *rangeProofStructure) commitmentsFromProof(g group, list []*big.Int, challenge *big.Int, bases BaseLookup, proof RangeProof) []*big.Int {
+func (s *rangeProofStructure) commitmentsFromProof(g zkproof.Group, list []*big.Int, challenge *big.Int, bases zkproof.BaseLookup, proof RangeProof) []*big.Int {
 	// Some values needed in all iterations
 	resultOffset := new(big.Int).Lsh(big.NewInt(1), s.l2+rangeProofEpsilon+1)
 	l1Offset := new(big.Int).Lsh(big.NewInt(1), s.l1)
@@ -197,7 +198,7 @@ func (s *rangeProofStructure) commitmentsFromProof(g group, list []*big.Int, cha
 		}
 
 		// And generate commitment
-		list = s.RepresentationProofStructure.commitmentsFromProof(g, list, big.NewInt(int64(challenge.Bit(i))), bases, &resultLookup)
+		list = s.RepresentationProofStructure.CommitmentsFromProof(g, list, big.NewInt(int64(challenge.Bit(i))), bases, &resultLookup)
 	}
 
 	Follower.Tick()
