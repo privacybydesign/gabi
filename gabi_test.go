@@ -670,6 +670,7 @@ func testRangeProofs(t *testing.T, trueStatements bool, statements []*rangeproof
 			statement.Splitter = splitter
 		}
 
+		// prover part: create a disclosure proof
 		proof, err := cred.CreateDisclosureProof(
 			[]int{2}, map[int][]*rangeproof.Statement{1: statements}, false, context, nonce,
 		)
@@ -679,6 +680,7 @@ func testRangeProofs(t *testing.T, trueStatements bool, statements []*rangeproof
 			continue
 		}
 
+		// verifier part: verify disclosure proof and check the proven statement
 		require.NoError(t, err)
 		assert.True(t, proof.Verify(testPubK1, context, nonce, false))
 
