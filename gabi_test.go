@@ -684,6 +684,10 @@ func testRangeProofs(t *testing.T, trueStatements bool, statements []*rangeproof
 
 		for i, statement := range statements {
 			assert.True(t, proof.RangeProofs[1][i].Proves(statement))
+			typ, factor, bound := proof.RangeProofs[1][i].ProvenStatement()
+			assert.Equal(t, statement.Bound, bound)
+			assert.Equal(t, uint(1), factor)
+			assert.Equal(t, statement.Sign, typ.Sign())
 		}
 	}
 }

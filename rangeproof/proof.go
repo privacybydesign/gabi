@@ -176,14 +176,7 @@ var (
 )
 
 func NewStatement(typ StatementType, bound *big.Int) *Statement {
-	switch typ {
-	case GreaterOrEqual:
-		return &Statement{Sign: 1, Factor: 1, Bound: new(big.Int).Set(bound)}
-	case LesserOrEqual:
-		return &Statement{Sign: -1, Factor: 1, Bound: new(big.Int).Set(bound)}
-	default:
-		return nil
-	}
+	return &Statement{Sign: typ.Sign(), Factor: 1, Bound: new(big.Int).Set(bound)}
 }
 
 // Create a new proof structure for proving a statement of the form sign(factor*m - bound) >= 0.
@@ -266,6 +259,17 @@ func newWithParams(index, sign int, a uint, k *big.Int, split SquareSplitter, nS
 
 func (statement *Statement) ProofStructure(index int) (*ProofStructure, error) {
 	return NewProofStructure(index, statement.Sign, statement.Factor, statement.Bound, statement.Splitter)
+}
+
+func (typ StatementType) Sign() int {
+	switch typ {
+	case GreaterOrEqual:
+		return 1
+	case LesserOrEqual:
+		return -1
+	default:
+		return 0
+	}
 }
 
 func (s *ProofStructure) CommitmentsFromSecrets(g *gabikeys.PublicKey, m, mRandomizer *big.Int) ([]*big.Int, *ProofCommit, error) {
@@ -433,6 +437,27 @@ func (p *Proof) ProvesStatement(sign int, factor uint, bound *big.Int) bool {
 
 func (p *Proof) Proves(statement *Statement) bool {
 	return p.ProvesStatement(statement.Sign, statement.Factor, statement.Bound)
+}
+
+// ProvenStatement returns the statement that this proof proves. Calling the second and third return
+// parameters "factor" and "bound" respectively, then
+//    factor*attribute - bound >= 0  or  <= 0
+// where the inequality type is returned as the first parameter.
+//
+// NB: this method does not verify the proof. Do not trust the output unless proof.Verify() has been
+// invoked first.
+func (p *Proof) ProvenStatement() (StatementType, uint, *big.Int) {
+	bound := new(big.Int).Set(p.K)
+	factor := p.A
+	if len(p.Cs) == 3 {
+		bound.Add(bound, big.NewInt(2)).Rsh(bound, 2)
+		factor >>= 2
+	}
+	typ := GreaterOrEqual
+	if p.Sign == -1 {
+		typ = LesserOrEqual
+	}
+	return typ, factor, bound
 }
 
 // Extract proof structure from proof
