@@ -685,11 +685,22 @@ func testRangeProofs(t *testing.T, trueStatements bool, statements []*rangeproof
 		assert.True(t, proof.Verify(testPubK1, context, nonce, false))
 
 		for i, statement := range statements {
-			assert.True(t, proof.RangeProofs[1][i].Proves(statement))
 			typ, factor, bound := proof.RangeProofs[1][i].ProvenStatement()
 			assert.Equal(t, statement.Bound, bound)
 			assert.Equal(t, uint(1), factor)
 			assert.Equal(t, statement.Sign, typ.Sign())
+
+			// The proof proves the statement as is
+			assert.True(t, proof.RangeProofs[1][i].Proves(statement))
+
+			if statement.Sign == 1 {
+				// If attr >= bound, then also attr >= bound - 1
+				statement.Bound.Sub(statement.Bound, big.NewInt(1))
+			} else {
+				// If attr <= bound, then also attr <= bound + 1
+				statement.Bound.Add(statement.Bound, big.NewInt(1))
+			}
+			assert.True(t, proof.RangeProofs[1][i].Proves(statement))
 		}
 	}
 }

@@ -422,7 +422,7 @@ func (s *ProofStructure) CommitmentsFromProof(g *gabikeys.PublicKey, p *Proof, c
 	return contributions
 }
 
-// Check whether proof makes required statement
+// ProvesStatement returns whether the Proof proves or implies the specified statement.
 func (p *Proof) ProvesStatement(sign int, factor uint, bound *big.Int) bool {
 	if sign != 1 && sign != -1 {
 		return false
@@ -432,9 +432,11 @@ func (p *Proof) ProvesStatement(sign int, factor uint, bound *big.Int) bool {
 		bound = new(big.Int).Mul(bound, big.NewInt(4))
 		bound.Sub(bound, big.NewInt(2))
 	}
-	return sign == p.Sign && factor == p.A && bound.Cmp(p.K) == 0
+	return p.Sign == sign && p.A == factor &&
+		(p.K.Cmp(bound) == 0 || p.K.Cmp(bound) == sign)
 }
 
+// Proves returns whether the Proof proves or implies the specified statement.
 func (p *Proof) Proves(statement *Statement) bool {
 	return p.ProvesStatement(statement.Sign, statement.Factor, statement.Bound)
 }
