@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/gabikeys"
 )
 
 var (
@@ -15,11 +16,11 @@ var (
 func NewKeyshareSecret() (*big.Int, error) {
 	// This value should be 1 bit less than indicated by Lm, as it is combined with an equal-length value
 	// from the client, resulting in a combined value that should fit in Lm bits.
-	return big.RandInt(rand.Reader, new(big.Int).Lsh(big.NewInt(1), DefaultSystemParameters[1024].Lm-1))
+	return big.RandInt(rand.Reader, new(big.Int).Lsh(big.NewInt(1), gabikeys.DefaultSystemParameters[1024].Lm-1))
 }
 
 // Generate commitments for the keyshare server for given set of keys
-func NewKeyshareCommitments(secret *big.Int, keys []*PublicKey) (*big.Int, []*ProofPCommitment, error) {
+func NewKeyshareCommitments(secret *big.Int, keys []*gabikeys.PublicKey) (*big.Int, []*ProofPCommitment, error) {
 	// Determine required randomizer length
 	var lRand uint = 0
 	for _, key := range keys {
@@ -50,7 +51,7 @@ func NewKeyshareCommitments(secret *big.Int, keys []*PublicKey) (*big.Int, []*Pr
 }
 
 // Generate keyshare response for a given challenge and commit, given a secret
-func KeyshareResponse(secret, commit, challenge *big.Int, key *PublicKey) *ProofP {
+func KeyshareResponse(secret, commit, challenge *big.Int, key *gabikeys.PublicKey) *ProofP {
 	return &ProofP{
 		P:         new(big.Int).Exp(key.R[0], secret, key.N),
 		C:         new(big.Int).Set(challenge),

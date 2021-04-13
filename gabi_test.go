@@ -945,7 +945,7 @@ func TestKeyshare(t *testing.T) {
 	secret, err := NewKeyshareSecret()
 	require.NoError(t, err)
 
-	commit, W, err := NewKeyshareCommitments(secret, []*PublicKey{testPubK})
+	commit, W, err := NewKeyshareCommitments(secret, []*gabikeys.PublicKey{testPubK})
 	require.NoError(t, err)
 
 	response := KeyshareResponse(secret, commit, big.NewInt(123), testPubK)
