@@ -1,11 +1,11 @@
 package gabi
 
 import (
-	"crypto/rand"
 	"errors"
 
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/gabikeys"
+	"github.com/privacybydesign/gabi/internal/common"
 )
 
 var (
@@ -16,7 +16,7 @@ var (
 func NewKeyshareSecret() (*big.Int, error) {
 	// This value should be 1 bit less than indicated by Lm, as it is combined with an equal-length value
 	// from the client, resulting in a combined value that should fit in Lm bits.
-	return big.RandInt(rand.Reader, new(big.Int).Lsh(big.NewInt(1), gabikeys.DefaultSystemParameters[1024].Lm-1))
+	return common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].Lm - 1)
 }
 
 // Generate commitments for the keyshare server for given set of keys
@@ -32,7 +32,7 @@ func NewKeyshareCommitments(secret *big.Int, keys []*gabikeys.PublicKey) (*big.I
 	}
 
 	// Generate commitment value
-	commit, err := big.RandInt(rand.Reader, new(big.Int).Lsh(big.NewInt(1), lRand))
+	commit, err := common.RandomBigInt(lRand)
 	if err != nil {
 		return nil, nil, err
 	}
