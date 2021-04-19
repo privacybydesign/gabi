@@ -273,7 +273,9 @@ func (p *ProofD) ChallengeContribution(pk *gabikeys.PublicKey) ([]*big.Int, erro
 
 	if p.RangeProofs != nil {
 		if p.cachedRangeStructures == nil {
-			p.reconstructRangeProofStructures(pk)
+			if err := p.reconstructRangeProofStructures(pk); err != nil {
+				return nil, err
+			}
 		}
 		// need stable attribute order for rangeproof contributions, so determine max undisclosed attribute
 		maxAttribute := 0

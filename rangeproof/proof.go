@@ -16,10 +16,11 @@ import (
 This subpackage of gabi implements a variation of the inequality/range proof protocol given in
 section 6.2.6/6.3.6 of "Specification of the Identity Mixer Cryptographic Library Version 2.3.0".
 
-Specifically, given an attribute m; a value k; and a number a equal to -1 or 1, this subpackage
-allows clients to prove that a(m - k) >= 0, by writing the left hand side as a sum of squares, and
-then proving knowledge of the square roots of these squares. From this, the verifier can infer that
-a(m - k) must be non-negative, i.e. m >= k or m <= k if a = 1 or -1 respectively.
+Specifically, given an attribute m; a value k; a positive number a; and a positive or negative sign
+(i.e. 1 or -1), this subpackage allows clients to prove that sign*(a*m - k) >= 0, by writing the
+left hand side as a sum of squares, and then proving knowledge of the square roots of these squares.
+From this, the verifier can infer that sign*(a*m - k) must be non-negative, i.e. a*m >= k or a*m <=
+k if sign = 1 or -1 respectively.
 
 The following changes were made with respect to the Identity Mixer specification:
 - There is no direct support for the > and < operators: the end user should do boundary adjustment
@@ -30,12 +31,12 @@ The following changes were made with respect to the Identity Mixer specification
 This results in that our code proves the following substatements:
 
     C_i = R^(d_i) S^(v_i)
-    R^(a*k) \product_i C_i^(d_i) = R^(a*m) S^(v_5)
+    R^(sign*k) \product_i C_i^(d_i) = R^(sign*a*m) S^(v_5)
 
 where
 - m is the attribute value,
-- k, a are fixed constants specified in the proof structure,
-- d_i are values such that a(m - k) = \sum_i (d_i)^2,
+- k, a and sign are fixed constants specified in the proof structure,
+- d_i are values such that sign*(a*m - k) = \sum_i (d_i)^2,
 - v_i are computational hiders for the d_i,
 - v_5 = \sum_i d_i * v_i.
 
@@ -106,11 +107,12 @@ Notes:
 */
 
 type (
-	// Statement states that an attribute m satisfies Factor*m-Bound >= 0, and that Factor*m-Bound
-	// can be split into squares with the given Splitter. E.g. if Factor = 1 then m >= k. Defaults to
-	// four square splitter when splitter is not specified.
+	// Statement states that an attribute m satisfies Sign*(Factor*m-Bound) >= 0, and that
+	// Sign*(Factor*m-Bound) can be split into squares with the given Splitter. E.g. if Factor = 1
+	// then Factor*m >= Bound. Defaults to four square splitter when splitter is not specified.
 	Statement struct {
-		Factor   int
+		Sign     int
+		Factor   uint
 		Bound    *big.Int
 		Splitter SquareSplitter
 	}
@@ -122,7 +124,8 @@ type (
 		mCorrect zkproof.QrRepresentationProofStructure
 
 		index int
-		a     int
+		sign  int
+		a     uint
 		k     *big.Int
 
 		splitter SquareSplitter
@@ -138,9 +141,10 @@ type (
 		MResponse  *big.Int   `json:"-"`
 
 		// Proof structure description
-		Ld uint     `json:"l_d"`
-		A  int      `json:"a"`
-		K  *big.Int `json:"k"`
+		Ld   uint     `json:"l_d"`
+		Sign int      `json:"sign"`
+		A    uint     `json:"a"`
+		K    *big.Int `json:"k"`
 	}
 
 	ProofCommit struct {
@@ -168,51 +172,51 @@ const (
 )
 
 var (
-	ErrFalseStatement = errors.New("requested inequality does not hold")
+	ErrFalseStatement  = errors.New("requested inequality does not hold")
+	ErrUnsupportedSign = errors.New("unsupported sign: must be 1 or -1")
 )
 
-func NewStatement(typ StatementType, bound *big.Int) *Statement {
-	switch typ {
-	case GreaterOrEqual:
-		return &Statement{Factor: 1, Bound: new(big.Int).Set(bound)}
-	case LesserOrEqual:
-		return &Statement{Factor: -1, Bound: new(big.Int).Set(bound)}
-	default:
-		return nil
+func NewStatement(typ StatementType, bound *big.Int) (*Statement, error) {
+	sign, err := typ.Sign()
+	if err != nil {
+		return nil, err
 	}
+	return &Statement{Sign: sign, Factor: 1, Bound: new(big.Int).Set(bound)}, nil
 }
 
-// Create a new proof structure for proving a statement of the form factor(m - bound) >= 0.
+// Create a new proof structure for proving a statement of the form sign(factor*m - bound) >= 0.
 //
 // index specifies the index of the attribute.
 // splitter describes the method used for splitting numbers into sum of squares.
-func NewProofStructure(index, factor int, bound *big.Int, splitter SquareSplitter) (*ProofStructure, error) {
-	if factor != 1 && factor != -1 {
-		return nil, errors.New("factor must be either 1 or -1")
-	}
-
+func NewProofStructure(index, sign int, factor uint, bound *big.Int, splitter SquareSplitter) (*ProofStructure, error) {
 	if splitter == nil {
 		splitter = &FourSquaresSplitter{}
 	}
 
 	if splitter.SquareCount() == 3 {
+		if factor != 1 {
+			return nil, errors.New("factor must be 1")
+		}
 		// Not all numbers can be written as sum of 3 squares, but n for which n == 2 (mod 4) can
-		// so ensure that factor(m-bound) falls into that category
+		// so ensure that factor*m-bound falls into that category
 		factor *= 4
 		bound = new(big.Int).Mul(bound, big.NewInt(4)) // ensure we dont overwrite callers copy of bound
 		bound.Sub(bound, big.NewInt(2))
 	}
 
-	return newWithParams(index, factor, bound, splitter, splitter.SquareCount(), splitter.Ld())
+	return newWithParams(index, sign, factor, bound, splitter, splitter.SquareCount(), splitter.Ld())
 }
 
-func newWithParams(index, a int, k *big.Int, split SquareSplitter, nSplit int, ld uint) (*ProofStructure, error) {
+func newWithParams(index, sign int, a uint, k *big.Int, split SquareSplitter, nSplit int, ld uint) (*ProofStructure, error) {
 	if nSplit > 4 {
 		return nil, errors.New("no support for range proofs with delta split in more than 4 squares")
 	}
+	if sign != 1 && sign != -1 {
+		return nil, ErrUnsupportedSign
+	}
 
 	var exp *big.Int
-	if a > 0 {
+	if sign == 1 {
 		exp = new(big.Int).Neg(k)
 	} else {
 		exp = new(big.Int).Set(k)
@@ -224,11 +228,12 @@ func newWithParams(index, a int, k *big.Int, split SquareSplitter, nSplit int, l
 			},
 			Rhs: []zkproof.RhsContribution{
 				{Base: "S", Secret: "v5", Power: -1},
-				{Base: fmt.Sprintf("R%d", index), Secret: "m", Power: int64(-a)},
+				{Base: fmt.Sprintf("R%d", index), Secret: "m", Power: -int64(a) * int64(sign)},
 			},
 		},
 
 		index: index,
+		sign:  sign,
 		a:     a,
 		k:     new(big.Int).Set(k),
 
@@ -258,17 +263,27 @@ func newWithParams(index, a int, k *big.Int, split SquareSplitter, nSplit int, l
 }
 
 func (statement *Statement) ProofStructure(index int) (*ProofStructure, error) {
-	return NewProofStructure(index, statement.Factor, statement.Bound, statement.Splitter)
+	return NewProofStructure(index, statement.Sign, statement.Factor, statement.Bound, statement.Splitter)
+}
+
+func (typ StatementType) Sign() (int, error) {
+	switch typ {
+	case GreaterOrEqual:
+		return 1, nil
+	case LesserOrEqual:
+		return -1, nil
+	default:
+		return 0, ErrUnsupportedSign
+	}
 }
 
 func (s *ProofStructure) CommitmentsFromSecrets(g *gabikeys.PublicKey, m, mRandomizer *big.Int) ([]*big.Int, *ProofCommit, error) {
 	var err error
 
 	d := new(big.Int).Mul(m, big.NewInt(int64(s.a)))
-	if s.a > 0 {
-		d.Sub(d, s.k)
-	} else {
-		d.Add(d, s.k)
+	d.Sub(d, s.k)
+	if s.sign == -1 {
+		d.Neg(d)
 	}
 
 	if d.Sign() < 0 {
@@ -352,9 +367,10 @@ func (s *ProofStructure) BuildProof(commit *ProofCommit, challenge *big.Int) *Pr
 		V5Response: new(big.Int).Add(new(big.Int).Mul(challenge, commit.v5), commit.v5Randomizer),
 		MResponse:  new(big.Int).Add(new(big.Int).Mul(challenge, commit.m), commit.mRandomizer),
 
-		Ld: s.ld,
-		A:  s.a,
-		K:  new(big.Int).Set(s.k),
+		Ld:   s.ld,
+		Sign: s.sign,
+		A:    s.a,
+		K:    new(big.Int).Set(s.k),
 	}
 
 	for i := range commit.c {
@@ -411,18 +427,47 @@ func (s *ProofStructure) CommitmentsFromProof(g *gabikeys.PublicKey, p *Proof, c
 	return contributions
 }
 
-// Check whether proof makes required statement
-func (p *Proof) ProvesStatement(a int, k *big.Int) bool {
-	if len(p.Cs) == 3 {
-		a *= 4
-		k = new(big.Int).Mul(k, big.NewInt(4))
-		k.Sub(k, big.NewInt(2))
+// ProvesStatement returns whether the Proof proves or implies the specified statement.
+func (p *Proof) ProvesStatement(sign int, factor uint, bound *big.Int) bool {
+	if sign != 1 && sign != -1 {
+		return false
 	}
-	return a == p.A && k.Cmp(p.K) == 0
+	if len(p.Cs) == 3 {
+		factor *= 4
+		bound = new(big.Int).Mul(bound, big.NewInt(4))
+		bound.Sub(bound, big.NewInt(2))
+	}
+	return p.Sign == sign && p.A == factor &&
+		(p.K.Cmp(bound) == 0 || p.K.Cmp(bound) == sign)
 }
 
+// Proves returns whether the Proof proves or implies the specified statement.
 func (p *Proof) Proves(statement *Statement) bool {
-	return p.ProvesStatement(statement.Factor, statement.Bound)
+	return p.ProvesStatement(statement.Sign, statement.Factor, statement.Bound)
+}
+
+// ProvenStatement returns the statement that this proof proves. Calling the second and third return
+// parameters "factor" and "bound" respectively, then
+//    factor*attribute - bound >= 0  or  <= 0
+// where the inequality type is returned as the first parameter.
+//
+// NB: this method does not verify the proof. Do not trust the output unless proof.Verify() has been
+// invoked first.
+func (p *Proof) ProvenStatement() (StatementType, uint, *big.Int) {
+	bound := new(big.Int).Set(p.K)
+	factor := p.A
+	if len(p.Cs) == 3 {
+		bound.Add(bound, big.NewInt(2)).Rsh(bound, 2)
+		factor >>= 2
+	}
+	var typ StatementType
+	switch p.Sign {
+	case 1:
+		typ = GreaterOrEqual
+	case -1:
+		typ = LesserOrEqual
+	}
+	return typ, factor, bound
 }
 
 // Extract proof structure from proof
@@ -434,10 +479,11 @@ func (p *Proof) ExtractStructure(index int, g *gabikeys.PublicKey) (*ProofStruct
 	// p.K >= 2^lm+sizeof(a) is never reasonable since that makes |m*a| < |k|, making
 	//  the proof statement trivial (it either always or never holds)
 	if p.K == nil || p.Ld > g.Params.Lm || len(p.Cs) < 3 || len(p.Cs) > 4 ||
-		p.K.BitLen() > int(g.Params.Lm+strconv.IntSize) {
+		p.K.BitLen() > int(g.Params.Lm+strconv.IntSize) ||
+		(len(p.Cs) == 3 && p.A != 4) {
 		return nil, errors.New("invalid proof")
 	}
-	return newWithParams(index, p.A, p.K, nil, len(p.Cs), p.Ld)
+	return newWithParams(index, p.Sign, p.A, p.K, nil, len(p.Cs), p.Ld)
 }
 
 // ---
