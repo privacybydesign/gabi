@@ -624,34 +624,35 @@ func createCredential(t *testing.T, context, secret *big.Int, issuer *Issuer) *C
 var squaresTable = rangeproof.GenerateSquaresTable(65535)
 
 func TestRangeProofGreaterOrEqual(t *testing.T) {
-	testRangeProofs(t, true, []*rangeproof.Statement{
-		rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Sub(testAttributes1[0], big.NewInt(63))),
-	})
+	stmt, err := rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Sub(testAttributes1[0], big.NewInt(63)))
+	assert.NoError(t, err)
+	testRangeProofs(t, true, []*rangeproof.Statement{stmt})
 }
 
 func TestRangeProofEqual(t *testing.T) {
-	testRangeProofs(t, true, []*rangeproof.Statement{
-		rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Set(testAttributes1[0])),
-	})
+	stmt, err := rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Set(testAttributes1[0]))
+	assert.NoError(t, err)
+	testRangeProofs(t, true, []*rangeproof.Statement{stmt})
 }
 
 func TestRangeProofLesserOrEqual(t *testing.T) {
-	testRangeProofs(t, true, []*rangeproof.Statement{
-		rangeproof.NewStatement(rangeproof.LesserOrEqual, new(big.Int).Add(testAttributes1[0], big.NewInt(63))),
-	})
+	stmt, err := rangeproof.NewStatement(rangeproof.LesserOrEqual, new(big.Int).Add(testAttributes1[0], big.NewInt(63)))
+	assert.NoError(t, err)
+	testRangeProofs(t, true, []*rangeproof.Statement{stmt})
 }
 
 func TestRangeProofMultiple(t *testing.T) {
-	testRangeProofs(t, true, []*rangeproof.Statement{
-		rangeproof.NewStatement(rangeproof.LesserOrEqual, new(big.Int).Add(testAttributes1[0], big.NewInt(63))),
-		rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Sub(testAttributes1[0], big.NewInt(63))),
-	})
+	stmt1, err := rangeproof.NewStatement(rangeproof.LesserOrEqual, new(big.Int).Add(testAttributes1[0], big.NewInt(63)))
+	assert.NoError(t, err)
+	stmt2, err := rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Sub(testAttributes1[0], big.NewInt(63)))
+	assert.NoError(t, err)
+	testRangeProofs(t, true, []*rangeproof.Statement{stmt1, stmt2})
 }
 
 func TestRangeProofFalseStatement(t *testing.T) {
-	testRangeProofs(t, false, []*rangeproof.Statement{
-		rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Add(testAttributes1[0], big.NewInt(63))),
-	})
+	stmt, err := rangeproof.NewStatement(rangeproof.GreaterOrEqual, new(big.Int).Add(testAttributes1[0], big.NewInt(63)))
+	assert.NoError(t, err)
+	testRangeProofs(t, false, []*rangeproof.Statement{stmt})
 }
 
 func testRangeProofs(t *testing.T, trueStatements bool, statements []*rangeproof.Statement) {
@@ -688,7 +689,9 @@ func testRangeProofs(t *testing.T, trueStatements bool, statements []*rangeproof
 			typ, factor, bound := proof.RangeProofs[1][i].ProvenStatement()
 			assert.Equal(t, statement.Bound, bound)
 			assert.Equal(t, uint(1), factor)
-			assert.Equal(t, statement.Sign, typ.Sign())
+			sign, err := typ.Sign()
+			assert.NoError(t, err)
+			assert.Equal(t, statement.Sign, sign)
 
 			// The proof proves the statement as is
 			assert.True(t, proof.RangeProofs[1][i].Proves(statement))

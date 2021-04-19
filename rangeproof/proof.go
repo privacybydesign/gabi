@@ -172,11 +172,16 @@ const (
 )
 
 var (
-	ErrFalseStatement = errors.New("requested inequality does not hold")
+	ErrFalseStatement  = errors.New("requested inequality does not hold")
+	ErrUnsupportedSign = errors.New("unsupported sign: must be 1 or -1")
 )
 
-func NewStatement(typ StatementType, bound *big.Int) *Statement {
-	return &Statement{Sign: typ.Sign(), Factor: 1, Bound: new(big.Int).Set(bound)}
+func NewStatement(typ StatementType, bound *big.Int) (*Statement, error) {
+	sign, err := typ.Sign()
+	if err != nil {
+		return nil, err
+	}
+	return &Statement{Sign: sign, Factor: 1, Bound: new(big.Int).Set(bound)}, nil
 }
 
 // Create a new proof structure for proving a statement of the form sign(factor*m - bound) >= 0.
@@ -207,7 +212,7 @@ func newWithParams(index, sign int, a uint, k *big.Int, split SquareSplitter, nS
 		return nil, errors.New("no support for range proofs with delta split in more than 4 squares")
 	}
 	if sign != 1 && sign != -1 {
-		return nil, errors.New("sign must be either 1 or -1")
+		return nil, ErrUnsupportedSign
 	}
 
 	var exp *big.Int
@@ -261,14 +266,14 @@ func (statement *Statement) ProofStructure(index int) (*ProofStructure, error) {
 	return NewProofStructure(index, statement.Sign, statement.Factor, statement.Bound, statement.Splitter)
 }
 
-func (typ StatementType) Sign() int {
+func (typ StatementType) Sign() (int, error) {
 	switch typ {
 	case GreaterOrEqual:
-		return 1
+		return 1, nil
 	case LesserOrEqual:
-		return -1
+		return -1, nil
 	default:
-		return 0
+		return 0, ErrUnsupportedSign
 	}
 }
 
