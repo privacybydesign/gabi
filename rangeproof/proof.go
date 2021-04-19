@@ -455,8 +455,11 @@ func (p *Proof) ProvenStatement() (StatementType, uint, *big.Int) {
 		bound.Add(bound, big.NewInt(2)).Rsh(bound, 2)
 		factor >>= 2
 	}
-	typ := GreaterOrEqual
-	if p.Sign == -1 {
+	var typ StatementType
+	switch p.Sign {
+	case 1:
+		typ = GreaterOrEqual
+	case -1:
 		typ = LesserOrEqual
 	}
 	return typ, factor, bound
