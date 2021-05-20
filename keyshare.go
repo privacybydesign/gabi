@@ -1,15 +1,9 @@
 package gabi
 
 import (
-	"errors"
-
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/internal/common"
-)
-
-var (
-	ErrKeyMismatch = errors.New("key lengths are incompatible")
 )
 
 // Generate keyshare secret
@@ -21,18 +15,17 @@ func NewKeyshareSecret() (*big.Int, error) {
 
 // Generate commitments for the keyshare server for given set of keys
 func NewKeyshareCommitments(secret *big.Int, keys []*gabikeys.PublicKey) (*big.Int, []*ProofPCommitment, error) {
-	// Determine required randomizer length
-	var lRand uint = 0
-	for _, key := range keys {
-		lCur := key.Params.LmCommit
-		if lRand != 0 && lCur != lRand {
-			return nil, nil, ErrKeyMismatch
-		}
-		lRand = lCur
-	}
+	// Generate randomizer value.
+	// Given that with this zero knowledge proof we are hiding a secret of length params[1024].Lm,
+	// normally we would use params[1024].LmCommit here. Generally LmCommit = Lm + Lh + Lstatzk,
+	// where Lstatzk is the level of security with which the proof hides the secret.
+	// However, params[1024].Lstatzk = 80 while everywhere else we use Lstatzk = 128.
+	// So instead of using params[1024].LmCommit we recompute it with the Lstatzk of keylength 2048.
+	randLength := gabikeys.DefaultSystemParameters[1024].Lm +
+		gabikeys.DefaultSystemParameters[1024].Lh +
+		gabikeys.DefaultSystemParameters[2048].Lstatzk
 
-	// Generate commitment value
-	commit, err := common.RandomBigInt(lRand)
+	randomizer, err := common.RandomBigInt(randLength)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -43,11 +36,11 @@ func NewKeyshareCommitments(secret *big.Int, keys []*gabikeys.PublicKey) (*big.I
 		exponentiatedCommitments = append(exponentiatedCommitments,
 			&ProofPCommitment{
 				P:       new(big.Int).Exp(key.R[0], secret, key.N),
-				Pcommit: new(big.Int).Exp(key.R[0], commit, key.N),
+				Pcommit: new(big.Int).Exp(key.R[0], randomizer, key.N),
 			})
 	}
 
-	return commit, exponentiatedCommitments, nil
+	return randomizer, exponentiatedCommitments, nil
 }
 
 // Generate keyshare response for a given challenge and commit, given a secret

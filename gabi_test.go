@@ -947,6 +947,7 @@ func TestKeyshare(t *testing.T) {
 
 	commit, W, err := NewKeyshareCommitments(secret, []*gabikeys.PublicKey{testPubK})
 	require.NoError(t, err)
+	require.Equal(t, uint(commit.BitLen()), gabikeys.DefaultSystemParameters[2048].LmCommit)
 
 	response := KeyshareResponse(secret, commit, big.NewInt(123), testPubK)
 	assert.Equal(t, new(big.Int).Exp(testPubK.R[0], response.SResponse, testPubK.N),
