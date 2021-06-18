@@ -17,9 +17,8 @@ import (
 	"github.com/privacybydesign/gabi/rangeproof"
 	"github.com/privacybydesign/gabi/revocation"
 	"github.com/privacybydesign/gabi/safeprime"
-	"github.com/stretchr/testify/require"
-
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -940,6 +939,23 @@ func TestFullIssueAndShowWithRevocation(t *testing.T) {
 	require.Len(t, cred.nonrevCache, 1)
 	cache = <-cred.nonrevCache
 	require.Equal(t, cache.index, acc.Index)
+}
+
+func TestKeyshare(t *testing.T) {
+	secret, err := NewKeyshareSecret()
+	require.NoError(t, err)
+
+	commit, W, err := NewKeyshareCommitments(secret, []*gabikeys.PublicKey{testPubK})
+	require.NoError(t, err)
+	require.Equal(t, uint(commit.BitLen()), gabikeys.DefaultSystemParameters[2048].LmCommit)
+
+	response := KeyshareResponse(secret, commit, big.NewInt(123), testPubK)
+	assert.Equal(t, new(big.Int).Exp(testPubK.R[0], response.SResponse, testPubK.N),
+		new(big.Int).Mod(
+			new(big.Int).Mul(
+				W[0].Pcommit,
+				new(big.Int).Exp(W[0].P, big.NewInt(123), testPubK.N)),
+			testPubK.N))
 }
 
 // TODO: tests to add:
