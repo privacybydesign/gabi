@@ -61,10 +61,9 @@ func GenerateConcurrent(bitsize int, stop chan struct{}) (<-chan *big.Int, <-cha
 }
 
 // Generate a safe prime of the given size, using the fact that:
-//     If q is prime and 2^(2q) = 1 mod (2q+1), then 2q+1 is a safe prime.
+//     If (and only if) q is prime and 2^(2q) = 1 mod (2q+1), then 2q+1 is a safe prime.
 // We take a random bigint q; if the above formula holds and q is prime, then we return 2q+1.
-// (See https://www.ijipbangalore.org/abstracts_2(1)/p5.pdf and
-// https://groups.google.com/group/sci.crypt/msg/34c4abf63568a8eb)
+// (See https://groups.google.com/group/sci.crypt/msg/34c4abf63568a8eb and below.)
 //
 // In order to cancel the generation algorithm, send a struct{} on the stop parameter or close() it.
 // (Passing nil is allowed; then the algorithm cannot be cancelled).
@@ -128,3 +127,28 @@ func Generate(bitsize int, stop chan struct{}) (*big.Int, error) {
 	}
 	return twoqone, nil
 }
+
+/*
+Here we include a proof of the statement above based on the argument from
+https://groups.google.com/group/sci.crypt/msg/34c4abf63568a8eb, and on "Algorithms to Compute a
+Generator of the Group (Z_p^*,×_p) and Safe Primes", Pinaki Mitra, M Durgaprasada Rao and M Kranthi
+Kumara, International Journal of Information Processing, 2(1), 29 - 35, 2008.
+
+Theorem: If (and only if) q is prime and 2^(2q) = 1 mod (2q+1), then 2q+1 is a safe prime.
+
+Proof: The "only if" direction follows immediately from Fermat's little theorem. Thus, suppose that
+q is prime and that the equation holds. Consider the order of 2 within the multiplicative group of
+the integers modulo p := 2q + 1. Since 2^(2q) mod (2q+1) = 1, the order must divide 2q. Since q is
+prime, the only divisors of 2q are 1, 2, q and 2q, so the order of 2 must equal one of these. It
+cannot be 1 or 2, since p must be at least 5, so the order equals either q or 2q. Either way, q
+divides the order.
+
+Now the order of any element must divide the order of the group, so q also divides the order of the
+multiplicative group mod p. Additionally, 2 divides the order of this group, because as is easily
+seen, p-1 has order 2. If q > 2 then since gcd(2, q) = 1 it follows that 2q divides the order of the
+group (and even if q=2 this holds since it's true for p=5). The order of the group cannot be larger
+than 2q = p - 1, so it must be equal to 2q = p - 1, which only happens if p is prime. QED
+
+Note that because of the "only if" direction of the theorem, sieving safe prime candidates using
+this equation does not sieve out any safe primes.
+*/
