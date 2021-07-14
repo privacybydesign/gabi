@@ -91,6 +91,10 @@ func (s *CLSignature) Verify(pk *gabikeys.PublicKey, ms []*big.Int) bool {
 		return false
 	}
 
+	if !s.E.ProbablyPrime(80) {
+		return false
+	}
+
 	// Q = A^e * R * S^v
 	Ae := new(big.Int).Exp(s.A, s.E, pk.N)
 	R, err := RepresentToPublicKey(pk, ms)
