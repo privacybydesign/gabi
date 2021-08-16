@@ -143,7 +143,7 @@ type ProofD struct {
 	AResponses         map[int]*big.Int            `json:"a_responses"`
 	ADisclosed         map[int]*big.Int            `json:"a_disclosed"`
 	NonRevocationProof *revocation.Proof           `json:"nonrev_proof,omitempty"`
-	RangeProofs        map[int][]*rangeproof.Proof `json:"rangeproofs"`
+	RangeProofs        map[int][]*rangeproof.Proof `json:"rangeproofs,omitempty"`
 
 	cachedRangeStructures map[int][]*rangeproof.ProofStructure
 }
