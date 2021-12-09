@@ -193,7 +193,7 @@ func (p *ProofD) correctResponseSizes(pk *gabikeys.PublicKey) bool {
 
 // reconstructZ reconstructs Z from the information in the proof and the
 // provided public key.
-func (p *ProofD) reconstructZ(pk *gabikeys.PublicKey) *big.Int {
+func (p *ProofD) reconstructZ(pk *gabikeys.PublicKey) (*big.Int, error) {
 	// known = Z / ( prod_{disclosed} R_i^{a_i} * A^{2^{l_e - 1}} )
 	numerator := new(big.Int).Lsh(big.NewInt(1), pk.Params.Le-1)
 	numerator.Exp(p.A, numerator, pk.N)
@@ -206,6 +206,10 @@ func (p *ProofD) reconstructZ(pk *gabikeys.PublicKey) *big.Int {
 	}
 
 	known := new(big.Int).ModInverse(numerator, pk.N)
+	if known == nil {
+		return nil, errors.Errorf("The numerator and N are not relatively prime")
+	}
+
 	known.Mul(pk.Z, known)
 
 	knownC := common.ModPow(known, new(big.Int).Neg(p.C), pk.N)
@@ -218,7 +222,7 @@ func (p *ProofD) reconstructZ(pk *gabikeys.PublicKey) *big.Int {
 	Z := new(big.Int).Mul(knownC, Ae)
 	Z.Mul(Z, Rs).Mul(Z, Sv).Mod(Z, pk.N)
 
-	return Z
+	return Z, nil
 }
 
 // Verify verifies the proof against the given public key, context, and nonce.
@@ -258,7 +262,12 @@ func (p *ProofD) VerifyWithChallenge(pk *gabikeys.PublicKey, reconstructedChalle
 // ChallengeContribution returns the contribution of this proof to the
 // challenge.
 func (p *ProofD) ChallengeContribution(pk *gabikeys.PublicKey) ([]*big.Int, error) {
-	l := []*big.Int{p.A, p.reconstructZ(pk)}
+	z, err := p.reconstructZ(pk)
+	if err != nil {
+		return nil, errors.WrapPrefix(err, "Could not reconstruct Z", 0)
+	}
+
+	l := []*big.Int{p.A, z}
 	if p.NonRevocationProof != nil {
 		revIdx := p.revocationAttrIndex()
 		if revIdx < 0 || p.AResponses[revIdx] == nil {
