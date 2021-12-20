@@ -94,6 +94,9 @@ func (i *Issuer) proveSignature(signature *CLSignature, nonce2 *big.Int) (*Proof
 	Q := new(big.Int).Exp(signature.A, signature.E, i.Pk.N)
 	groupModulus := new(big.Int).Mul(i.Sk.PPrime, i.Sk.QPrime)
 	d := new(big.Int).ModInverse(signature.E, groupModulus)
+	if d == nil {
+		return nil, common.ErrNoModInverse
+	}
 
 	eCommit, err := randomElementMultiplicativeGroup(groupModulus)
 	if err != nil {

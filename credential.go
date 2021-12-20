@@ -291,12 +291,22 @@ func (d *DisclosureProofBuilder) Commit(randomizers map[string]*big.Int) ([]*big
 
 	// Z = A^{e_commit} * S^{v_commit}
 	//     PROD_{i \in undisclosed} ( R_i^{a_commits{i}} )
-	Ae := common.ModPow(d.randomizedSignature.A, d.eCommit, d.pk.N)
-	Sv := common.ModPow(d.pk.S, d.vCommit, d.pk.N)
+	Ae, err := common.ModPow(d.randomizedSignature.A, d.eCommit, d.pk.N)
+	if err != nil {
+		return nil, err
+	}
+	Sv, err := common.ModPow(d.pk.S, d.vCommit, d.pk.N)
+	if err != nil {
+		return nil, err
+	}
 	d.z.Mul(d.z, Ae).Mul(d.z, Sv).Mod(d.z, d.pk.N)
 
 	for _, v := range d.undisclosedAttributes {
-		d.z.Mul(d.z, common.ModPow(d.pk.R[v], d.attrRandomizers[v], d.pk.N))
+		t, err := common.ModPow(d.pk.R[v], d.attrRandomizers[v], d.pk.N)
+		if err != nil {
+			return nil, err
+		}
+		d.z.Mul(d.z, t)
 		d.z.Mod(d.z, d.pk.N)
 	}
 

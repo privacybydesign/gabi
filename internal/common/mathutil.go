@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	mathRand "math/rand"
 
+	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
 )
 
@@ -51,15 +52,17 @@ func ModInverse(a, n *big.Int) (ia *big.Int, ok bool) {
 	return x, true
 }
 
-// modPow computes x^y mod m. The exponent (y) can be negative, in which case it
-// uses the modular inverse to compute the result (in contrast to Go's Exp
-// function).
-func ModPow(x, y, m *big.Int) *big.Int {
+var ErrNoModInverse = errors.New("modular inverse does not exist")
+
+func ModPow(x, y, m *big.Int) (*big.Int, error) {
 	if y.Sign() == -1 {
 		t := new(big.Int).ModInverse(x, m)
-		return t.Exp(t, new(big.Int).Neg(y), m)
+		if t == nil {
+			return nil, ErrNoModInverse
+		}
+		return t.Exp(t, new(big.Int).Neg(y), m), nil
 	}
-	return new(big.Int).Exp(x, y, m)
+	return new(big.Int).Exp(x, y, m), nil
 }
 
 // RepresentToPublicKey returns a representation of the given exponents in terms of the R bases
