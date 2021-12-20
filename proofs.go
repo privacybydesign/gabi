@@ -76,21 +76,33 @@ func (p *ProofU) VerifyWithChallenge(pk *gabikeys.PublicKey, reconstructedChalle
 
 // reconstructUcommit reconstructs U from the information in the proof and the
 // provided public key.
-func (p *ProofU) reconstructUcommit(pk *gabikeys.PublicKey) *big.Int {
+func (p *ProofU) reconstructUcommit(pk *gabikeys.PublicKey) (*big.Int, error) {
 	// Reconstruct Ucommit
 	// U_commit = U^{-C} * S^{VPrimeResponse} * R_0^{SResponse}
-	Uc := common.ModPow(p.U, new(big.Int).Neg(p.C), pk.N)
-	Sv := common.ModPow(pk.S, p.VPrimeResponse, pk.N)
-	R0s := common.ModPow(pk.R[0], p.SResponse, pk.N)
+	Uc, err := common.ModPow(p.U, new(big.Int).Neg(p.C), pk.N)
+	if err != nil {
+		return nil, err
+	}
+	Sv, err := common.ModPow(pk.S, p.VPrimeResponse, pk.N)
+	if err != nil {
+		return nil, err
+	}
+	R0s, err := common.ModPow(pk.R[0], p.SResponse, pk.N)
+	if err != nil {
+		return nil, err
+	}
 	Ucommit := new(big.Int).Mul(Uc, Sv)
 	Ucommit.Mul(Ucommit, R0s).Mod(Ucommit, pk.N)
 
 	for i, miUserResponse := range p.MUserResponses {
-		Rimi := common.ModPow(pk.R[i], miUserResponse, pk.N)
+		Rimi, err := common.ModPow(pk.R[i], miUserResponse, pk.N)
+		if err != nil {
+			return nil, err
+		}
 		Ucommit.Mul(Ucommit, Rimi).Mod(Ucommit, pk.N)
 	}
 
-	return Ucommit
+	return Ucommit, nil
 }
 
 // SecretKeyResponse returns the secret key response (as part of Proof
@@ -107,7 +119,11 @@ func (p *ProofU) Challenge() *big.Int {
 // ChallengeContribution returns the contribution of this proof to the
 // challenge.
 func (p *ProofU) ChallengeContribution(pk *gabikeys.PublicKey) ([]*big.Int, error) {
-	return []*big.Int{p.U, p.reconstructUcommit(pk)}, nil
+	Ucommit, err := p.reconstructUcommit(pk)
+	if err != nil {
+		return nil, err
+	}
+	return []*big.Int{p.U, Ucommit}, nil
 }
 
 // ProofS represents a proof.
@@ -193,7 +209,7 @@ func (p *ProofD) correctResponseSizes(pk *gabikeys.PublicKey) bool {
 
 // reconstructZ reconstructs Z from the information in the proof and the
 // provided public key.
-func (p *ProofD) reconstructZ(pk *gabikeys.PublicKey) *big.Int {
+func (p *ProofD) reconstructZ(pk *gabikeys.PublicKey) (*big.Int, error) {
 	// known = Z / ( prod_{disclosed} R_i^{a_i} * A^{2^{l_e - 1}} )
 	numerator := new(big.Int).Lsh(big.NewInt(1), pk.Params.Le-1)
 	numerator.Exp(p.A, numerator, pk.N)
@@ -206,19 +222,36 @@ func (p *ProofD) reconstructZ(pk *gabikeys.PublicKey) *big.Int {
 	}
 
 	known := new(big.Int).ModInverse(numerator, pk.N)
+	if known == nil {
+		return nil, common.ErrNoModInverse
+	}
+
 	known.Mul(pk.Z, known)
 
-	knownC := common.ModPow(known, new(big.Int).Neg(p.C), pk.N)
-	Ae := common.ModPow(p.A, p.EResponse, pk.N)
-	Sv := common.ModPow(pk.S, p.VResponse, pk.N)
+	knownC, err := common.ModPow(known, new(big.Int).Neg(p.C), pk.N)
+	if err != nil {
+		return nil, err
+	}
+	Ae, err := common.ModPow(p.A, p.EResponse, pk.N)
+	if err != nil {
+		return nil, err
+	}
+	Sv, err := common.ModPow(pk.S, p.VResponse, pk.N)
+	if err != nil {
+		return nil, err
+	}
 	Rs := big.NewInt(1)
 	for i, response := range p.AResponses {
-		Rs.Mul(Rs, common.ModPow(pk.R[i], response, pk.N))
+		t, err := common.ModPow(pk.R[i], response, pk.N)
+		if err != nil {
+			return nil, err
+		}
+		Rs.Mul(Rs, t)
 	}
 	Z := new(big.Int).Mul(knownC, Ae)
 	Z.Mul(Z, Rs).Mul(Z, Sv).Mod(Z, pk.N)
 
-	return Z
+	return Z, nil
 }
 
 // Verify verifies the proof against the given public key, context, and nonce.
@@ -258,7 +291,12 @@ func (p *ProofD) VerifyWithChallenge(pk *gabikeys.PublicKey, reconstructedChalle
 // ChallengeContribution returns the contribution of this proof to the
 // challenge.
 func (p *ProofD) ChallengeContribution(pk *gabikeys.PublicKey) ([]*big.Int, error) {
-	l := []*big.Int{p.A, p.reconstructZ(pk)}
+	z, err := p.reconstructZ(pk)
+	if err != nil {
+		return nil, errors.WrapPrefix(err, "Could not reconstruct Z", 0)
+	}
+
+	l := []*big.Int{p.A, z}
 	if p.NonRevocationProof != nil {
 		revIdx := p.revocationAttrIndex()
 		if revIdx < 0 || p.AResponses[revIdx] == nil {

@@ -104,7 +104,10 @@ func (s *CLSignature) Verify(pk *gabikeys.PublicKey, ms []*big.Int) bool {
 	if s.KeyshareP != nil {
 		R.Mul(R, s.KeyshareP)
 	}
-	Sv := common.ModPow(pk.S, s.V, pk.N)
+	Sv, err := common.ModPow(pk.S, s.V, pk.N)
+	if err != nil {
+		return false
+	}
 	Q := new(big.Int).Mul(Ae, R)
 	Q.Mul(Q, Sv).Mod(Q, pk.N)
 
