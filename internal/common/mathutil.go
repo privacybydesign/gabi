@@ -54,6 +54,9 @@ func ModInverse(a, n *big.Int) (ia *big.Int, ok bool) {
 
 var ErrNoModInverse = errors.New("modular inverse does not exist")
 
+// ModPow computes x^y mod m. The exponent (y) can be negative, in which case it
+// uses the modular inverse to compute the result (in contrast to Go's Exp
+// function).
 func ModPow(x, y, m *big.Int) (*big.Int, error) {
 	if y.Sign() == -1 {
 		t := new(big.Int).ModInverse(x, m)
@@ -65,7 +68,7 @@ func ModPow(x, y, m *big.Int) (*big.Int, error) {
 	return new(big.Int).Exp(x, y, m), nil
 }
 
-// RepresentToPublicKey returns a representation of the given exponents in terms of the R bases
+// RepresentToBases returns a representation of the given exponents in terms of the R bases
 // from the public key. For example given exponents exps[1],...,exps[k] this function returns
 //   R[1]^{exps[1]}*...*R[k]^{exps[k]} (mod N)
 // with R and N coming from the public key. The exponents are hashed if their length
