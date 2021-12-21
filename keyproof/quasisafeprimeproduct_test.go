@@ -12,24 +12,20 @@ import (
 )
 
 func TestQuasiSafePrimeProductCycle(t *testing.T) {
-	const p = 13451
-	const q = 13901
-	listBefore, commit := quasiSafePrimeProductBuildCommitments([]*big.Int{}, big.NewInt(p), big.NewInt(q))
-	proof := quasiSafePrimeProductBuildProof(big.NewInt(p), big.NewInt(q), big.NewInt(12345), commit)
+	listBefore, commit := quasiSafePrimeProductBuildCommitments([]*big.Int{}, testPPrime, testQPrime)
+	proof := quasiSafePrimeProductBuildProof(testPPrime, testQPrime, big.NewInt(12345), commit)
 	assert.True(t, quasiSafePrimeProductVerifyStructure(proof), "Proof structure rejected")
 	listAfter := quasiSafePrimeProductExtractCommitments([]*big.Int{}, proof)
-	ok := quasiSafePrimeProductVerifyProof(big.NewInt((2*p+1)*(2*q+1)), big.NewInt(12345), proof)
+	ok := quasiSafePrimeProductVerifyProof(testN, big.NewInt(12345), proof)
 	assert.True(t, ok, "QuasiSafePrimeProduct rejected")
 	assert.Equal(t, listBefore, listAfter, "Difference between commitment lists")
 }
 
 func TestQuasiSafePrimeProductFullCycle(t *testing.T) {
 	// Build proof
-	const p = 13451
-	const q = 13901
-	listBefore, commit := quasiSafePrimeProductBuildCommitments([]*big.Int{}, big.NewInt(p), big.NewInt(q))
+	listBefore, commit := quasiSafePrimeProductBuildCommitments([]*big.Int{}, testPPrime, testQPrime)
 	challengeBefore := common.HashCommit(listBefore, false)
-	proofBefore := quasiSafePrimeProductBuildProof(big.NewInt(p), big.NewInt(q), challengeBefore, commit)
+	proofBefore := quasiSafePrimeProductBuildProof(testPPrime, testQPrime, challengeBefore, commit)
 	proofJSON, err := json.Marshal(proofBefore)
 	require.NoError(t, err, "error during json marshal")
 
@@ -39,15 +35,13 @@ func TestQuasiSafePrimeProductFullCycle(t *testing.T) {
 	require.NoError(t, err, "error during json unmarshal")
 	listAfter := quasiSafePrimeProductExtractCommitments([]*big.Int{}, proofAfter)
 	challengeAfter := common.HashCommit(listAfter, false)
-	ok := quasiSafePrimeProductVerifyProof(big.NewInt((2*p+1)*(2*q+1)), challengeAfter, proofAfter)
+	ok := quasiSafePrimeProductVerifyProof(testN, challengeAfter, proofAfter)
 	assert.True(t, ok, "JSON proof rejected")
 }
 
 func TestQuasiSafePrimeProductVerifyStructure(t *testing.T) {
-	const p = 13451
-	const q = 13901
-	_, commit := quasiSafePrimeProductBuildCommitments([]*big.Int{}, big.NewInt(p), big.NewInt(q))
-	proof := quasiSafePrimeProductBuildProof(big.NewInt(p), big.NewInt(q), big.NewInt(12345), commit)
+	_, commit := quasiSafePrimeProductBuildCommitments([]*big.Int{}, testPPrime, testQPrime)
+	proof := quasiSafePrimeProductBuildProof(testPPrime, testQPrime, big.NewInt(12345), commit)
 
 	valBackup := proof.SFproof.Responses[2]
 	proof.SFproof.Responses[2] = nil
