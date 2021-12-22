@@ -20,12 +20,12 @@ func TestValidKeyProof(t *testing.T) {
 	s := NewValidKeyProofStructure(big.NewInt(p*q), []*big.Int{big.NewInt(a), big.NewInt(b), big.NewInt(c)})
 	proof := s.BuildProof(big.NewInt((p-1)/2), big.NewInt((q-1)/2))
 
-	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
+	assert.Equal(t, int(Follower.(*TestFollower).count), s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
 	Follower.(*TestFollower).count = 0
 
 	ok := s.VerifyProof(proof)
 
-	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
+	assert.Equal(t, int(Follower.(*TestFollower).count), s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
 	assert.True(t, ok, "Proof rejected.")
 }
 

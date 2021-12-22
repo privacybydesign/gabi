@@ -40,7 +40,7 @@ func TestMultiplicationProofFlow(t *testing.T) {
 	listSecrets, commit := s.commitmentsFromSecrets(g, nil, &bases, &secrets)
 
 	assert.Equal(t, len(listSecrets), s.numCommitments(), "NumCommitments is off")
-	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
+	assert.Equal(t, int(Follower.(*TestFollower).count), s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
 	Follower.(*TestFollower).count = 0
 
 	proof := s.buildProof(g, big.NewInt(12345), commit, &secrets)
@@ -60,7 +60,7 @@ func TestMultiplicationProofFlow(t *testing.T) {
 
 	listProof := s.commitmentsFromProof(g, nil, big.NewInt(12345), &basesProof, &proofdata, proof)
 
-	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
+	assert.Equal(t, int(Follower.(*TestFollower).count), s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
 	Follower.(*TestFollower).count = 0
 
 	assert.Equal(t, listSecrets, listProof, "Commitment lists differ.")

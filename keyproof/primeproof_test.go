@@ -26,7 +26,7 @@ func TestPrimeProofFlow(t *testing.T) {
 	listSecrets, commit := s.commitmentsFromSecrets(g, []*big.Int{}, &bases, &pCommit)
 
 	require.Equal(t, len(listSecrets), s.numCommitments(), "NumCommitments is off")
-	require.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
+	require.Equal(t, int(Follower.(*TestFollower).count), s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
 	Follower.(*TestFollower).count = 0
 
 	proof := s.buildProof(g, big.NewInt(12345), commit, &pCommit)
@@ -39,7 +39,7 @@ func TestPrimeProofFlow(t *testing.T) {
 
 	listProof := s.commitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), &basesProof, &pProof, proof)
 
-	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
+	assert.Equal(t, int(Follower.(*TestFollower).count), s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
 	assert.Equal(t, listSecrets, listProof, "Commitment lists differ.")
 }
 

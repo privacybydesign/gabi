@@ -25,7 +25,7 @@ func TestIsSquareProof(t *testing.T) {
 	listSecret, commit := s.commitmentsFromSecrets(g, []*big.Int{}, big.NewInt(p), big.NewInt(q))
 
 	assert.Equal(t, len(listSecret), s.numCommitments(), "NumCommitments is off")
-	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
+	assert.Equal(t, int(Follower.(*TestFollower).count), s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
 	Follower.(*TestFollower).count = 0
 
 	proof := s.buildProof(g, big.NewInt(12345), commit)
@@ -34,7 +34,7 @@ func TestIsSquareProof(t *testing.T) {
 
 	listProof := s.commitmentsFromProof(g, []*big.Int{}, big.NewInt(12345), proof)
 
-	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
+	assert.Equal(t, int(Follower.(*TestFollower).count), s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
 	assert.Equal(t, listSecret, listProof, "Commitment lists disagree")
 }
 
