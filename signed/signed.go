@@ -15,7 +15,8 @@ import (
 	"encoding/pem"
 	"math/big"
 
-	"github.com/fxamacker/cbor"
+	"github.com/privacybydesign/gabi/cbor"
+
 	"github.com/go-errors/errors"
 )
 
@@ -123,7 +124,7 @@ func MarshalSign(sk *ecdsa.PrivateKey, message interface{}) (Message, error) {
 	var err error
 
 	// marshal message to []byte
-	bts, err := cbor.Marshal(message, cbor.EncOptions{})
+	bts, err := cbor.Marshal(message)
 
 	// sign message []byte
 	signature, err := Sign(sk, bts)
@@ -132,7 +133,7 @@ func MarshalSign(sk *ecdsa.PrivateKey, message interface{}) (Message, error) {
 	}
 
 	// encode and return message-signature pair
-	return cbor.Marshal(&tuple{bts, signature}, cbor.EncOptions{})
+	return cbor.Marshal(&tuple{bts, signature})
 }
 
 // UnmarshalVerify verifies the signature a Message created by MarshalSign, and unmarshals the

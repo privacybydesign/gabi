@@ -71,13 +71,14 @@ import (
 	"sort"
 	"time"
 
-	"github.com/fxamacker/cbor"
-	"github.com/go-errors/errors"
-	"github.com/multiformats/go-multihash"
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/cbor"
 	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/internal/common"
 	"github.com/privacybydesign/gabi/signed"
+
+	"github.com/go-errors/errors"
+	"github.com/multiformats/go-multihash"
 	"github.com/sirupsen/logrus"
 )
 
@@ -283,7 +284,7 @@ func (update *Update) UnmarshalJSON(bts []byte) error {
 }
 
 func (update *Update) MarshalCBOR() ([]byte, error) {
-	return cbor.Marshal(update.compress(), cbor.EncOptions{})
+	return cbor.Marshal(update.compress())
 }
 
 func (update *Update) UnmarshalCBOR(data []byte) error {
@@ -445,7 +446,7 @@ func (el *EventList) UnmarshalJSON(bts []byte) error {
 }
 
 func (el *EventList) MarshalCBOR() ([]byte, error) {
-	return cbor.Marshal(el.compress(), cbor.EncOptions{})
+	return cbor.Marshal(el.compress())
 }
 
 func (el *EventList) UnmarshalCBOR(bts []byte) error {
