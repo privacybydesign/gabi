@@ -22,7 +22,7 @@ func TestPedersenProofFlow(t *testing.T) {
 	proof := s.buildProof(g, big.NewInt(1), commit)
 
 	assert.Equal(t, len(listSecrets), s.numCommitments(), "NumCommitments is off")
-	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
+	assert.Equal(t, int(Follower.(*TestFollower).count), s.numRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
 	Follower.(*TestFollower).count = 0
 
 	proof.setName("x")
@@ -31,7 +31,7 @@ func TestPedersenProofFlow(t *testing.T) {
 
 	listProof := s.commitmentsFromProof(g, []*big.Int{}, big.NewInt(1), proof)
 
-	assert.Equal(t, Follower.(*TestFollower).count, s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
+	assert.Equal(t, int(Follower.(*TestFollower).count), s.numRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
 	Follower.(*TestFollower).count = 0
 
 	assert.Equal(t, listSecrets, listProof, "Commitment lists differ")
