@@ -1,6 +1,7 @@
 package zkproof_test
 
 import (
+	"sync/atomic"
 	"testing"
 
 	"github.com/privacybydesign/gabi/big"
@@ -326,12 +327,12 @@ func TestRepresentationProofBasics(t *testing.T) {
 	listSecrets := s.CommitmentsFromSecrets(g, []*big.Int{}, &bases, &secret)
 
 	assert.Equal(t, len(listSecrets), s.NumCommitments(), "NumCommitments is off")
-	assert.Equal(t, keyproof.Follower.(*TestFollower).count, s.NumRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
+	assert.Equal(t, int(keyproof.Follower.(*TestFollower).count), s.NumRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
 	keyproof.Follower.(*TestFollower).count = 0
 
 	listProofs := s.CommitmentsFromProof(g, []*big.Int{}, big.NewInt(1), &bases, &proof)
 
-	assert.Equal(t, keyproof.Follower.(*TestFollower).count, s.NumRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
+	assert.Equal(t, int(keyproof.Follower.(*TestFollower).count), s.NumRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
 	assert.True(t, s.IsTrue(g, &bases, &secret), "Incorrect rejection of truth")
 	assert.Equal(t, listSecrets, listProofs, "commitment lists different")
 }
@@ -381,24 +382,24 @@ func TestRepresentationProofComplex(t *testing.T) {
 	listSecrets := s.CommitmentsFromSecrets(g, []*big.Int{}, &bases, &secret)
 
 	assert.Equal(t, len(listSecrets), s.NumCommitments(), "NumCommitments is off")
-	assert.Equal(t, keyproof.Follower.(*TestFollower).count, s.NumRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
+	assert.Equal(t, int(keyproof.Follower.(*TestFollower).count), s.NumRangeProofs(), "Logging is off GenerateCommitmentsFromSecrets")
 	keyproof.Follower.(*TestFollower).count = 0
 
 	listProofs := s.CommitmentsFromProof(g, []*big.Int{}, big.NewInt(2), &bases, &proof)
 
-	assert.Equal(t, keyproof.Follower.(*TestFollower).count, s.NumRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
+	assert.Equal(t, int(keyproof.Follower.(*TestFollower).count), s.NumRangeProofs(), "Logging is off on GenerateCommitmentsFromProof")
 	assert.True(t, s.IsTrue(g, &bases, &secret), "Incorrect rejection of truth")
 	assert.Equal(t, listSecrets, listProofs, "Commitment lists different")
 }
 
 type TestFollower struct {
-	count int
+	count int64
 }
 
 func (_ *TestFollower) StepStart(desc string, intermediates int) {}
 
 func (t *TestFollower) Tick() {
-	t.count++
+	atomic.AddInt64(&t.count, 1)
 }
 
 func (t *TestFollower) StepDone() {}
