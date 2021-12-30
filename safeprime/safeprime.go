@@ -100,6 +100,7 @@ func Generate(bitsize int, stop chan struct{}) (*big.Int, error) {
 	// We read our random bytes into this. Adding 7 effectively rounds the division up instead of down
 	bytes := make([]byte, (bitsize+7)/8)
 
+NextCandidate:
 	for {
 		// Every 1000 iterations, check if we have been asked to stop
 		i++
@@ -111,63 +112,27 @@ func Generate(bitsize int, stop chan struct{}) (*big.Int, error) {
 			}
 		}
 
-		// The bit manipulation and the repeated adding of two below is copied from rand.Prime()
-		// in crypto/rand/util.go from Go 1.16.5.
-
 		_, err = io.ReadFull(rand.Reader, bytes)
 		if err != nil {
 			return nil, err
 		}
 
-		// Clear bits in the first byte to make sure the candidate has a size <= bitsize.
-		bytes[0] &= uint8(int(1<<b) - 1)
-		// Don't let the value be too small, i.e, set the most significant two bits.
-		// Setting the top two bits, rather than just the top bit,
-		// means that when two of these values are multiplied together,
-		// the result isn't ever one bit short.
-		if b >= 2 {
-			bytes[0] |= 3 << (b - 2)
-		} else {
-			// Here b==1, because b cannot be zero.
-			bytes[0] |= 1
-			if len(bytes) > 1 {
-				bytes[1] |= 0x80
-			}
-		}
-		// Make the value odd since an even number this large certainly isn't prime.
-		bytes[len(bytes)-1] |= 1
+		// Manipulate our bytes so that it results in an odd number of the right size
+		prepareBytes(bytes, b)
 
 		q.SetBytes(bytes)
 
-		// Calculate the value mod the product of smallPrimes. If it's
-		// a multiple of any of these primes we add two until it isn't.
-		// The probability of overflowing is minimal and can be ignored
-		// because we still perform Miller-Rabin tests on the result.
+		// Calculate the value mod the product of SmallPrimes. If it's a multiple of any of these
+		// primes we discard this candidate. This check is much cheaper than the modular arithmetic
+		// and ProbablyPrime() below.
+		// Based on rand.Prime() in crypto/rand/util.go from Go 1.16.5.
 		bigMod.Mod(q, common.SmallPrimesProduct)
 		mod := bigMod.Uint64()
-
-	NextDelta:
-		for delta := uint64(0); delta < 1<<20; delta += 2 {
-			m := mod + delta
-			for _, prime := range common.SmallPrimes {
-				if m%uint64(prime) == 0 && (bitsize > 6 || m != uint64(prime)) {
-					continue NextDelta
-				}
+		for _, prime := range common.SmallPrimes {
+			if mod%uint64(prime) == 0 && (bitsize > 6 || mod != uint64(prime)) {
+				continue NextCandidate
 			}
-
-			if delta > 0 {
-				bigMod.SetUint64(delta)
-				q.Add(q, bigMod)
-			}
-			break
 		}
-
-		// Adding delta may have caused q to become too large
-		if q.BitLen() != bitsize {
-			continue
-		}
-
-		// end of copy from crypto/rand/util.go
 
 		// Now check the formula 2^(2q) mod (2q+1) == 1
 		twoq.Mul(two, q)
@@ -182,6 +147,30 @@ func Generate(bitsize int, stop chan struct{}) (*big.Int, error) {
 		return nil, errors.New("Go safeprime generation returned non-safeprime")
 	}
 	return twoqone, nil
+}
+
+// prepareBytes ensures that the specified bytes, when passed to big.Int.SetBytes(), results in a
+// bigint that is not too large, not too small, and odd. (This function is inlined by the compiler.)
+//
+// Copied from rand.Prime() in crypto/rand/util.go from Go 1.16.5.
+func prepareBytes(bytes []byte, b uint) {
+	// Clear bits in the first byte to make sure the candidate has a size <= bitsize.
+	bytes[0] &= uint8(int(1<<b) - 1)
+	// Don't let the value be too small, i.e, set the most significant two bits.
+	// Setting the top two bits, rather than just the top bit,
+	// means that when two of these values are multiplied together,
+	// the result isn't ever one bit short.
+	if b >= 2 {
+		bytes[0] |= 3 << (b - 2)
+	} else {
+		// Here b==1, because b cannot be zero.
+		bytes[0] |= 1
+		if len(bytes) > 1 {
+			bytes[1] |= 0x80
+		}
+	}
+	// Make the value odd since an even number this large certainly isn't prime.
+	bytes[len(bytes)-1] |= 1
 }
 
 /*

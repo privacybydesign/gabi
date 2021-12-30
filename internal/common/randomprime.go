@@ -50,6 +50,7 @@ func RandomPrimeInRange(rand io.Reader, start, length uint) (p *big.Int, err err
 	p = new(big.Int)
 	bigMod := new(big.Int)
 
+NextCandidate:
 	for {
 		_, err = io.ReadFull(rand, bytes)
 		if err != nil {
@@ -66,33 +67,17 @@ func RandomPrimeInRange(rand io.Reader, start, length uint) (p *big.Int, err err
 
 		p.Add(startVal, offset)
 
-		// Calculate the value mod the product of SmallPrimes.  If it's
-		// a multiple of any of these primes we add two until it isn't.
-		// The probability of overflowing is minimal and can be ignored
-		// because we still perform Miller-Rabin tests on the result.
+		// Calculate the value mod the product of SmallPrimes. If it's a multiple of any of these
+		// primes we discard this candidate. This check is much cheaper than ProbablyPrime() below.
 		bigMod.Mod(p, SmallPrimesProduct)
 		mod := bigMod.Uint64()
-
-	NextDelta:
-		for delta := uint64(0); delta < 1<<20; delta += 2 {
-			m := mod + delta
-			for _, prime := range SmallPrimes {
-				if m%uint64(prime) == 0 && (start > 6 || m != uint64(prime)) {
-					continue NextDelta
-				}
+		for _, prime := range SmallPrimes {
+			if mod%uint64(prime) == 0 && (start > 6 || mod != uint64(prime)) {
+				continue NextCandidate
 			}
-
-			if delta > 0 {
-				bigMod.SetUint64(delta)
-				p.Add(p, bigMod)
-			}
-			break
 		}
 
-		// There is a tiny possibility that, by adding delta, we caused
-		// the number to be one bit too long. Thus we check BitLen
-		// here.
-		if p.ProbablyPrime(20) && p.Cmp(endVal) < 0 {
+		if p.ProbablyPrime(20) {
 			return
 		}
 	}
