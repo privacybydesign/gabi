@@ -66,9 +66,9 @@ func GenerateConcurrent(bitsize int, stop chan struct{}) (<-chan *big.Int, <-cha
 //     If (and only if) q is prime and 2^(2q) = 1 mod (2q+1), then 2q+1 is a safe prime.
 // The algorithm works as follows:
 //   - We take a random bigint q;
-//   - We do some bit manipulation to ensure that it has the right size and is not even;
-//   - We sieve out a number of small prime factors: we add 2 to it until it is not a multiple of
-//     any prime below and including 53;
+//   - We do some bit manipulation to ensure that q has the right size and is odd;
+//   - We sieve out some small prime factors: We discard q if it is a multiple of any prime below
+//     and including 53;
 //   - Then, if the above formula holds and q is prime, we return 2q+1.
 // (See https://groups.google.com/group/sci.crypt/msg/34c4abf63568a8eb and below.)
 //
