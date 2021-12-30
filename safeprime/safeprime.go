@@ -5,10 +5,12 @@ package safeprime
 
 import (
 	"crypto/rand"
+	"io"
 	"runtime"
 
 	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/internal/common"
 )
 
 // GenerateConcurrent concurrently and continuously generates safeprimes on all CPU cores,
@@ -62,7 +64,12 @@ func GenerateConcurrent(bitsize int, stop chan struct{}) (<-chan *big.Int, <-cha
 
 // Generate a safe prime of the given size, using the fact that:
 //     If (and only if) q is prime and 2^(2q) = 1 mod (2q+1), then 2q+1 is a safe prime.
-// We take a random bigint q; if the above formula holds and q is prime, then we return 2q+1.
+// The algorithm works as follows:
+//   - We take a random bigint q;
+//   - We do some bit manipulation to ensure that q has the right size and is odd;
+//   - We sieve out some small prime factors: We discard q if it is a multiple of any prime below
+//     and including 53;
+//   - Then, if the above formula holds and q is prime, we return 2q+1.
 // (See https://groups.google.com/group/sci.crypt/msg/34c4abf63568a8eb and below.)
 //
 // In order to cancel the generation algorithm, send a struct{} on the stop parameter or close() it.
@@ -71,16 +78,29 @@ func Generate(bitsize int, stop chan struct{}) (*big.Int, error) {
 	var (
 		one        = big.NewInt(1)
 		two        = big.NewInt(2)
-		max        = new(big.Int).Lsh(one, uint(bitsize)) // 2^bitsize, len bitsize+1
 		twoq       = new(big.Int)
 		twoqone    = new(big.Int)
 		twoexptwoq = new(big.Int)
-		q          *big.Int
-		bitlen     int
+		q          = new(big.Int)
+		bigMod     = new(big.Int)
 		err        error
 		i          int
 	)
 
+	// The algorithm generates a prime q and then returns 2q+1. The latter must have length bitsize,
+	// so the former must be one bit shorter.
+	bitsize--
+
+	// b is the number of bits in the most significant byte of the output that will be part of our q
+	b := uint(bitsize % 8)
+	if b == 0 {
+		b = 8
+	}
+
+	// We read our random bytes into this. Adding 7 effectively rounds the division up instead of down
+	bytes := make([]byte, (bitsize+7)/8)
+
+NextCandidate:
 	for {
 		// Every 1000 iterations, check if we have been asked to stop
 		i++
@@ -92,31 +112,32 @@ func Generate(bitsize int, stop chan struct{}) (*big.Int, error) {
 			}
 		}
 
-		if q, err = big.RandInt(rand.Reader, max); err != nil {
+		_, err = io.ReadFull(rand.Reader, bytes)
+		if err != nil {
 			return nil, err
 		}
 
-		bitlen = q.BitLen() // q < max = 2^bitsize, so bitlen <= bitsize
+		// Manipulate our bytes so that it results in an odd number of the right size
+		prepareBytes(bytes, b)
 
-		if q.Bit(0) != uint(1) || // q is not odd
-			bitlen < int(bitsize)-1 { // q is too small
-			continue
-		}
+		q.SetBytes(bytes)
 
-		// bitlen now equals either bitsize or bitsize - 1. We want the latter.
-		// If bitlen == bitsize we use (q-1)/2 instead of q in the remainder of the algorithm.
-		// This way the acceptable bit length range of big.RandInt's output is 2 bits.
-		if bitlen == int(bitsize) {
-			q.Rsh(q, 1)
-			if q.Bit(0) != uint(1) { // ensure again that q is odd
-				continue
+		// Calculate the value mod the product of SmallPrimes. If it's a multiple of any of these
+		// primes we discard this candidate. This check is much cheaper than the modular arithmetic
+		// and ProbablyPrime() below.
+		// Based on rand.Prime() in crypto/rand/util.go from Go 1.16.5.
+		bigMod.Mod(q, common.SmallPrimesProduct)
+		mod := bigMod.Uint64()
+		for _, prime := range common.SmallPrimes {
+			if mod%uint64(prime) == 0 && (bitsize > 6 || mod != uint64(prime)) {
+				continue NextCandidate
 			}
 		}
 
+		// Now check the formula 2^(2q) mod (2q+1) == 1
 		twoq.Mul(two, q)
 		twoqone.Add(twoq, one)
 		twoexptwoq.Exp(two, twoq, twoqone) // 2^(2q) mod (2q+1)
-
 		if twoexptwoq.Cmp(one) == 0 && q.ProbablyPrime(40) {
 			break
 		}
@@ -126,6 +147,30 @@ func Generate(bitsize int, stop chan struct{}) (*big.Int, error) {
 		return nil, errors.New("Go safeprime generation returned non-safeprime")
 	}
 	return twoqone, nil
+}
+
+// prepareBytes ensures that the specified bytes, when passed to big.Int.SetBytes(), results in a
+// bigint that is not too large, not too small, and odd. (This function is inlined by the compiler.)
+//
+// Copied from rand.Prime() in crypto/rand/util.go from Go 1.16.5.
+func prepareBytes(bytes []byte, b uint) {
+	// Clear bits in the first byte to make sure the candidate has a size <= bitsize.
+	bytes[0] &= uint8(int(1<<b) - 1)
+	// Don't let the value be too small, i.e, set the most significant two bits.
+	// Setting the top two bits, rather than just the top bit,
+	// means that when two of these values are multiplied together,
+	// the result isn't ever one bit short.
+	if b >= 2 {
+		bytes[0] |= 3 << (b - 2)
+	} else {
+		// Here b==1, because b cannot be zero.
+		bytes[0] |= 1
+		if len(bytes) > 1 {
+			bytes[1] |= 0x80
+		}
+	}
+	// Make the value odd since an even number this large certainly isn't prime.
+	bytes[len(bytes)-1] |= 1
 }
 
 /*
