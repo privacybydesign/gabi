@@ -22,3 +22,7 @@ To run tests:
 
     go test -v ./... 
 
+History
+-------
+
+`gabi` was originally created and developed by [Maarten Everts](https://github.com/mhe) in 2015 and 2016. Since 2017, the [Privacy by Design Foundation](https://privacybydesign.foundation/en) and [SIDN](https://sidn.nl/en) maintain and develop `gabi`.
