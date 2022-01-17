@@ -62,9 +62,9 @@ func (p *ProofU) Verify(pk *gabikeys.PublicKey, context, nonce *big.Int) bool {
 
 // correctResponseSizes checks the sizes of the elements in the ProofU proof.
 func (p *ProofU) correctResponseSizes(pk *gabikeys.PublicKey) bool {
+	minimum := big.NewInt(0)
 	maximum := new(big.Int).Lsh(big.NewInt(1), pk.Params.LvPrimeCommit+1)
 	maximum.Sub(maximum, big.NewInt(1))
-	minimum := new(big.Int).Neg(maximum)
 
 	return p.VPrimeResponse.Cmp(minimum) >= 0 && p.VPrimeResponse.Cmp(maximum) <= 0
 }
@@ -185,10 +185,10 @@ func (p *ProofD) reconstructRangeProofStructures(pk *gabikeys.PublicKey) error {
 
 // correctResponseSizes checks the sizes of the elements in the ProofD proof.
 func (p *ProofD) correctResponseSizes(pk *gabikeys.PublicKey) bool {
+	minimum := big.NewInt(0)
 	// Check range on the AResponses
 	maximum := new(big.Int).Lsh(big.NewInt(1), pk.Params.LmCommit+1)
 	maximum.Sub(maximum, big.NewInt(1))
-	minimum := new(big.Int).Neg(maximum)
 	for _, aResponse := range p.AResponses {
 		if aResponse.Cmp(minimum) < 0 || aResponse.Cmp(maximum) > 0 {
 			return false
@@ -198,7 +198,6 @@ func (p *ProofD) correctResponseSizes(pk *gabikeys.PublicKey) bool {
 	// Check range EResponse
 	maximum.Lsh(big.NewInt(1), pk.Params.LeCommit+1)
 	maximum.Sub(maximum, big.NewInt(1))
-	minimum.Neg(maximum)
 
 	if p.EResponse.Cmp(minimum) < 0 || p.EResponse.Cmp(maximum) > 0 {
 		return false
