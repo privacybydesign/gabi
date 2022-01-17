@@ -199,11 +199,7 @@ func (p *ProofD) correctResponseSizes(pk *gabikeys.PublicKey) bool {
 	maximum.Lsh(big.NewInt(1), pk.Params.LeCommit+1)
 	maximum.Sub(maximum, big.NewInt(1))
 
-	if p.EResponse.Cmp(minimum) < 0 || p.EResponse.Cmp(maximum) > 0 {
-		return false
-	}
-
-	return true
+	return p.EResponse.Cmp(minimum) >= 0 && p.EResponse.Cmp(maximum) <= 0
 }
 
 // reconstructZ reconstructs Z from the information in the proof and the
