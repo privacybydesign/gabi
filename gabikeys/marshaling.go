@@ -44,7 +44,7 @@ func (bl *Bases) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 		arr[i], _ = new(big.Int).SetString(t.Bases[i].Bigint, 10)
 	}
 
-	*bl = Bases(arr)
+	*bl = arr
 	return nil
 }
 

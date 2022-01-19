@@ -24,8 +24,8 @@ type (
 		Lstatzk uint
 	}
 
-	// DerivedParameters holds system parameters that can be drived from base
-	// systemparameters (BaseParameters)
+	// DerivedParameters holds system parameters that can be derived from base
+	// system parameters (BaseParameters)
 	DerivedParameters struct {
 		Le            uint
 		LeCommit      uint
@@ -39,7 +39,7 @@ type (
 	}
 )
 
-// defaultBaseParameters holds per keylength the base parameters.
+// defaultBaseParameters holds per key length the base parameters.
 var (
 	defaultBaseParameters = map[int]BaseParameters{
 		1024: {
@@ -65,7 +65,7 @@ var (
 		},
 	}
 
-	// DefaultSystemParameters holds per keylength the default parameters as are
+	// DefaultSystemParameters holds per key length the default parameters as are
 	// currently in use at the moment. This might (and probably will) change in the
 	// future.
 	DefaultSystemParameters = map[int]*SystemParameters{
@@ -74,7 +74,7 @@ var (
 		4096: {defaultBaseParameters[4096], MakeDerivedParameters(defaultBaseParameters[4096])},
 	}
 
-	// DefaultKeyLengths is a slice of integers holding the keylengths for which
+	// DefaultKeyLengths is a slice of integers holding the key lengths for which
 	// system parameters are available.
 	DefaultKeyLengths = getAvailableKeyLengths(DefaultSystemParameters)
 )
