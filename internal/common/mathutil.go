@@ -27,7 +27,7 @@ var (
 	bigEIGHT = big.NewInt(8)
 )
 
-// modInverse returns ia, the inverse of a in the multiplicative group of prime
+// ModInverse returns ia, the inverse of a in the multiplicative group of prime
 // order n. It requires that a be a member of the group (i.e. less than n).
 // This function was taken from Go's RSA implementation
 func ModInverse(a, n *big.Int) (ia *big.Int, ok bool) {
@@ -96,7 +96,7 @@ func RandomBigInt(numBits uint) (*big.Int, error) {
 	return big.RandInt(rand.Reader, t)
 }
 
-// legendreSymbol calculates the Legendre symbol (a/p).
+// LegendreSymbol calculates the Legendre symbol (a/p).
 func LegendreSymbol(a, p *big.Int) int {
 	// Adapted from: https://programmingpraxis.com/2012/05/01/legendres-symbol/
 	j := 1
@@ -134,7 +134,7 @@ func LegendreSymbol(a, p *big.Int) int {
 	return 0
 }
 
-// Find a number x (mod pa*pb) such that x = a (mod pa) and x = b (mod pb)
+// Crt finds a number x (mod pa*pb) such that x = a (mod pa) and x = b (mod pb)
 func Crt(a *big.Int, pa *big.Int, b *big.Int, pb *big.Int) *big.Int {
 	s1 := new(big.Int)
 	s2 := new(big.Int)
@@ -151,7 +151,7 @@ func Crt(a *big.Int, pa *big.Int, b *big.Int, pb *big.Int) *big.Int {
 	return result
 }
 
-// Express a number as sum of four squares
+// SumFourSquares expresses a number as sum of four squares
 // algorithm from "Randomized algorithms in number theory" by M. Rabin and J. Shallit
 func SumFourSquares(n *big.Int) (*big.Int, *big.Int, *big.Int, *big.Int) {
 	if n.BitLen() == 0 {
@@ -293,7 +293,7 @@ func sumFourSquaresSpecial(n *big.Int) (*big.Int, *big.Int, *big.Int, *big.Int) 
 	}
 }
 
-// Calculate sqrt modulo a prime
+// PrimeSqrt calculates sqrt modulo a prime
 func PrimeSqrt(a *big.Int, pa *big.Int) (*big.Int, bool) {
 	// Handle the case a == 0
 	if a.Cmp(bigZERO) == 0 {
@@ -350,7 +350,7 @@ func PrimeSqrt(a *big.Int, pa *big.Int) (*big.Int, bool) {
 	return R, true
 }
 
-// Calculate Sqrt modulo a number with given prime factors. Also allows 4 as a factor
+// ModSqrt calculates Sqrt modulo a number with given prime factors. Also allows 4 as a factor
 // All factors should be relatively prime to each other!
 func ModSqrt(a *big.Int, factors []*big.Int) (*big.Int, bool) {
 	n := big.NewInt(1) // Should be new big int!
