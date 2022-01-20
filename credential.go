@@ -105,7 +105,7 @@ func isUndisclosedAttribute(disclosedAttributes []int, attribute int) bool {
 	return true
 }
 
-// CreateDisclosureProof creates a disclosure proof (ProofD) voor the provided
+// CreateDisclosureProof creates a disclosure proof (ProofD) for the provided
 // indices of disclosed attributes.
 func (ic *Credential) CreateDisclosureProof(
 	disclosedAttributes []int,
@@ -208,7 +208,7 @@ func (ic *Credential) nonrevConsumeBuilder() (*NonRevocationProofBuilder, error)
 	}
 }
 
-// NonrevPrepareCache ensures that the Credential's nonrevocation proof builder cache is
+// NonrevPrepareCache ensures that the Credential's non-revocation proof builder cache is
 // usable, by creating one if it does not exist, or otherwise updating it to the latest accumulator
 // contained in the credential's witness.
 func (ic *Credential) NonrevPrepareCache() error {
@@ -242,7 +242,7 @@ func (ic *Credential) NonrevPrepareCache() error {
 	return err
 }
 
-// NonrevBuildProofBuilder builds and returns a new commited-to NonRevocationProofBuilder.
+// NonrevBuildProofBuilder builds and returns a new committed-to NonRevocationProofBuilder.
 func (ic *Credential) NonrevBuildProofBuilder() (*NonRevocationProofBuilder, error) {
 	if ic.NonRevocationWitness == nil {
 		return nil, errors.New("credential has no nonrevocation witness")
@@ -397,7 +397,7 @@ func (d *DisclosureProofBuilder) CreateProof(challenge *big.Int) Proof {
 // TimestampRequestContributions returns the contributions of this disclosure proof
 // to the message that is to be signed by the timestamp server:
 // - A of the randomized CL-signature
-// - Slice of bigints populated with the disclosed attributes and 0 for the undisclosed ones.
+// - Slice of big.Int populated with the disclosed attributes and 0 for the undisclosed ones.
 func (d *DisclosureProofBuilder) TimestampRequestContributions() (*big.Int, []*big.Int) {
 	zero := big.NewInt(0)
 	disclosed := make([]*big.Int, len(d.attributes))
@@ -410,7 +410,7 @@ func (d *DisclosureProofBuilder) TimestampRequestContributions() (*big.Int, []*b
 	return d.randomizedSignature.A, disclosed
 }
 
-// Generate secret attribute used prove ownership and links between credentials from the same user.
+// GenerateSecretAttribute generates secret attribute used prove ownership and links between credentials from the same user.
 func GenerateSecretAttribute() (*big.Int, error) {
 	return common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].Lm)
 }

@@ -132,7 +132,7 @@ type ProofS struct {
 	EResponse *big.Int `json:"e_response"`
 }
 
-// Verify verifies the proof agains the given public key, signature, context,
+// Verify verifies the proof against the given public key, signature, context,
 // and nonce.
 func (p *ProofS) Verify(pk *gabikeys.PublicKey, signature *CLSignature, context, nonce *big.Int) bool {
 	// Reconstruct A_commit
@@ -164,6 +164,8 @@ type ProofD struct {
 	cachedRangeStructures map[int][]*rangeproof.ProofStructure
 }
 
+// MergeProofP merges a ProofP into the ProofD. The public key is only passed for consistency with
+// ProofU's MergeProofP method.
 func (p *ProofD) MergeProofP(proofP *ProofP, pk *gabikeys.PublicKey) {
 	p.SecretKeyResponse().Add(p.SecretKeyResponse(), proofP.SResponse)
 }
@@ -262,8 +264,8 @@ func (p *ProofD) HasNonRevocationProof() bool {
 	return p.NonRevocationProof != nil
 }
 
-// Verify verifies the proof against the given public key and the provided
-// reconstruted challenge.
+// VerifyWithChallenge verifies the proof against the given public key and the provided
+// reconstructed challenge.
 func (p *ProofD) VerifyWithChallenge(pk *gabikeys.PublicKey, reconstructedChallenge *big.Int) bool {
 	var notrevoked bool
 	// Validate non-revocation
@@ -371,7 +373,7 @@ type ProofPCommitment struct {
 	Pcommit *big.Int
 }
 
-// Generate nonce for use in proofs
+// GenerateNonce generates a nonce for use in proofs
 func GenerateNonce() (*big.Int, error) {
 	return common.RandomBigInt(gabikeys.DefaultSystemParameters[2048].Lstatzk)
 }

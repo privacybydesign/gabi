@@ -31,7 +31,7 @@ type CLSignature struct {
 }
 
 // SignMessageBlock signs a message block (ms) and a commitment (U) using the
-// Camenisch-Lysyanskaya signature scheme as used in the IdeMix system.
+// Camenisch-Lysyanskaya signature scheme as used in the Idemix system.
 func signMessageBlockAndCommitment(sk *gabikeys.PrivateKey, pk *gabikeys.PublicKey, U *big.Int, ms []*big.Int) (
 	*CLSignature, error) {
 	R, err := RepresentToPublicKey(pk, ms)
@@ -75,7 +75,7 @@ func signMessageBlockAndCommitment(sk *gabikeys.PrivateKey, pk *gabikeys.PublicK
 }
 
 // SignMessageBlock signs a message block (ms) using the Camenisch-Lysyanskaya
-// signature scheme as used in the IdeMix system.
+// signature scheme as used in the Idemix system.
 func SignMessageBlock(sk *gabikeys.PrivateKey, pk *gabikeys.PublicKey, ms []*big.Int) (*CLSignature, error) {
 	return signMessageBlockAndCommitment(sk, pk, big.NewInt(1), ms)
 }

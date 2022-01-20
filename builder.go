@@ -29,8 +29,8 @@ type IssueCommitmentMessage struct {
 // UnmarshalJSON implements json.Unmarshaler (json's default unmarshaler
 // is unable to handle a list of interfaces).
 func (pl *ProofList) UnmarshalJSON(bytes []byte) error {
-	proofs := []Proof{}
-	temp := []json.RawMessage{}
+	var proofs []Proof
+	var temp []json.RawMessage
 	if err := json.Unmarshal(bytes, &temp); err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ func (pl *ProofList) UnmarshalJSON(bytes []byte) error {
 }
 
 // IssueSignatureMessage encapsulates the messages sent from the issuer to the
-// reciver in the final step of the issuance protocol.
+// receiver in the final step of the issuance protocol.
 type IssueSignatureMessage struct {
 	Proof                *ProofS             `json:"proof"`
 	Signature            *CLSignature        `json:"signature"`
@@ -80,7 +80,7 @@ func userCommitment(pk *gabikeys.PublicKey, secret *big.Int, vPrime *big.Int, ms
 
 // NewCredentialBuilder creates a new credential builder.
 // The resulting credential builder is already committed to the provided secret.
-// arg blind: list of indices of random blind attributes (exlcuding the secret key)
+// arg blind: list of indices of random blind attributes (excluding the secret key)
 func NewCredentialBuilder(pk *gabikeys.PublicKey, context, secret *big.Int, nonce2 *big.Int, blind []int) (*CredentialBuilder, error) {
 	vPrime, err := common.RandomBigInt(pk.Params.LvPrime)
 	if err != nil {
@@ -123,13 +123,13 @@ func (b *CredentialBuilder) CommitToSecretAndProve(nonce1 *big.Int) (*IssueCommi
 }
 
 // CreateIssueCommitmentMessage creates the IssueCommitmentMessage based on the
-// provided prooflist, to be sent to the issuer.
+// provided ProofList, to be sent to the issuer.
 func (b *CredentialBuilder) CreateIssueCommitmentMessage(proofs ProofList) *IssueCommitmentMessage {
 	return &IssueCommitmentMessage{U: b.u, Proofs: proofs, Nonce2: b.nonce2}
 }
 
 var (
-	// ErrIncorrectProofOfSignatureCorrectness is issued when the the proof of
+	// ErrIncorrectProofOfSignatureCorrectness is issued when the proof of
 	// correctness on the signature does not verify.
 	ErrIncorrectProofOfSignatureCorrectness = errors.New("Proof of correctness on signature does not verify.")
 	// ErrIncorrectAttributeSignature is issued when the signature on the
