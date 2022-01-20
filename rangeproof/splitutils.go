@@ -8,13 +8,13 @@ import (
 )
 
 type (
-	// SquareSplitter provides a combined interface for all facets describing a method for spliting positive numbers into a sum of squares.
+	// SquareSplitter provides a combined interface for all facets describing a method for splitting positive numbers into a sum of squares.
 	SquareSplitter interface {
-		// Number of bits per square
+		// Ld - Number of bits per square
 		Ld() uint
-		// Number of squares in result
+		// SquareCount - Number of squares in result
 		SquareCount() int
-		// Actual splitting function, on input delta, should return array x such that sum_i x_i^2 = delta and len(x) = SquareCount()
+		// Split - Actual splitting function, on input delta, should return array x such that sum_i x_i^2 = delta and len(x) = SquareCount()
 		Split(*big.Int) ([]*big.Int, error)
 	}
 
@@ -23,7 +23,7 @@ type (
 	FourSquaresSplitter struct{}
 )
 
-// Generate lookup table for splitting numbers into 3 squares containing entries up-to and including limit
+// GenerateSquaresTable generates lookup table for splitting numbers into 3 squares containing entries up-to and including limit
 // takes O(n^3/2)
 func GenerateSquaresTable(limit int64) *SquaresTable {
 	result := make(SquaresTable, limit+1)
@@ -65,7 +65,7 @@ func (t *SquaresTable) SquareCount() int {
 func (t *SquaresTable) Ld() uint {
 	l := len(*t)
 	ld := uint(0)
-	// Ld is number of bits of root of maximum value this table support, which is
+	// Ld is number of bits of root of maximum value this table supports, which is
 	// Ceil(Log4(len(l)*4)). Below loop calculates this by simply dividing
 	// by 4 until l is 0, and counting number of times needed.
 	// then compensating for the extra factor 4.
