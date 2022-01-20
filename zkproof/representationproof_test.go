@@ -306,10 +306,10 @@ func TestRepresentationProofBasics(t *testing.T) {
 
 	var s zkproof.RepresentationProofStructure
 	s.Lhs = []zkproof.LhsContribution{
-		zkproof.LhsContribution{"x", big.NewInt(1)},
+		{"x", big.NewInt(1)},
 	}
 	s.Rhs = []zkproof.RhsContribution{
-		zkproof.RhsContribution{"g", "x", 1},
+		{"g", "x", 1},
 	}
 
 	var secret RepTestSecret
@@ -343,11 +343,11 @@ func TestRepresentationProofComplex(t *testing.T) {
 
 	var s zkproof.RepresentationProofStructure
 	s.Lhs = []zkproof.LhsContribution{
-		zkproof.LhsContribution{"c", big.NewInt(4)},
+		{"c", big.NewInt(4)},
 	}
 	s.Rhs = []zkproof.RhsContribution{
-		zkproof.RhsContribution{"g", "x", 2},
-		zkproof.RhsContribution{"h", "y", 1},
+		{"g", "x", 2},
+		{"h", "y", 1},
 	}
 
 	keyproof.Follower.(*TestFollower).count = 0
