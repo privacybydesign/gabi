@@ -40,12 +40,12 @@ func newAdditionProofStructure(a1, a2, mod, result string, l uint) additionProof
 		myname: strings.Join([]string{a1, a2, mod, result, "add"}, "_"),
 	}
 	structure.addRepresentation = zkproof.RepresentationProofStructure{
-		[]zkproof.LhsContribution{
+		Lhs: []zkproof.LhsContribution{
 			{result, big.NewInt(1)},
 			{a1, big.NewInt(-1)},
 			{a2, big.NewInt(-1)},
 		},
-		[]zkproof.RhsContribution{
+		Rhs: []zkproof.RhsContribution{
 			{mod, strings.Join([]string{structure.myname, "mod"}, "_"), 1},
 			{"h", strings.Join([]string{structure.myname, "hider"}, "_"), 1},
 		},

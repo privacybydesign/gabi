@@ -50,11 +50,11 @@ func newIsSquareProofStructure(N *big.Int, Squares []*big.Int) isSquareProofStru
 		squares:         make([]*big.Int, len(Squares)),
 		squaresPedersen: make([]pedersenStructure, len(Squares)),
 		nRep: zkproof.RepresentationProofStructure{
-			[]zkproof.LhsContribution{
+			Lhs: []zkproof.LhsContribution{
 				{"N", big.NewInt(-1)},
 				{"g", new(big.Int).Set(N)},
 			},
-			[]zkproof.RhsContribution{
+			Rhs: []zkproof.RhsContribution{
 				{"h", "N_hider", -1},
 			},
 		},
@@ -73,11 +73,11 @@ func newIsSquareProofStructure(N *big.Int, Squares []*big.Int) isSquareProofStru
 	// Setup representation proofs of square
 	for i, val := range result.squares {
 		result.squaresRep[i] = zkproof.RepresentationProofStructure{
-			[]zkproof.LhsContribution{
+			Lhs: []zkproof.LhsContribution{
 				{strings.Join([]string{"s", fmt.Sprintf("%v", i)}, "_"), big.NewInt(-1)},
 				{"g", new(big.Int).Set(val)},
 			},
-			[]zkproof.RhsContribution{
+			Rhs: []zkproof.RhsContribution{
 				{"h", strings.Join([]string{"s", fmt.Sprintf("%v", i), "hider"}, "_"), -1},
 			},
 		}

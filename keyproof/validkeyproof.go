@@ -52,34 +52,34 @@ func NewValidKeyProofStructure(N *big.Int, Bases []*big.Int) ValidKeyProofStruct
 	structure.qprime = newPedersenStructure("qprime")
 
 	structure.pPprimeRel = zkproof.RepresentationProofStructure{
-		[]zkproof.LhsContribution{
+		Lhs: []zkproof.LhsContribution{
 			{"p", big.NewInt(1)},
 			{"pprime", big.NewInt(-2)},
 			{"g", big.NewInt(-1)},
 		},
-		[]zkproof.RhsContribution{
+		Rhs: []zkproof.RhsContribution{
 			{"h", "p_hider", 1},
 			{"h", "pprime_hider", -2},
 		},
 	}
 
 	structure.qQprimeRel = zkproof.RepresentationProofStructure{
-		[]zkproof.LhsContribution{
+		Lhs: []zkproof.LhsContribution{
 			{"q", big.NewInt(1)},
 			{"qprime", big.NewInt(-2)},
 			{"g", big.NewInt(-1)},
 		},
-		[]zkproof.RhsContribution{
+		Rhs: []zkproof.RhsContribution{
 			{"h", "q_hider", 1},
 			{"h", "qprime_hider", -2},
 		},
 	}
 
 	structure.pQNRel = zkproof.RepresentationProofStructure{
-		[]zkproof.LhsContribution{
+		Lhs: []zkproof.LhsContribution{
 			{"g", new(big.Int).Set(N)},
 		},
-		[]zkproof.RhsContribution{
+		Rhs: []zkproof.RhsContribution{
 			{"p", "q", 1},
 			{"h", "pqnrel", -1},
 		},

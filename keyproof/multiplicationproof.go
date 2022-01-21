@@ -42,10 +42,10 @@ func newMultiplicationProofStructure(m1, m2, mod, result string, l uint) multipl
 		myname: strings.Join([]string{m1, m2, mod, result, "mul"}, "_"),
 	}
 	structure.multRepresentation = zkproof.RepresentationProofStructure{
-		[]zkproof.LhsContribution{
+		Lhs: []zkproof.LhsContribution{
 			{result, big.NewInt(1)},
 		},
-		[]zkproof.RhsContribution{
+		Rhs: []zkproof.RhsContribution{
 			{m2, m1, 1},
 			{mod, strings.Join([]string{structure.myname, "mod"}, "_"), -1},
 			{"h", strings.Join([]string{structure.myname, "hider"}, "_"), 1},
@@ -59,7 +59,7 @@ func newMultiplicationProofStructure(m1, m2, mod, result string, l uint) multipl
 func (s *multiplicationProofStructure) commitmentsFromSecrets(g zkproof.Group, list []*big.Int, bases zkproof.BaseLookup, secretdata zkproof.SecretLookup) ([]*big.Int, multiplicationProofCommit) {
 	var commit multiplicationProofCommit
 
-	// Generate the neccesary commit data for our parts of the proof
+	// Generate the necessary commit data for our parts of the proof
 	list, commit.modMultPedersen = s.modMultPedersen.commitmentsFromSecrets(g, list, new(big.Int).Div(
 		new(big.Int).Sub(
 			new(big.Int).Mul(

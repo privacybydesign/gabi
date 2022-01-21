@@ -88,19 +88,19 @@ func newExpProofStructure(base, exponent, mod, result string, bitlen uint) expPr
 
 	// Bit equality proof
 	structure.expBitEq = zkproof.RepresentationProofStructure{
-		[]zkproof.LhsContribution{
-			zkproof.LhsContribution{exponent, big.NewInt(-1)},
+		Lhs: []zkproof.LhsContribution{
+			{Base: exponent, Power: big.NewInt(-1)},
 		},
-		[]zkproof.RhsContribution{
-			zkproof.RhsContribution{"h", strings.Join([]string{structure.myname, "biteqhider"}, "_"), 1},
+		Rhs: []zkproof.RhsContribution{
+			{Base: "h", Secret: strings.Join([]string{structure.myname, "biteqhider"}, "_"), Power: 1},
 		},
 	}
 	for i := uint(0); i < bitlen; i++ {
 		structure.expBitEq.Lhs = append(
 			structure.expBitEq.Lhs,
 			zkproof.LhsContribution{
-				strings.Join([]string{structure.myname, "bit", fmt.Sprintf("%v", i)}, "_"),
-				new(big.Int).Lsh(big.NewInt(1), i),
+				Base:  strings.Join([]string{structure.myname, "bit", fmt.Sprintf("%v", i)}, "_"),
+				Power: new(big.Int).Lsh(big.NewInt(1), i),
 			})
 	}
 
@@ -147,12 +147,12 @@ func newExpProofStructure(base, exponent, mod, result string, bitlen uint) expPr
 	// start representation proof
 	structure.start = newPedersenStructure(strings.Join([]string{structure.myname, "start"}, "_"))
 	structure.startRep = zkproof.RepresentationProofStructure{
-		[]zkproof.LhsContribution{
-			zkproof.LhsContribution{strings.Join([]string{structure.myname, "start"}, "_"), big.NewInt(1)},
-			zkproof.LhsContribution{"g", big.NewInt(-1)},
+		Lhs: []zkproof.LhsContribution{
+			{strings.Join([]string{structure.myname, "start"}, "_"), big.NewInt(1)},
+			{"g", big.NewInt(-1)},
 		},
-		[]zkproof.RhsContribution{
-			zkproof.RhsContribution{"h", strings.Join([]string{structure.myname, "start", "hider"}, "_"), 1},
+		Rhs: []zkproof.RhsContribution{
+			{"h", strings.Join([]string{structure.myname, "start", "hider"}, "_"), 1},
 		},
 	}
 
@@ -263,8 +263,8 @@ func (s *expProofStructure) commitmentsFromSecrets(g zkproof.Group, list []*big.
 	}
 
 	// inner bases and secrets (this is ugly code, hopefully go2 will make this better someday)
-	baseList := []zkproof.BaseLookup{}
-	secretList := []zkproof.SecretLookup{}
+	var baseList []zkproof.BaseLookup
+	var secretList []zkproof.SecretLookup
 	for i := range commit.expBits {
 		baseList = append(baseList, &commit.expBits[i])
 		secretList = append(secretList, &commit.expBits[i])
@@ -541,8 +541,8 @@ func (s *expProofStructure) verifyProofStructure(challenge *big.Int, proof ExpPr
 
 func (s *expProofStructure) commitmentsFromProof(g zkproof.Group, list []*big.Int, challenge *big.Int, bases zkproof.BaseLookup, proofdata zkproof.ProofLookup, proof ExpProof) []*big.Int {
 	// inner bases and proofs (again hopefully go2 will make this better)
-	baseList := []zkproof.BaseLookup{}
-	proofList := []zkproof.ProofLookup{}
+	var baseList []zkproof.BaseLookup
+	var proofList []zkproof.ProofLookup
 	for i := range proof.ExpBitProofs {
 		proof.ExpBitProofs[i].setName(strings.Join([]string{s.myname, "bit", fmt.Sprintf("%v", i)}, "_"))
 		baseList = append(baseList, &proof.ExpBitProofs[i])

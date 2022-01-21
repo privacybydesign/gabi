@@ -53,7 +53,7 @@ func TestSquareFreeVerifyStructure(t *testing.T) {
 
 	valBackup := proof.Responses[2]
 	proof.Responses[2] = nil
-	assert.False(t, squareFreeVerifyStructure(proof), "Accepting missing respone")
+	assert.False(t, squareFreeVerifyStructure(proof), "Accepting missing response")
 	proof.Responses[2] = valBackup
 
 	assert.True(t, squareFreeVerifyStructure(proof), "testcase corrupted testdata")
