@@ -54,21 +54,6 @@ func (rc *RangeTestCommit) Exp(ret *big.Int, name string, exp, P *big.Int) bool 
 	return true
 }
 
-func listCmp(a []*big.Int, b []*big.Int) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i, ai := range a {
-		if ai == nil || b[i] == nil {
-			return false
-		}
-		if ai.Cmp(b[i]) != 0 {
-			return false
-		}
-	}
-	return true
-}
-
 func TestRangeProofBasic(t *testing.T) {
 	g, gok := zkproof.BuildGroup(big.NewInt(47))
 	require.True(t, gok, "Failed to setup group for Range proof testing")
