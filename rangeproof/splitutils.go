@@ -10,11 +10,11 @@ import (
 type (
 	// SquareSplitter provides a combined interface for all facets describing a method for splitting positive numbers into a sum of squares.
 	SquareSplitter interface {
-		// Ld - Number of bits per square
+		// Ld returns the number of bits per square
 		Ld() uint
-		// SquareCount - Number of squares in result
+		// SquareCount return the number of squares in result
 		SquareCount() int
-		// Split - Actual splitting function, on input delta, should return array x such that sum_i x_i^2 = delta and len(x) = SquareCount()
+		// Split is the actual splitting function. On input delta, it should return array x such that sum_i x_i^2 = delta and len(x) = SquareCount()
 		Split(*big.Int) ([]*big.Int, error)
 	}
 
