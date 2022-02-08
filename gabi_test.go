@@ -573,8 +573,8 @@ func TestGenerateKeyPair(t *testing.T) {
 		Lstatzk: 80,
 	}
 	gabikeys.DefaultSystemParameters[256] = &gabikeys.SystemParameters{
-		base,
-		gabikeys.MakeDerivedParameters(base),
+		BaseParameters:    base,
+		DerivedParameters: gabikeys.MakeDerivedParameters(base),
 	}
 
 	// Using the toy parameters, generate a bunch of keys
