@@ -119,7 +119,7 @@ func NewPrivateKeyFromFile(filename string, demo bool) (*PrivateKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer common.Close(f)
 
 	b, err := ioutil.ReadAll(f)
 	if err != nil {
@@ -182,7 +182,7 @@ func (privk *PrivateKey) WriteToFile(filename string, forceOverwrite bool) (int6
 	if err != nil {
 		return 0, err
 	}
-	defer f.Close()
+	defer common.Close(f)
 
 	return privk.WriteTo(f)
 }
@@ -289,7 +289,7 @@ func NewPublicKeyFromFile(filename string) (*PublicKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer common.Close(f)
 	pubk := &PublicKey{}
 
 	b, err := ioutil.ReadAll(f)
@@ -365,7 +365,7 @@ func (pubk *PublicKey) WriteToFile(filename string, forceOverwrite bool) (int64,
 	if err != nil {
 		return 0, err
 	}
-	defer f.Close()
+	defer common.Close(f)
 
 	return pubk.WriteTo(f)
 }
