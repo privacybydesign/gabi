@@ -88,7 +88,7 @@ func NewPrivateKey(p, q *big.Int, ecdsa string, counter uint, expiryDate time.Ti
 	return &sk, nil
 }
 
-// NewPrivateKeyFromXML creates a new issuer private key using the xml data
+// NewPrivateKeyFromXML creates a new issuer private key using the XML data
 // provided.
 func NewPrivateKeyFromXML(xmlInput string, demo bool) (*PrivateKey, error) {
 	privk := &PrivateKey{}
@@ -113,13 +113,13 @@ func NewPrivateKeyFromXML(xmlInput string, demo bool) (*PrivateKey, error) {
 	return privk, nil
 }
 
-// NewPrivateKeyFromFile create a new issuer private key from an xml file.
+// NewPrivateKeyFromFile creates a new issuer private key from an XML file.
 func NewPrivateKeyFromFile(filename string, demo bool) (*PrivateKey, error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer common.Close(f)
 
 	b, err := ioutil.ReadAll(f)
 	if err != nil {
@@ -159,7 +159,7 @@ func (privk *PrivateKey) WriteTo(writer io.Writer) (int64, error) {
 		return 0, err
 	}
 
-	// And the actual xml body (with indentation)
+	// And the actual XML body (with indentation)
 	b, err := xml.MarshalIndent(privk, "", "   ")
 	if err != nil {
 		return int64(numHeaderBytes), err
@@ -168,7 +168,7 @@ func (privk *PrivateKey) WriteTo(writer io.Writer) (int64, error) {
 	return int64(numHeaderBytes + numBodyBytes), err
 }
 
-// WriteToFile writes the private key to an xml file. If any existing file with
+// WriteToFile writes the private key to an XML file. If any existing file with
 // the same filename should be overwritten, set forceOverwrite to true.
 func (privk *PrivateKey) WriteToFile(filename string, forceOverwrite bool) (int64, error) {
 	var f *os.File
@@ -182,7 +182,7 @@ func (privk *PrivateKey) WriteToFile(filename string, forceOverwrite bool) (int6
 	if err != nil {
 		return 0, err
 	}
-	defer f.Close()
+	defer common.Close(f)
 
 	return privk.WriteTo(f)
 }
@@ -257,7 +257,7 @@ func NewPublicKey(N, Z, S, G, H *big.Int, R []*big.Int, ecdsa string, counter ui
 	return pk, nil
 }
 
-// NewPublicKeyFromXML creates a new issuer public key using the xml data
+// NewPublicKeyFromBytes creates a new issuer public key using the XML data
 // provided.
 func NewPublicKeyFromBytes(bts []byte) (*PublicKey, error) {
 	// TODO: this might fail in the future. The DefaultSystemParameters and the
@@ -283,13 +283,13 @@ func NewPublicKeyFromXML(xmlInput string) (*PublicKey, error) {
 	return NewPublicKeyFromBytes([]byte(xmlInput))
 }
 
-// NewPublicKeyFromFile create a new issuer public key from an xml file.
+// NewPublicKeyFromFile creates a new issuer public key from an XML file.
 func NewPublicKeyFromFile(filename string) (*PublicKey, error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer common.Close(f)
 	pubk := &PublicKey{}
 
 	b, err := ioutil.ReadAll(f)
@@ -342,7 +342,7 @@ func (pubk *PublicKey) WriteTo(writer io.Writer) (int64, error) {
 		return 0, err
 	}
 
-	// And the actual xml body (with indentation)
+	// And the actual XML body (with indentation)
 	b, err := xml.MarshalIndent(pubk, "", "   ")
 	if err != nil {
 		return int64(numHeaderBytes), err
@@ -351,7 +351,7 @@ func (pubk *PublicKey) WriteTo(writer io.Writer) (int64, error) {
 	return int64(numHeaderBytes + numBodyBytes), err
 }
 
-// WriteToFile writes the public key to an xml file. If any existing file with
+// WriteToFile writes the public key to an XML file. If any existing file with
 // the same filename should be overwritten, set forceOverwrite to true.
 func (pubk *PublicKey) WriteToFile(filename string, forceOverwrite bool) (int64, error) {
 	var f *os.File
@@ -365,7 +365,7 @@ func (pubk *PublicKey) WriteToFile(filename string, forceOverwrite bool) (int64,
 	if err != nil {
 		return 0, err
 	}
-	defer f.Close()
+	defer common.Close(f)
 
 	return pubk.WriteTo(f)
 }
@@ -388,22 +388,22 @@ func generateSafePrimePair(param *SystemParameters) (*big.Int, *big.Int, error) 
 
 	// Declare and allocate all vars outside the loop and outside the helper function above
 	stop := make(chan struct{})
-	safeprimes := make([]*big.Int, 0, 10) // store all generated safeprimes until we find a suitable pair
+	safeprimes := make([]*big.Int, 0, 10) // store all generated safe primes until we find a suitable pair
 	pPrime, pPrimeMod8, pMod8, qMod8, n := new(big.Int), new(big.Int), new(big.Int), new(big.Int), new(big.Int)
 	var p, q *big.Int
 	var err error
 
-	// Start generating safeprimes
+	// Start generating safe primes
 	ints, errs := safeprime.GenerateConcurrent(int(primeSize), stop)
 
-	// Receive safeprime results in a loop, until we have a suitable pair of safeprimes.
+	// Receive safe prime results in a loop, until we have a suitable pair of safe primes.
 loop: // we need this label to continue the for loop from within the select below
 	for {
 		select { // wait for and then handle an incoming bigint or error, whichever comes first
 
 		case p = <-ints:
 			pPrimeMod8.Mod(pPrime.Rsh(p, 1), big.NewInt(8))
-			// p is our candidate safeprime, set p' = (p-1)/2. Check that p' mod 8 != 1
+			// p is our candidate safe prime, set p' = (p-1)/2. Check that p' mod 8 != 1
 			if pPrimeMod8.Cmp(big.NewInt(1)) == 0 {
 				continue loop
 			}
@@ -416,7 +416,7 @@ loop: // we need this label to continue the for loop from within the select belo
 			return p, q, nil
 
 		case err = <-errs:
-			close(stop) // Something went wrong during safeprime generation, abort
+			close(stop) // Something went wrong during safe prime generation, abort
 			return nil, nil, err
 
 		}

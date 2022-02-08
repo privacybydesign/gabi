@@ -104,7 +104,7 @@ type (
 	Event struct {
 		Index      uint64   `json:"i" gorm:"primary_key;column:eventindex"`
 		E          *big.Int `json:"e"`
-		ParentHash Hash     `json"parenthash"`
+		ParentHash Hash     `json:"parenthash"`
 	}
 
 	EventList struct {
@@ -121,7 +121,7 @@ type (
 	// the accumulator itself and a set of revocation attributes.
 	// Its hash structure makes this message into a chain with the SignedAccumulator on top:
 	// The accumulator contains the hash of the first Event, and each Event has a hash of its parent.
-	// Thus the signature over the accumulator effectively signs the entire Update message,
+	// Thus, the signature over the accumulator effectively signs the entire Update message,
 	// and the partial tree specified by Events is verifiable regardless of its length.
 	Update struct {
 		SignedAccumulator *SignedAccumulator
@@ -141,7 +141,7 @@ type (
 		// Accumulator against which the witness verifies.
 		SignedAccumulator *SignedAccumulator `json:"sacc"`
 		// Update is set to now whenever the witness is updated, or when the RA indicates
-		// there are no new updates. Thus it specifies up to what time our nonrevocation
+		// there are no new updates. Thus, it specifies up to what time our nonrevocation
 		// guarantees lasts.
 		Updated time.Time
 
@@ -351,7 +351,7 @@ func (update *Update) Prepend(eventlist *EventList) error {
 		return err
 	}
 
-	// update our instance only after no error has occured
+	// update our instance only after no error has occurred
 	*update = *n
 	return nil
 }

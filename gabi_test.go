@@ -573,8 +573,8 @@ func TestGenerateKeyPair(t *testing.T) {
 		Lstatzk: 80,
 	}
 	gabikeys.DefaultSystemParameters[256] = &gabikeys.SystemParameters{
-		base,
-		gabikeys.MakeDerivedParameters(base),
+		BaseParameters:    base,
+		DerivedParameters: gabikeys.MakeDerivedParameters(base),
 	}
 
 	// Using the toy parameters, generate a bunch of keys
@@ -590,14 +590,6 @@ func TestGenerateKeyPair(t *testing.T) {
 	//assert.NoError(t, err, "error generating key pair")
 	//testPrivateKey(t, privk, true)
 	//testPublicKey(t, pubk, privk)
-}
-
-func genRandomIssuer(t *testing.T, context *big.Int) *Issuer {
-	// TODO: key pair generation is slow, consider caching or providing key material
-	keylength := 1024
-	privk, pubk, err := gabikeys.GenerateKeyPair(gabikeys.DefaultSystemParameters[keylength], 6, 0, time.Now().AddDate(1, 0, 0))
-	assert.NoError(t, err, "error generating key pair")
-	return NewIssuer(privk, pubk, context)
 }
 
 func createCredential(t *testing.T, context, secret *big.Int, issuer *Issuer) *Credential {

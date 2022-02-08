@@ -21,7 +21,7 @@ when revoking and does not change when adding new revocation handles to the accu
 The user proves knowledge of two numbers u and e, called the witness, which are such that the relation
     u^e = 𝛎 mod n
 holds, where 𝛎 (greek letter "nu") is the accumulator (the issuer's current "non-revocation publickey").
-Both u and e are kept secret to the user. Elsewhere the number e is included as an attribute in an
+Both u and e are kept secret to the user. Elsewhere, the number e is included as an attribute in an
 IRMA credential, and this zero-knowledge proof convinces the verifier that the containing credential
 is not revoked.
 
@@ -36,7 +36,7 @@ with the following differences.
 3. The interval [A, B] from which the witness e is chosen does not satisfy the relation
    B*2^(k'+k''+1) < A^2 - 1, which is unnecessary: as long as A > 2, witnesses are unforgeable,
    by a simple extension of the unforgeability proof of Theorem 3. See below.
-In the following we follow the lead of the other zero knowledge proofs implemented elsehwere in gabi.
+In the following we follow the lead of the other zero knowledge proofs implemented elsewhere in gabi.
 4. Secrets and randomizers within the zero-knowledge proofs are taken positive, instead of from
    symmetric intervals [-A,A].
 5. We use addition in the zero-knowledge proof responses: response = randomizer + challenge*secret.
@@ -47,7 +47,7 @@ In the following we follow the lead of the other zero knowledge proofs implement
 We claim, prove, and implement the following:
 Let [A, B] be the interval from which the number e from the witness (u,e) is chosen, as in the paper.
 Then witnesses are unforgeable as in theorem 3, if A > 2 and B < 2^(l_n-1) where l_n
-is the bitsize of the modulus n. In particular, it is not necesary to require A^2 > B
+is the bit size of the modulus n. In particular, it is not necessary to require A^2 > B
 like theorem 3 does.
 
 Proof: let (u')^(x') = u^x where x = x_1*...*x_n, and set d = gcd(x, x'), as in the proof.
@@ -61,8 +61,8 @@ to phi(n), works as is.
 The claim "d = gcd(x,x') => (d = 1 or d = x_j)" in the middle of the proof, which requires
 A^2 > B for its proof, is thus not necessary to use in the proof of theorem 3.
 
-Thus for unforgeability the size of e is not relevant. However, e should be chosen from a set so large
-that it is overhelmingly unlikely that any one prime e is chosen twice. Combining the prime counting
+Thus, for unforgeability the size of e is not relevant. However, e should be chosen from a set so large
+that it is overwhelmingly unlikely that any prime e is chosen twice. Combining the prime counting
 function with the birthday paradox and simplifying, one finds the following: if N witnesses are chosen
 from the set of primes smaller than B, then the collision chance P approximately equals
    P = 1 - e^(-N^2 ln(B)/B).
@@ -425,7 +425,7 @@ func (s *proofStructure) commitmentsFromSecrets(g *gabikeys.PublicKey, list []*b
 	return list, commit
 }
 
-func (s *proofStructure) commitmentsFromProof(g *gabikeys.PublicKey, list []*big.Int, challenge *big.Int, bases zkproof.BaseLookup, proofdata zkproof.ProofLookup, proof *proof) []*big.Int {
+func (s *proofStructure) commitmentsFromProof(g *gabikeys.PublicKey, list []*big.Int, challenge *big.Int, _ zkproof.BaseLookup, proofdata zkproof.ProofLookup, proof *proof) []*big.Int {
 	proofs := zkproof.NewProofMerge(proof, proofdata)
 
 	b := zkproof.NewBaseMerge(g, &proofCommit{cr: proof.Cr, cu: proof.Cu, nu: proof.Nu})

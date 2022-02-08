@@ -10,8 +10,8 @@ type (
 	EmptyFollower struct{}
 )
 
-func (_ *EmptyFollower) StepStart(desc string, intermediates int) {}
-func (_ *EmptyFollower) Tick()                                    {}
-func (_ *EmptyFollower) StepDone()                                {}
+func (_ *EmptyFollower) StepStart(_ string, _ int) {}
+func (_ *EmptyFollower) Tick()                     {}
+func (_ *EmptyFollower) StepDone()                 {}
 
 var Follower ProgressFollower = &EmptyFollower{}

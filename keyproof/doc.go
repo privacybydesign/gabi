@@ -1,4 +1,5 @@
 /*
+Package keyproof
 ------------
 INTRODUCTION
 ------------
@@ -19,13 +20,13 @@ The implementation of this library consists of two parts: The group
 representation based zero knowledge proofs described in Camenisch et. al., and
 the more ad-hoc zero knowledge proofs for quasi safe prime products given in
 Gennaro. These proofs share little common infrastructure, and can be understood
-seperately.
+separately.
 
-Allthough their structure internally is rather different, and the generation
+Although their structure internally is rather different, and the generation
 logic is not shared, there are structural commonalities between how these
 proofs are implemented, which we will describe here.
 
-All of the zero knowledge proofs contained in this package are essentially
+All the zero knowledge proofs contained in this package are essentially
 interactive zero knowledge proofs, which are turned non-interactive using the
 Fiat-Shamir heuristic. The process of proving consists of two stages: first
 a set of commitments is generated for the proof, which is used to calculate a
@@ -47,7 +48,7 @@ demonstrating membership of some language of natural numbers:
 - Disjointprimeproduct allows for proofs that a given number N, which has
    already been shown that it is the product of at most two distinct primes, is
    in fact the product of precisely two primes
-- Finaly, Almostsafeprimeproduct shows that a product N of exactly two distinct
+- Finally, Almostsafeprimeproduct shows that a product N of exactly two distinct
    primes is the product of two almost safe primes, e.g. that there exists
    primes p, q, and integers n, m such that N = (2*p^n+1)*(2*q^m+1)
 
@@ -72,7 +73,7 @@ functions:
     sound.
  - (*VerifyProof), which given a structurally sound proof, validates whether it
     holds cryptographically.
-Aditionaly, almostSafePrimeProduct has two extra functions:
+Additionally, almostSafePrimeProduct has two extra functions:
  - almostSafePrimeProductBuildCommitments, which generates commitments that are
     used together with N to build the challenge for these proofs
  - almostSafePrimeProductExtractCommitments, which reconstructs the commitments
@@ -97,7 +98,7 @@ in this code in secret structs, which provide the basic tooling to make proofs
 on them. These are then used in combination with various representation and
 range proofs to show the needed relations.
 
-Each camenisch' based proof provides a similar interface in terms of types and
+Each Camenisch-based proof provides a similar interface in terms of types and
 functions. Each proof provides up to three types:
  - A structure type, describing abstractly the structure of the proof that
     is going to be given, as well as providing storage for any parameters in
@@ -137,13 +138,13 @@ Finally, each proof has a number of utility functions:
 To make it possible to chain these proofs together, and to hand off needed
 values between complicated subproofs, this library contains structures to aid
 in lookup of such values. These are BaseLookup, SecretLookup and ProofLookup.
-Any proof that needs to provides bases, secrets or proofdata to other
+Any proof that needs to provide bases, secrets or proofdata to other
 subproofs construct these. They provide lookup functions that can provide
 bases, secrets, hiders and proof results given the name of the relevant
-variable. This allows us to construct subproofs refering to variables by name
+variable. This allows us to construct subproofs referring to variables by name
 without having to know in the subproof what the exact name is any caller is
 going to use. This flexibility is needed because some subproofs are repeated
-many times in the overal proof that the key is properly generated.
+many times in the overall proof that the key is properly generated.
 
 Finally, pedersen contains the container for storing variables. It also exposes
 lookup interfaces for base, secret and proofdata related to its variable. It is
@@ -157,9 +158,9 @@ provided in this package. First, let us start with the basic building blocks
    where the bs are bases, v1 through vn are variables, and the ks and hs are
    numeric constants. These proofs rely on the proofdata of the variables to
    show validity, and thus only produce commitments
-- rangeproof provides proof of a representationproof statement, but additionaly
-   aranges for its own proof data such that it can show for a single variable
-   v occuring in the representationproof expression that it's value is bounded.
+- rangeproof provides proof of a representationproof statement, but additionally
+   arranges for its own proof data such that it can show for a single variable
+   v occurring in the representationproof expression that it's value is bounded.
 From these basic building blocks, the library then constructs proofs for basic
 operations:
 - pedersen provides a way to create a pedersen commitment on a value v, which
@@ -181,7 +182,7 @@ properly executed. In this:
 - expstepa proves that the current bit is 0 and that we have just forwarded the
    value
 - expstepb proves that the current bit is 1 and that we have properly done the
-   multiply with the correct 2-power of a.
+   multiplication with the correct 2-power of a.
 - exp contains one expstep for each bit, showing that all the steps are
    correctly done, and is also responsible for proving that all the
    intermediate values and fixed powers of a are in range and correctly
@@ -194,6 +195,6 @@ proofs:
 - issquareproof shows in zero knowledge that a known value a can be written
    as b*b (mod m), where b is not revealed.
 - validkeyproof shows, using primeproof, issquareproof and
-   quasisafeprimeproof that an idemix public key was properly generated.
+   quasisafeprimeproof that an Idemix public key was properly generated.
 */
 package keyproof

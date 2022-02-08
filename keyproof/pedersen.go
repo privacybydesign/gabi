@@ -35,10 +35,10 @@ func newPedersenStructure(name string) pedersenStructure {
 	return pedersenStructure{
 		name,
 		zkproof.RepresentationProofStructure{
-			[]zkproof.LhsContribution{
+			Lhs: []zkproof.LhsContribution{
 				{name, big.NewInt(1)},
 			},
-			[]zkproof.RhsContribution{
+			Rhs: []zkproof.RhsContribution{
 				{"g", name, 1},
 				{"h", strings.Join([]string{name, "hider"}, "_"), 1},
 			},
@@ -143,7 +143,7 @@ func (c *pedersenCommit) Base(name string) *big.Int {
 	}
 }
 
-func (c *pedersenCommit) Exp(ret *big.Int, name string, exp, P *big.Int) bool {
+func (c *pedersenCommit) Exp(ret *big.Int, name string, exp, _ *big.Int) bool {
 	if name != c.name {
 		return false
 	}

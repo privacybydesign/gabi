@@ -47,7 +47,7 @@ func BuildGroup(prime *big.Int) (Group, bool) {
 	return result, true
 }
 
-func (g *Group) Exp(ret *big.Int, name string, exp, P *big.Int) bool {
+func (g *Group) Exp(ret *big.Int, name string, exp, _ *big.Int) bool {
 	var table *exptable.Table
 	if name == "g" {
 		table = &g.GTable

@@ -13,7 +13,7 @@ import (
 	"github.com/privacybydesign/gabi/internal/common"
 )
 
-// GenerateConcurrent concurrently and continuously generates safeprimes on all CPU cores,
+// GenerateConcurrent concurrently and continuously generates safe primes on all CPU cores,
 // until the stop channel receives a struct or is closed. If an error is encountered, generation is
 // stopped in all goroutines, and the error is sent on the second return parameter.
 func GenerateConcurrent(bitsize int, stop chan struct{}) (<-chan *big.Int, <-chan error) {
@@ -21,7 +21,7 @@ func GenerateConcurrent(bitsize int, stop chan struct{}) (<-chan *big.Int, <-cha
 	ints := make(chan *big.Int, count)
 	errs := make(chan error, count)
 
-	// In order to succesfully close all goroutines below when the caller wants them to, they require
+	// In order to successfully close all goroutines below when the caller wants them to, they require
 	// a channel that is close()d: just sending a struct{}{} would stop one but not all goroutines.
 	// Instead of requiring the caller to close() the stop chan parameter we use our own chan for
 	// this, so that we always stop all goroutines independent of whether the caller close()s stop
@@ -35,7 +35,7 @@ func GenerateConcurrent(bitsize int, stop chan struct{}) (<-chan *big.Int, <-cha
 		}
 	}()
 
-	// Start safeprime generation goroutines
+	// Start safe prime generation goroutines
 	for i := 0; i < count; i++ {
 		go func() {
 			for {
@@ -87,7 +87,7 @@ func Generate(bitsize int, stop chan struct{}) (*big.Int, error) {
 		i          int
 	)
 
-	// The algorithm generates a prime q and then returns 2q+1. The latter must have length bitsize,
+	// The algorithm generates a prime q and then returns 2q+1. The latter must have length bit size,
 	// so the former must be one bit shorter.
 	bitsize--
 

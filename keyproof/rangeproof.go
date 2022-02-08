@@ -31,7 +31,7 @@ type (
 func (s *rangeProofStructure) commitmentsFromSecrets(g zkproof.Group, list []*big.Int, bases zkproof.BaseLookup, secretdata zkproof.SecretLookup) ([]*big.Int, rangeCommit) {
 	var commit rangeCommitSecretLookup
 
-	// Build up commit datastructure
+	// Build up commit data structure
 	commit.commits = map[string][]*big.Int{}
 	for _, curRhs := range s.Rhs {
 		commit.commits[curRhs.Secret] = []*big.Int{}
@@ -70,11 +70,11 @@ func (s *rangeProofStructure) commitmentsFromSecrets(g zkproof.Group, list []*bi
 }
 
 func (s *rangeProofStructure) buildProof(g zkproof.Group, challenge *big.Int, commit rangeCommit, secretdata zkproof.SecretLookup) RangeProof {
-	// For every value, build up results, handling the secret data seperately
+	// For every value, build up results, handling the secret data separately
 	proof := RangeProof{map[string][]*big.Int{}}
 	for name, clist := range commit.commits {
 
-		rlist := []*big.Int{}
+		var rlist []*big.Int
 		if name == s.rangeSecret {
 			// special treatment for range secret
 			resultOffset := new(big.Int).Lsh(big.NewInt(1), s.l2+rangeProofEpsilon+1)
@@ -113,13 +113,13 @@ func (s *rangeProofStructure) fakeProof(g zkproof.Group) RangeProof {
 	proof := RangeProof{map[string][]*big.Int{}}
 	for _, curRhs := range s.Rhs {
 		if curRhs.Secret == s.rangeSecret {
-			rlist := []*big.Int{}
+			var rlist []*big.Int
 			for i := 0; i < rangeProofIters; i++ {
 				rlist = append(rlist, common.FastRandomBigInt(genLimit))
 			}
 			proof.Results[curRhs.Secret] = rlist
 		} else {
-			rlist := []*big.Int{}
+			var rlist []*big.Int
 			for i := 0; i < rangeProofIters; i++ {
 				rlist = append(rlist, common.FastRandomBigInt(g.Order))
 			}
@@ -206,7 +206,7 @@ func (s *rangeProofStructure) commitmentsFromProof(g zkproof.Group, list []*big.
 	return list
 }
 
-func (r *rangeCommitSecretLookup) Secret(name string) *big.Int {
+func (r *rangeCommitSecretLookup) Secret(_ string) *big.Int {
 	return nil
 }
 

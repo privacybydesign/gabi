@@ -53,7 +53,7 @@ func (i *Int) MarshalText() ([]byte, error) {
 }
 
 // UnmarshalJSON implements json.Unmarshaler. If the input is quoted it attempts a
-// base64 -> []byte -> Int conversion using i.SetBytes(). Otherwise it attempts to
+// base64 -> []byte -> Int conversion using i.SetBytes(). Otherwise, it attempts to
 // unmarshal the input as a JSON base 10 big integer.
 func (i *Int) UnmarshalJSON(b []byte) error {
 	if b[0] != '"' { // Not a JSON string, try to decode an ordinarily base-10 encoded "math.big".Int
@@ -87,7 +87,7 @@ func Convert(x *big.Int) *Int {
 	return (*Int)(x)
 }
 
-// Convert to a "math/big".Int
+// Go converts "gabi/big".Int to a "math/big".Int
 func (i *Int) Go() *big.Int {
 	return (*big.Int)(i)
 }

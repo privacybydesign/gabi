@@ -12,7 +12,7 @@ import (
 	"github.com/privacybydesign/gabi/big"
 )
 
-// SmallPrimes is a list of small, prime numbers that allows us to rapidly
+// SmallPrimes is a list of small prime numbers that allows us to rapidly
 // exclude some fraction of composite candidates when searching for a random
 // prime. This list is truncated at the point where SmallPrimesProduct exceeds
 // a uint64. It does not include two because we ensure that the candidates are
@@ -23,7 +23,7 @@ var SmallPrimes = []uint8{
 
 // SmallPrimesProduct is the product of the values in SmallPrimes and allows us
 // to reduce a candidate prime by this number and then determine whether it's
-// coprime to all the elements of SmallPrimes without further big.Int
+// coprime with all the elements of SmallPrimes without further big.Int
 // operations.
 var SmallPrimesProduct = new(big.Int).SetUint64(16294579238595022365)
 
@@ -35,7 +35,7 @@ func RandomPrimeInRange(rand io.Reader, start, length uint) (p *big.Int, err err
 		return
 	}
 
-	b := uint(length % 8)
+	b := length % 8
 	if b == 0 {
 		b = 8
 	}

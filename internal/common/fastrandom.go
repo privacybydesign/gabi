@@ -13,8 +13,7 @@ import (
 
 var globalCprng *CPRNG
 
-// Simple threadsafe cryptographically secure pseudo-random number generator.
-//
+// CPRNG is a simple thread-safe cryptographically secure pseudo-random number generator.
 // Implemented with AES in counter mode with the seed as key and an
 // atomic uint64 as counter.
 type CPRNG struct {
@@ -23,12 +22,12 @@ type CPRNG struct {
 }
 
 func NewCPRNG(seed *[32]byte) (*CPRNG, error) {
-	cipher, err := aes.NewCipher(seed[:])
+	c, err := aes.NewCipher(seed[:])
 	if err != nil {
 		return nil, err
 	}
 	return &CPRNG{
-		block:   cipher,
+		block:   c,
 		counter: 0,
 	}, nil
 }
@@ -81,7 +80,7 @@ func (c *CPRNG) Read(buf []byte) (n int, err error) {
 	return
 }
 
-// Derives a random number uniformly chosen below the given limit
+// FastRandomBigInt derives a random number uniformly chosen below the given limit
 // from a random 256 bit seed generated when the application starts.
 func FastRandomBigInt(limit *big.Int) *big.Int {
 	res, err := big.RandInt(globalCprng, limit)

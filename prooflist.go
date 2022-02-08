@@ -54,7 +54,7 @@ func (pl ProofList) GetFirstProofU() (*ProofU, error) {
 
 // challengeContributions collects and returns all the challenge contributions
 // of the proofs contained in the proof list.
-func (pl ProofList) challengeContributions(publicKeys []*gabikeys.PublicKey, context, nonce *big.Int) ([]*big.Int, error) {
+func (pl ProofList) challengeContributions(publicKeys []*gabikeys.PublicKey, _, _ *big.Int) ([]*big.Int, error) {
 	contributions := make([]*big.Int, 0, len(pl)*2)
 	for i, proof := range pl {
 		contrib, err := proof.ChallengeContribution(publicKeys[i])

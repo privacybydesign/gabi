@@ -41,7 +41,7 @@ where
 - v_5 = \sum_i d_i * v_i.
 
 The proof of soundness for this protocol is relatively straightforward, but as we are not aware of
-its occurence in literature, we provide it here for completeness.
+its occurrence in literature, we provide it here for completeness.
 
 ---
 
@@ -99,7 +99,7 @@ This shows that the existence of algorithm G with non-neglible success probabili
 strong RSA, hence the existence of algorithm A contradicts the strong RSA assumption.
 
 Notes:
-- The techniques used to fake issuance can be generalized to multiple issuances using techiques
+- The techniques used to fake issuance can be generalized to multiple issuances using techniques
   similar to those used in CL03 for lemmas 3-5; the rest of the proof then needs e to be replaced
   with E, the product of all used e_i's.
 - This proof nowhere uses that the amount of squares we use is three; hence it also works when using
@@ -184,7 +184,7 @@ func NewStatement(typ StatementType, bound *big.Int) (*Statement, error) {
 	return &Statement{Sign: sign, Factor: 1, Bound: new(big.Int).Set(bound)}, nil
 }
 
-// Create a new proof structure for proving a statement of the form sign(factor*m - bound) >= 0.
+// NewProofStructure creates a new proof structure for proving a statement of the form sign(factor*m - bound) >= 0.
 //
 // index specifies the index of the attribute.
 // splitter describes the method used for splitting numbers into sum of squares.
@@ -470,7 +470,7 @@ func (p *Proof) ProvenStatement() (StatementType, uint, *big.Int) {
 	return typ, factor, bound
 }
 
-// Extract proof structure from proof
+// ExtractStructure extracts the proof structure from proof
 func (p *Proof) ExtractStructure(index int, g *gabikeys.PublicKey) (*ProofStructure, error) {
 	// Check that all values needed for the structure are present and reasonable
 	//
@@ -489,6 +489,7 @@ func (p *Proof) ExtractStructure(index int, g *gabikeys.PublicKey) (*ProofStruct
 // ---
 // Commit structure keyproof interfaces
 // ---
+
 func (c *proofCommit) Secret(name string) *big.Int {
 	if name == "m" {
 		return c.m
@@ -569,6 +570,7 @@ func (c *proofCommit) Names() []string {
 // ---
 // Proof structure keyproof interfaces
 // ---
+
 func (p *proof) ProofResult(name string) *big.Int {
 	if name == "m" {
 		return p.MResponse

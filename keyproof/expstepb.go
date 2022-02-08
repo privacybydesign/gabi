@@ -39,11 +39,11 @@ func newExpStepBStructure(bitname, prename, postname, mulname, modname string, b
 		prePostMul: newMultiplicationProofStructure(mulname, prename, modname, postname, bitlen),
 	}
 	structure.bitRep = zkproof.RepresentationProofStructure{
-		[]zkproof.LhsContribution{
+		Lhs: []zkproof.LhsContribution{
 			{bitname, big.NewInt(1)},
 			{"g", big.NewInt(-1)},
 		},
-		[]zkproof.RhsContribution{
+		Rhs: []zkproof.RhsContribution{
 			{"h", strings.Join([]string{bitname, "hider"}, "_"), 1},
 		},
 	}

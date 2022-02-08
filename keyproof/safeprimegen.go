@@ -5,7 +5,7 @@ import (
 	"github.com/privacybydesign/gabi/safeprime"
 )
 
-// Performance parameter, defines ammount of extra bits allowed when using a convenient safe prime
+// Performance parameter, defines amount of extra bits allowed when using a convenient safe prime
 const convenientRange = 100
 
 // A convenient safe prime is a safe prime of the form
@@ -39,7 +39,7 @@ var convenientSafePrimes = []convenientSafePrime{
 
 func findConvenientPrime(size int) *big.Int {
 	for _, cp := range convenientSafePrimes {
-		if int(cp.Exp) > size && int(cp.Exp)-size < convenientRange {
+		if cp.Exp > size && cp.Exp-size < convenientRange {
 			var ret, diff big.Int
 			diff.SetUint64(uint64(cp.Diff))
 			ret.SetUint64(1)

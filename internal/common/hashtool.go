@@ -9,7 +9,7 @@ import (
 	gobig "math/big"
 )
 
-// hashCommit computes the sha256 hash over the asn1 representation of a slice
+// HashCommit computes the sha256 hash over the asn1 representation of a slice
 // of big integers and returns a positive big integer that can be represented
 // with that hash.
 func HashCommit(values []*big.Int, issig bool) *big.Int {
@@ -37,7 +37,7 @@ func HashCommit(values []*big.Int, issig bool) *big.Int {
 	return new(big.Int).SetBytes(sha[:])
 }
 
-// GetHashNumber uses a hash to generate random numbers of a given bitlength in the fiat-shamir heuristic
+// GetHashNumber uses a hash to generate random numbers of a given bit-length in the fiat-shamir heuristic
 func GetHashNumber(a *big.Int, b *big.Int, index int, bitlen uint) *big.Int {
 	tmp := []*big.Int{}
 	if a != nil {
@@ -63,8 +63,8 @@ func GetHashNumber(a *big.Int, b *big.Int, index int, bitlen uint) *big.Int {
 	return res
 }
 
-// intHashSha256 is a utility function compute the sha256 hash over a byte array
-// and return this hash as a big.Int.
+// IntHashSha256 is a utility function which computes the sha256 hash over a byte array
+// and returns this hash as a big.Int.
 func IntHashSha256(input []byte) *big.Int {
 	h := sha256.New()
 	h.Write(input)

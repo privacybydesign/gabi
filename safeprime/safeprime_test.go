@@ -31,7 +31,7 @@ func TestGenerateConcurrent(t *testing.T) {
 	// Start generating safe primes
 	ints, errs := GenerateConcurrent(64, stop)
 
-	// Receive incoming safeprimes, or an error, until we stop
+	// Receive incoming safe primes, or an error, until we stop
 	for !stopped {
 		select {
 		case x := <-ints:

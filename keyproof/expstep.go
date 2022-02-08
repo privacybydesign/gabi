@@ -117,7 +117,7 @@ func (s *expStepStructure) verifyProofStructure(challenge *big.Int, proof ExpSte
 	return s.stepa.verifyProofStructure(proof.Aproof) && s.stepb.verifyProofStructure(proof.Bproof)
 }
 
-func (s *expStepStructure) commitmentsFromProof(g zkproof.Group, list []*big.Int, challenge *big.Int, bases zkproof.BaseLookup, proof ExpStepProof) []*big.Int {
+func (s *expStepStructure) commitmentsFromProof(g zkproof.Group, list []*big.Int, _ *big.Int, bases zkproof.BaseLookup, proof ExpStepProof) []*big.Int {
 	list = s.stepa.commitmentsFromProof(g, list, proof.Achallenge, bases, proof.Aproof)
 	list = s.stepb.commitmentsFromProof(g, list, proof.Bchallenge, bases, proof.Bproof)
 	return list
