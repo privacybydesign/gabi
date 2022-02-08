@@ -206,7 +206,7 @@ func (s *rangeProofStructure) commitmentsFromProof(g zkproof.Group, list []*big.
 	return list
 }
 
-func (r *rangeCommitSecretLookup) Secret(name string) *big.Int {
+func (r *rangeCommitSecretLookup) Secret(_ string) *big.Int {
 	return nil
 }
 

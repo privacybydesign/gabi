@@ -76,7 +76,7 @@ func (s *expStepAStructure) commitmentsFromSecrets(g zkproof.Group, list []*big.
 	return list, commit
 }
 
-func (s *expStepAStructure) buildProof(g zkproof.Group, challenge *big.Int, commit expStepACommit, secretdata zkproof.SecretLookup) ExpStepAProof {
+func (s *expStepAStructure) buildProof(g zkproof.Group, challenge *big.Int, commit expStepACommit, _ zkproof.SecretLookup) ExpStepAProof {
 	return ExpStepAProof{
 		Bit:           commit.bit.buildProof(g, challenge),
 		EqualityHider: commit.equalityHider.buildProof(g, challenge),

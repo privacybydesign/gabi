@@ -143,7 +143,7 @@ func (c *pedersenCommit) Base(name string) *big.Int {
 	}
 }
 
-func (c *pedersenCommit) Exp(ret *big.Int, name string, exp, P *big.Int) bool {
+func (c *pedersenCommit) Exp(ret *big.Int, name string, exp, _ *big.Int) bool {
 	if name != c.name {
 		return false
 	}

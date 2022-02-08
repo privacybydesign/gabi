@@ -164,9 +164,8 @@ type ProofD struct {
 	cachedRangeStructures map[int][]*rangeproof.ProofStructure
 }
 
-// MergeProofP merges a ProofP into the ProofD. The public key is only passed for consistency with
-// ProofU's MergeProofP method.
-func (p *ProofD) MergeProofP(proofP *ProofP, pk *gabikeys.PublicKey) {
+// MergeProofP merges a ProofP into the ProofD.
+func (p *ProofD) MergeProofP(proofP *ProofP, _ *gabikeys.PublicKey) {
 	p.SecretKeyResponse().Add(p.SecretKeyResponse(), proofP.SResponse)
 }
 

@@ -425,7 +425,7 @@ func (s *proofStructure) commitmentsFromSecrets(g *gabikeys.PublicKey, list []*b
 	return list, commit
 }
 
-func (s *proofStructure) commitmentsFromProof(g *gabikeys.PublicKey, list []*big.Int, challenge *big.Int, bases zkproof.BaseLookup, proofdata zkproof.ProofLookup, proof *proof) []*big.Int {
+func (s *proofStructure) commitmentsFromProof(g *gabikeys.PublicKey, list []*big.Int, challenge *big.Int, _ zkproof.BaseLookup, proofdata zkproof.ProofLookup, proof *proof) []*big.Int {
 	proofs := zkproof.NewProofMerge(proof, proofdata)
 
 	b := zkproof.NewBaseMerge(g, &proofCommit{cr: proof.Cr, cu: proof.Cu, nu: proof.Nu})

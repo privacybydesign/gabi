@@ -396,7 +396,7 @@ type TestFollower struct {
 	count int64
 }
 
-func (_ *TestFollower) StepStart(desc string, intermediates int) {}
+func (_ *TestFollower) StepStart(_ string, _ int) {}
 
 func (t *TestFollower) Tick() {
 	atomic.AddInt64(&t.count, 1)
