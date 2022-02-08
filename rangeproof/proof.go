@@ -489,6 +489,7 @@ func (p *Proof) ExtractStructure(index int, g *gabikeys.PublicKey) (*ProofStruct
 // ---
 // Commit structure keyproof interfaces
 // ---
+
 func (c *proofCommit) Secret(name string) *big.Int {
 	if name == "m" {
 		return c.m
@@ -569,6 +570,7 @@ func (c *proofCommit) Names() []string {
 // ---
 // Proof structure keyproof interfaces
 // ---
+
 func (p *proof) ProofResult(name string) *big.Int {
 	if name == "m" {
 		return p.MResponse
