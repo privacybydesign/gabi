@@ -79,8 +79,6 @@ func randomElementMultiplicativeGroup(modulus *big.Int) (*big.Int, error) {
 	t := new(big.Int)
 	var err error
 	for r.Sign() <= 0 || t.GCD(nil, nil, r, modulus).Cmp(big.NewInt(1)) != 0 {
-		// TODO: for memory/cpu efficiency re-use r's memory. See Go's
-		// implementation for finding a random prime.
 		r, err = big.RandInt(rand.Reader, modulus)
 		if err != nil {
 			return nil, err
