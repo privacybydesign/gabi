@@ -30,6 +30,8 @@ type (
 	}
 )
 
+var ErrInvalidSignature = errors.New("ecdsa signature was invalid")
+
 func GenerateKey() (*ecdsa.PrivateKey, error) {
 	return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 }
@@ -109,7 +111,7 @@ func Verify(pk *ecdsa.PublicKey, bts []byte, signature []byte) error {
 	}
 	hash := sha256.Sum256(bts)
 	if !ecdsa.Verify(pk, hash[:], ints[0], ints[1]) {
-		return errors.New("ecdsa signature was invalid")
+		return ErrInvalidSignature
 	}
 	return nil
 }
