@@ -81,7 +81,7 @@ func userCommitment(pk *gabikeys.PublicKey, secret *big.Int, vPrime *big.Int, ms
 // NewCredentialBuilder creates a new credential builder.
 // The resulting credential builder is already committed to the provided secret.
 // arg blind: list of indices of random blind attributes (excluding the secret key)
-func NewCredentialBuilder(pk *gabikeys.PublicKey, context, secret *big.Int, nonce2 *big.Int, blind []int) (*CredentialBuilder, error) {
+func NewCredentialBuilder(pk *gabikeys.PublicKey, context, secret *big.Int, nonce2 *big.Int, keyshareP *big.Int, blind []int) (*CredentialBuilder, error) {
 	vPrime, err := common.RandomBigInt(pk.Params.LvPrime)
 	if err != nil {
 		return nil, err
@@ -96,6 +96,9 @@ func NewCredentialBuilder(pk *gabikeys.PublicKey, context, secret *big.Int, nonc
 
 	// Commit to secret and, optionally, user's shares of random blind attributes
 	U := userCommitment(pk, secret, vPrime, mUser)
+	if keyshareP != nil {
+		U.Mul(U, keyshareP).Mod(U, pk.N)
+	}
 
 	// Generate randomizers for the commitment
 	vPrimeCommit, err := common.RandomBigInt(pk.Params.LvPrimeCommit)
@@ -120,6 +123,7 @@ func NewCredentialBuilder(pk *gabikeys.PublicKey, context, secret *big.Int, nonc
 		mUser:        mUser,
 		vPrimeCommit: vPrimeCommit,
 		mUserCommit:  mUserCommit,
+		keyshareP:    keyshareP,
 	}, nil
 }
 
@@ -164,8 +168,8 @@ func (b *CredentialBuilder) ConstructCredential(msg *IssueSignatureMessage, attr
 		E: msg.Signature.E,
 		V: new(big.Int).Add(msg.Signature.V, b.vPrime),
 	}
-	if b.proofPcomm != nil {
-		signature.KeyshareP = b.proofPcomm.P
+	if b.keyshareP != nil {
+		signature.KeyshareP = b.keyshareP
 	}
 
 	// For all attributes that are sums of shares between user/issuer, compute this sum
@@ -232,6 +236,7 @@ type CredentialBuilder struct {
 	pk         *gabikeys.PublicKey
 	context    *big.Int
 	proofPcomm *ProofPCommitment
+	keyshareP  *big.Int
 
 	mUser       map[int]*big.Int // Map of users shares of random blind attributes
 	mUserCommit map[int]*big.Int
@@ -256,7 +261,6 @@ func (b *CredentialBuilder) Commit(randomizers map[string]*big.Int) ([]*big.Int,
 	r0s := new(big.Int).Exp(b.pk.R[0], b.skRandomizer, b.pk.N)
 	uCommit := big.NewInt(1)
 	if b.proofPcomm != nil {
-		b.u.Mul(b.u, b.proofPcomm.P).Mod(b.u, b.pk.N)
 		uCommit.Set(b.proofPcomm.Pcommit)
 	}
 	uCommit.Mul(uCommit, sv).Mul(uCommit, r0s)

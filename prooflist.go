@@ -119,19 +119,10 @@ func (pl ProofList) Verify(publicKeys []*gabikeys.PublicKey, context, nonce *big
 	return true
 }
 
-func (builders ProofBuilderList) Challenge(context, nonce *big.Int, issig bool) (*big.Int, error) {
-	// The secret key may be used across credentials supporting different attribute sizes.
-	// So we should take it, and hence also its commitment, to fit within the smallest size -
-	// otherwise it will be too big so that we cannot perform the range proof showing
-	// that it is not too big.
-	skCommitment, err := common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].LmCommit)
-	if err != nil {
-		return nil, err
-	}
-
+func (builders ProofBuilderList) ChallengeWithRandomizers(context, nonce *big.Int, randomizers map[string]*big.Int, issig bool) (*big.Int, error) {
 	commitmentValues := make([]*big.Int, 0, len(builders)*2)
 	for _, pb := range builders {
-		contributions, err := pb.Commit(map[string]*big.Int{"secretkey": skCommitment})
+		contributions, err := pb.Commit(randomizers)
 		if err != nil {
 			return nil, err
 		}
@@ -140,6 +131,18 @@ func (builders ProofBuilderList) Challenge(context, nonce *big.Int, issig bool) 
 
 	// Create a shared challenge
 	return createChallenge(context, nonce, commitmentValues, issig), nil
+}
+
+func (builders ProofBuilderList) Challenge(context, nonce *big.Int, issig bool) (*big.Int, error) {
+	// The secret key may be used across credentials supporting different attribute sizes.
+	// So we should take it, and hence also its commitment, to fit within the smallest size -
+	// otherwise it will be too big so that we cannot perform the range proof showing
+	// that it is not too big.
+	skRandomizer, err := common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].LmCommit)
+	if err != nil {
+		return nil, err
+	}
+	return builders.ChallengeWithRandomizers(context, nonce, map[string]*big.Int{"secretkey": skRandomizer}, issig)
 }
 
 func (builders ProofBuilderList) BuildDistributedProofList(

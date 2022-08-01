@@ -360,7 +360,7 @@ func (p *ProofD) Challenge() *big.Int {
 
 // ProofP is a keyshare server's knowledge of its part of the secret key.
 type ProofP struct {
-	P         *big.Int `json:"P"`
+	P         *big.Int `json:"P,omitempty"`
 	C         *big.Int `json:"c"`
 	SResponse *big.Int `json:"s_response"`
 }

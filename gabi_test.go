@@ -248,7 +248,7 @@ func TestProofU(t *testing.T) {
 	secret, err := common.RandomBigInt(gabikeys.DefaultSystemParameters[keylength].Lm)
 	assert.NoError(t, err)
 
-	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil)
+	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil, nil)
 	assert.NoError(t, err)
 	contributions, err := b.Commit(map[string]*big.Int{"secretkey": secret})
 	require.NoError(t, err)
@@ -284,7 +284,7 @@ func TestCommitmentMessage(t *testing.T) {
 	secret, err := common.RandomBigInt(testPubK.Params.Lm)
 	assert.NoError(t, err)
 
-	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil)
+	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil, nil)
 	assert.NoError(t, err)
 	msg, err := b.CommitToSecretAndProve(nonce1)
 	assert.NoError(t, err)
@@ -351,7 +351,7 @@ func TestSignatureMessage(t *testing.T) {
 	secret, err := common.RandomBigInt(testPubK.Params.Lm)
 	assert.NoError(t, err)
 
-	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil)
+	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil, nil)
 	assert.NoError(t, err)
 	commitMsg, err := b.CommitToSecretAndProve(nonce1)
 	assert.NoError(t, err)
@@ -370,7 +370,7 @@ func TestFullIssuance(t *testing.T) {
 	assert.NoError(t, err)
 	secret, err := common.RandomBigInt(testPubK.Params.Lm)
 	assert.NoError(t, err)
-	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil)
+	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil, nil)
 	assert.NoError(t, err)
 	commitMsg, err := b.CommitToSecretAndProve(nonce1)
 	assert.NoError(t, err)
@@ -470,7 +470,7 @@ func TestFullIssuanceAndShowing(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Issuance
-	builder, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil)
+	builder, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil, nil)
 	assert.NoError(t, err)
 	commitMsg, err := builder.CommitToSecretAndProve(nonce1)
 	assert.NoError(t, err)
@@ -502,7 +502,7 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 	assert.NoError(t, err)
 
 	// First create a credential
-	cb1, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil)
+	cb1, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil, nil)
 	assert.NoError(t, err)
 	commitMsg, err := cb1.CommitToSecretAndProve(nonce1)
 	assert.NoError(t, err)
@@ -516,7 +516,7 @@ func TestFullBoundIssuanceAndShowing(t *testing.T) {
 
 	// Then create another credential based on the same credential with a partial
 	// disclosure of the first credential.
-	cb2, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil)
+	cb2, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil, nil)
 	assert.NoError(t, err)
 	issuer2 := NewIssuer(testPrivK, testPubK, context)
 
@@ -599,7 +599,7 @@ func createCredential(t *testing.T, context, secret *big.Int, issuer *Issuer) *C
 	assert.NoError(t, err)
 	nonce2, err := common.RandomBigInt(gabikeys.DefaultSystemParameters[keylength].Lstatzk)
 	assert.NoError(t, err)
-	cb, err := NewCredentialBuilder(issuer.Pk, context, secret, nonce2, nil)
+	cb, err := NewCredentialBuilder(issuer.Pk, context, secret, nonce2, nil, nil)
 	assert.NoError(t, err)
 	commitMsg, err := cb.CommitToSecretAndProve(nonce1)
 	assert.NoError(t, err)
@@ -715,7 +715,7 @@ func TestFullBoundIssuanceAndShowingRandomIssuers(t *testing.T) {
 	// Then create another credential based on the same credential with a partial
 	// disclosure of the first credential.
 	issuer2 := NewIssuer(testPrivK2, testPubK2, context)
-	cb2, err := NewCredentialBuilder(issuer2.Pk, context, secret, nonce2, nil)
+	cb2, err := NewCredentialBuilder(issuer2.Pk, context, secret, nonce2, nil, nil)
 	assert.NoError(t, err)
 
 	nonce1, err := common.RandomBigInt(gabikeys.DefaultSystemParameters[keylength].Lstatzk)
@@ -763,7 +763,7 @@ func TestWronglyBoundIssuanceAndShowingWithDifferentIssuers(t *testing.T) {
 	// Then create another credential based on the same credential with a partial
 	// disclosure of the first credential.
 	issuer2 := NewIssuer(testPrivK2, testPubK2, context)
-	cb2, err := NewCredentialBuilder(issuer2.Pk, context, secret2, nonce2, nil)
+	cb2, err := NewCredentialBuilder(issuer2.Pk, context, secret2, nonce2, nil, nil)
 	assert.NoError(t, err)
 
 	nonce1, err := common.RandomBigInt(gabikeys.DefaultSystemParameters[keylength].Lstatzk)
@@ -880,7 +880,7 @@ func TestFullIssueAndShowWithRevocation(t *testing.T) {
 	assert.NoError(t, err)
 	secret, err := common.RandomBigInt(testPubK.Params.Lm)
 	assert.NoError(t, err)
-	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil)
+	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil, nil)
 	assert.NoError(t, err)
 	commitMsg, err := b.CommitToSecretAndProve(nonce1)
 	assert.NoError(t, err)
@@ -966,7 +966,7 @@ func TestRandomBlindProofU(t *testing.T) {
 	secret, err := common.RandomBigInt(testPubK.Params.Lm)
 	assert.NoError(t, err)
 
-	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, []int{2})
+	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil, []int{2})
 	assert.NoError(t, err)
 	commitMsg, err := b.CommitToSecretAndProve(nonce1)
 	assert.NoError(t, err)
@@ -993,7 +993,7 @@ func TestRandomBlindCreateProofUandCommit(t *testing.T) {
 	secret, err := common.RandomBigInt(gabikeys.DefaultSystemParameters[keylength].Lm)
 	assert.NoError(t, err)
 
-	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, []int{2})
+	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil, []int{2})
 	assert.NoError(t, err)
 	contributions, err := b.Commit(map[string]*big.Int{"secretkey": secret})
 	require.NoError(t, err)
@@ -1013,7 +1013,7 @@ func TestRandomBlindIssuance(t *testing.T) {
 	secret, err := common.RandomBigInt(testPubK.Params.Lm)
 	assert.NoError(t, err)
 
-	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, []int{2})
+	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil, []int{2})
 	assert.NoError(t, err)
 	commitMsg, err := b.CommitToSecretAndProve(nonce1)
 	assert.NoError(t, err)
@@ -1046,7 +1046,7 @@ func TestRandomBlindIssuanceTooFewAttributes(t *testing.T) {
 	secret, err := common.RandomBigInt(testPubK.Params.Lm)
 	assert.NoError(t, err)
 
-	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, []int{2})
+	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil, []int{2})
 	assert.NoError(t, err)
 	commitMsg, err := b.CommitToSecretAndProve(nonce1)
 	assert.NoError(t, err)
@@ -1073,7 +1073,7 @@ func TestMultipleRandomBlindIssuance(t *testing.T) {
 	secret, err := common.RandomBigInt(testPubK.Params.Lm)
 	assert.NoError(t, err)
 
-	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, []int{1, 2, 3})
+	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil, []int{1, 2, 3})
 	assert.NoError(t, err)
 	commitMsg, err := b.CommitToSecretAndProve(nonce1)
 	assert.NoError(t, err)
@@ -1108,7 +1108,7 @@ func TestIssueSignatureNonZeroRandomBlindAttributes(t *testing.T) {
 	secret, err := common.RandomBigInt(testPubK.Params.Lm)
 	assert.NoError(t, err)
 
-	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, []int{2})
+	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil, []int{2})
 	assert.NoError(t, err)
 	commitMsg, err := b.CommitToSecretAndProve(nonce1)
 	assert.NoError(t, err)
@@ -1133,7 +1133,7 @@ func TestConstructCredentialNonZeroRandomBlindAttributes(t *testing.T) {
 	secret, err := common.RandomBigInt(testPubK.Params.Lm)
 	assert.NoError(t, err)
 
-	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, []int{2})
+	b, err := NewCredentialBuilder(testPubK, context, secret, nonce2, nil, []int{2})
 	assert.NoError(t, err)
 	commitMsg, err := b.CommitToSecretAndProve(nonce1)
 	assert.NoError(t, err)
@@ -1148,6 +1148,169 @@ func TestConstructCredentialNonZeroRandomBlindAttributes(t *testing.T) {
 	// attributes at the randomblind indices should be initialized as nil by the client.
 	_, err = b.ConstructCredential(msg, testAttributes1)
 	assert.EqualError(t, err, "attribute at random blind index should be nil before issuance")
+}
+
+func testNewKeyshareResponse(
+	t *testing.T,
+	ourSecret, userSecret *big.Int,
+	builders ProofBuilderList,
+) {
+	keyshareSecretRandomizerLength = gabikeys.DefaultSystemParameters[1024].Lstatzk
+	userRandomizer, err := common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].LmCommit)
+	require.NoError(t, err)
+	keyID := "testPubK"
+
+	var hashInput []KeyshareChallengeInput[string]
+	for _, builder := range builders {
+		c, err := builder.Commit(map[string]*big.Int{"secretkey": userRandomizer})
+		require.NoError(t, err)
+		hashInput = append(hashInput, KeyshareChallengeInput[string]{
+			KeyID:      &keyID,
+			Value:      new(big.Int).Set(c[0]),
+			Commitment: new(big.Int).Set(c[1]),
+		})
+	}
+	hashedComm, err := KeyshareUserCommitmentsHash(hashInput)
+	require.NoError(t, err)
+
+	// At this point, the user would send this to the KSS
+	req := KeyshareCommitmentRequest{HashedUserCommitments: hashedComm}
+
+	// The KSS responds with its commitments
+	keysSlice := []*gabikeys.PublicKey{testPubK}
+	keysMap := map[string]*gabikeys.PublicKey{"testPubK": testPubK}
+	ourRandomizer, ourComm, err := NewKeyshareCommitments(ourSecret, keysSlice)
+	require.NoError(t, err)
+
+	// Process keyshare server commitment into builders
+	for _, builder := range builders {
+		builder.MergeProofPCommitment(ourComm[0])
+	}
+
+	// Compute challenge and user response
+	nonce, err := GenerateNonce()
+	require.NoError(t, err)
+	challenge, err := builders.ChallengeWithRandomizers(context, nonce, map[string]*big.Int{"secretkey": userRandomizer}, false)
+	require.NoError(t, err)
+	userResponse := new(big.Int).Add(userRandomizer, new(big.Int).Mul(challenge, userSecret))
+
+	res := KeyshareResponseRequest[string]{
+		Nonce:              nonce,
+		UserResponse:       userResponse,
+		IsSignatureSession: false,
+		ChallengeInput:     hashInput,
+	}
+
+	proofP, err := KeyshareResponseNew(ourSecret, ourRandomizer, req, res, keysMap)
+	require.NoError(t, err)
+	require.Equal(t, challenge, proofP.C)
+
+	// Manually verify the proof of knowledge over the total secret
+	lhs := new(big.Int)
+	lhs.Exp(testPubK.R[0], proofP.SResponse, testPubK.N)
+	totalP := new(big.Int)
+	totalP.Exp(testPubK.R[0], new(big.Int).Add(ourSecret, userSecret), testPubK.N)
+	totalComm := new(big.Int)
+	totalComm.Mul(new(big.Int).Exp(testPubK.R[0], userRandomizer, testPubK.N), ourComm[0].Pcommit).Mod(totalComm, testPubK.N)
+	rhs := new(big.Int)
+	rhs.Mul(new(big.Int).Exp(totalP, challenge, testPubK.N), totalComm).Mod(rhs, testPubK.N)
+	require.Equal(t, 0, rhs.Cmp(lhs))
+
+	// Verify the proofs
+	proofs, err := builders.BuildDistributedProofList(challenge, nil)
+	require.NoError(t, err)
+	for _, proof := range proofs {
+		switch p := proof.(type) {
+		case *ProofD:
+			p.AResponses[0] = proofP.SResponse
+		case *ProofU:
+			p.SResponse = proofP.SResponse
+		}
+	}
+	require.True(t, proofs.Verify([]*gabikeys.PublicKey{testPubK}, context, nonce, false, nil))
+}
+
+var context = bigOne
+
+func TestKeyshareResponse(t *testing.T) {
+	// Setup secrets and randomizer
+	ourSecret, err := GenerateSecretAttribute()
+	require.NoError(t, err)
+	ourSecret.Div(ourSecret, big.NewInt(2))
+	userSecret, err := GenerateSecretAttribute()
+	require.NoError(t, err)
+	userSecret.Div(userSecret, big.NewInt(2))
+	totalSecret := new(big.Int).Add(ourSecret, userSecret)
+	ourP := new(big.Int).Exp(testPubK.R[0], ourSecret, testPubK.N)
+
+	t.Run("Disclosure", func(t *testing.T) {
+		// Setup credential, disclosure builder
+		cred := createCredential(t, context, totalSecret, NewIssuer(testPrivK, testPubK, context))
+		builder, err := cred.CreateDisclosureProofBuilder([]int{1}, nil, false)
+		require.NoError(t, err)
+		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{builder})
+	})
+
+	t.Run("Issuance", func(t *testing.T) {
+		nonce2, err := common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].Lstatzk)
+		require.NoError(t, err)
+		builder, err := NewCredentialBuilder(testPubK, context, userSecret, nonce2, ourP, nil)
+		require.NoError(t, err)
+		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{builder})
+	})
+}
+
+func TestKeyshareResponseSingleBase(t *testing.T) {
+	ourSecret, err := GenerateSecretAttribute()
+	require.NoError(t, err)
+	userSecret, err := GenerateSecretAttribute()
+	require.NoError(t, err)
+
+	nonce, err := GenerateNonce()
+	require.NoError(t, err)
+
+	keysSlice := []*gabikeys.PublicKey{testPubK}
+	keysMap := map[string]*gabikeys.PublicKey{"testPubK": testPubK}
+
+	ourRandomizer, ourComm, err := NewKeyshareCommitments(ourSecret, keysSlice)
+	require.NoError(t, err)
+	userRandomizer, userComm, err := NewKeyshareCommitments(userSecret, keysSlice)
+	require.NoError(t, err)
+
+	totalP := new(big.Int)
+	totalP.Mul(userComm[0].P, ourComm[0].P).Mod(totalP, testPubK.N)
+	totalW := new(big.Int)
+	totalW.Mul(userComm[0].Pcommit, ourComm[0].Pcommit).Mod(totalW, testPubK.N)
+
+	keyID := "testPubK"
+	hashedComm, err := KeyshareUserCommitmentsHash([]KeyshareChallengeInput[string]{{
+		KeyID:      &keyID,
+		Value:      totalP,
+		Commitment: userComm[0].Pcommit,
+	}})
+
+	challenge := createChallenge(bigOne, nonce, []*big.Int{totalP, totalW}, false)
+
+	req := KeyshareCommitmentRequest{HashedUserCommitments: hashedComm}
+	res := KeyshareResponseRequest[string]{
+		Nonce:              nonce,
+		UserResponse:       new(big.Int).Add(userRandomizer, new(big.Int).Mul(challenge, userSecret)),
+		IsSignatureSession: false,
+		ChallengeInput: []KeyshareChallengeInput[string]{{
+			KeyID:      &keyID,
+			Value:      totalP,
+			Commitment: userComm[0].Pcommit,
+		}},
+	}
+
+	response, err := KeyshareResponseNew(ourSecret, ourRandomizer, req, res, keysMap)
+	require.NoError(t, err)
+
+	lhs := new(big.Int).Exp(testPubK.R[0], response.SResponse, testPubK.N)
+	rhs := new(big.Int)
+	rhs.Mul(new(big.Int).Exp(totalP, challenge, testPubK.N), totalW).Mod(rhs, testPubK.N)
+
+	require.Equal(t, 0, lhs.Cmp(rhs))
 }
 
 func TestMain(m *testing.M) {
