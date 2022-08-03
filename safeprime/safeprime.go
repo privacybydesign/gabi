@@ -1,3 +1,4 @@
+//go:build !android && !ios
 // +build !android,!ios
 
 // Package safeprime computes safe primes, i.e. primes of the form 2p+1 where p is also prime.
