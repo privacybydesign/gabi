@@ -1,0 +1,59 @@
+# Workflow to check whether changes to master fulfill all requirements.
+name: Status checks
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+      
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.18
+
+    - name: Run gofmt
+      # gofmt does not return non-zero exit codes on failure, so we have to check that there are no issues using grep.
+      run: gofmt -d -e . | (! grep ^)
+
+    # The checks below are disabled until all present issues are fixed.
+
+    # - name: Run go vet
+    #   run: go vet ./...
+      
+    # - name: Install ineffassign
+    #   run: go install github.com/gordonklaus/ineffassign@latest
+      
+    # - name: Run ineffassign
+    #   run: ineffassign ./...
+      
+    # - name: Install misspell
+    #   run: go install github.com/client9/misspell/cmd/misspell@latest
+      
+    # - name: Run misspell
+    #   run: misspell -error .
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.18
+
+      - name: Run all unit tests
+        run: go test -v ./...
+
+  analyze:
+    # Require successful test to make sure analysis does not fail on syntax errors.
+    needs: test
+    uses: ./.github/workflows/codeql-analysis.yml
