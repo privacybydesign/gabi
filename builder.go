@@ -103,7 +103,6 @@ func NewCredentialBuilder(pk *gabikeys.PublicKey, context, secret *big.Int, nonc
 		secret:  secret,
 		vPrime:  vPrime,
 		u:       U,
-		uCommit: big.NewInt(1),
 		nonce2:  nonce2,
 		mUser:   mUser,
 	}, nil
@@ -213,7 +212,6 @@ type CredentialBuilder struct {
 	vPrimeCommit *big.Int
 	nonce2       *big.Int
 	u            *big.Int
-	uCommit      *big.Int
 	skRandomizer *big.Int
 
 	pk         *gabikeys.PublicKey
@@ -226,10 +224,6 @@ type CredentialBuilder struct {
 
 func (b *CredentialBuilder) MergeProofPCommitment(commitment *ProofPCommitment) {
 	b.proofPcomm = commitment
-	b.uCommit.Mod(
-		b.uCommit.Mul(b.uCommit, commitment.Pcommit),
-		b.pk.N,
-	)
 }
 
 // PublicKey returns the Idemix public key against which the credential will verify.
@@ -257,21 +251,21 @@ func (b *CredentialBuilder) Commit(randomizers map[string]*big.Int) ([]*big.Int,
 	// U_commit = U_commit * S^{v_prime_commit} * R_0^{s_commit}
 	sv := new(big.Int).Exp(b.pk.S, b.vPrimeCommit, b.pk.N)
 	r0s := new(big.Int).Exp(b.pk.R[0], b.skRandomizer, b.pk.N)
-	b.uCommit.Mul(b.uCommit, sv).Mul(b.uCommit, r0s)
-	b.uCommit.Mod(b.uCommit, b.pk.N)
+	uCommit := big.NewInt(1)
+	if b.proofPcomm != nil {
+		b.u.Mul(b.u, b.proofPcomm.P).Mod(b.u, b.pk.N)
+		uCommit.Set(b.proofPcomm.Pcommit)
+	}
+	uCommit.Mul(uCommit, sv).Mul(uCommit, r0s)
+	uCommit.Mod(uCommit, b.pk.N)
 
 	// U_commit = U_commit * R_i^{m_iUserCommit} for i in random blind
 	for i := range b.mUser {
-		b.uCommit.Mul(b.uCommit, new(big.Int).Exp(b.pk.R[i], b.mUserCommit[i], b.pk.N))
-		b.uCommit.Mod(b.uCommit, b.pk.N)
+		uCommit.Mul(uCommit, new(big.Int).Exp(b.pk.R[i], b.mUserCommit[i], b.pk.N))
+		uCommit.Mod(uCommit, b.pk.N)
 	}
 
-	ucomm := new(big.Int).Set(b.u)
-	if b.proofPcomm != nil {
-		ucomm.Mul(ucomm, b.proofPcomm.P).Mod(ucomm, b.pk.N)
-	}
-
-	return []*big.Int{ucomm, b.uCommit}, nil
+	return []*big.Int{b.u, uCommit}, nil
 }
 
 // CreateProof creates a (ProofU) Proof using the provided challenge.
