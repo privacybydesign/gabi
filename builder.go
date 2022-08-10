@@ -97,14 +97,29 @@ func NewCredentialBuilder(pk *gabikeys.PublicKey, context, secret *big.Int, nonc
 	// Commit to secret and, optionally, user's shares of random blind attributes
 	U := userCommitment(pk, secret, vPrime, mUser)
 
+	// Generate randomizers for the commitment
+	vPrimeCommit, err := common.RandomBigInt(pk.Params.LvPrimeCommit)
+	if err != nil {
+		return nil, err
+	}
+	mUserCommit := make(map[int]*big.Int)
+	for i := range mUser {
+		mUserCommit[i], err = common.RandomBigInt(pk.Params.LmCommit)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &CredentialBuilder{
-		pk:      pk,
-		context: context,
-		secret:  secret,
-		vPrime:  vPrime,
-		u:       U,
-		nonce2:  nonce2,
-		mUser:   mUser,
+		pk:           pk,
+		context:      context,
+		secret:       secret,
+		vPrime:       vPrime,
+		u:            U,
+		nonce2:       nonce2,
+		mUser:        mUser,
+		vPrimeCommit: vPrimeCommit,
+		mUserCommit:  mUserCommit,
 	}, nil
 }
 
@@ -235,18 +250,6 @@ func (b *CredentialBuilder) PublicKey() *gabikeys.PublicKey {
 // Optionally commits to the user shares of random blind attributes if any are present.
 func (b *CredentialBuilder) Commit(randomizers map[string]*big.Int) ([]*big.Int, error) {
 	b.skRandomizer = randomizers["secretkey"]
-	var err error
-	b.vPrimeCommit, err = common.RandomBigInt(b.pk.Params.LvPrimeCommit)
-	if err != nil {
-		return nil, err
-	}
-	b.mUserCommit = make(map[int]*big.Int)
-	for i := range b.mUser {
-		b.mUserCommit[i], err = common.RandomBigInt(b.pk.Params.LmCommit)
-		if err != nil {
-			return nil, err
-		}
-	}
 
 	// U_commit = U_commit * S^{v_prime_commit} * R_0^{s_commit}
 	sv := new(big.Int).Exp(b.pk.S, b.vPrimeCommit, b.pk.N)
