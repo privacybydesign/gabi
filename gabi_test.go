@@ -1155,11 +1155,18 @@ func testNewKeyshareResponse(
 	ourSecret, userSecret *big.Int,
 	builders ProofBuilderList,
 ) {
+	// Prepare some vars used throughout
 	keyshareSecretRandomizerLength = gabikeys.DefaultSystemParameters[1024].Lstatzk
+	keyID := "testPubK"
+	keysMap := map[string]*gabikeys.PublicKey{"testPubK": testPubK}
+	var keysSlice []*gabikeys.PublicKey
+	for _, b := range builders {
+		keysSlice = append(keysSlice, b.PublicKey())
+	}
+
+	// User chooses randomizer and computes h_W
 	userRandomizer, err := common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].LmCommit)
 	require.NoError(t, err)
-	keyID := "testPubK"
-
 	var hashInput []KeyshareChallengeInput[string]
 	for _, builder := range builders {
 		c, err := builder.Commit(map[string]*big.Int{"secretkey": userRandomizer})
@@ -1177,8 +1184,6 @@ func testNewKeyshareResponse(
 	req := KeyshareCommitmentRequest{HashedUserCommitments: hashedComm}
 
 	// The KSS responds with its commitments
-	keysSlice := []*gabikeys.PublicKey{testPubK}
-	keysMap := map[string]*gabikeys.PublicKey{"testPubK": testPubK}
 	ourRandomizer, ourComm, err := NewKeyshareCommitments(ourSecret, keysSlice)
 	require.NoError(t, err)
 
@@ -1227,7 +1232,7 @@ func testNewKeyshareResponse(
 			p.SResponse = proofP.SResponse
 		}
 	}
-	require.True(t, proofs.Verify([]*gabikeys.PublicKey{testPubK}, context, nonce, false, nil))
+	require.True(t, proofs.Verify(keysSlice, context, nonce, false, nil))
 }
 
 var context = bigOne
@@ -1257,6 +1262,19 @@ func TestKeyshareResponse(t *testing.T) {
 		builder, err := NewCredentialBuilder(testPubK, context, userSecret, nonce2, ourP, nil)
 		require.NoError(t, err)
 		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{builder})
+	})
+
+	t.Run("IssuanceAndDisclosure", func(t *testing.T) {
+		cred := createCredential(t, context, totalSecret, NewIssuer(testPrivK, testPubK, context))
+		disclosureBuilder, err := cred.CreateDisclosureProofBuilder([]int{1}, nil, false)
+		require.NoError(t, err)
+
+		nonce2, err := common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].Lstatzk)
+		require.NoError(t, err)
+		credBuilder, err := NewCredentialBuilder(testPubK, context, userSecret, nonce2, ourP, nil)
+		require.NoError(t, err)
+
+		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{credBuilder, disclosureBuilder})
 	})
 }
 
