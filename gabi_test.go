@@ -1156,17 +1156,17 @@ func TestConstructCredentialNonZeroRandomBlindAttributes(t *testing.T) {
 
 func testNewKeyshareResponse(
 	t *testing.T,
+	keys map[string]*gabikeys.PublicKey,
 	ourSecret, userSecret *big.Int,
 	builders ProofBuilderList,
 ) {
 	// Prepare some vars used throughout
 	keyshareSecretRandomizerLength = gabikeys.DefaultSystemParameters[1024].Lstatzk
-	keysMap := map[string]*gabikeys.PublicKey{"testPubK": testPubK, "testPubK1": testPubK1}
 	keyNames := map[int]*string{}
 	var keysSlice []*gabikeys.PublicKey
 	for i, b := range builders {
 		keysSlice = append(keysSlice, b.PublicKey())
-		for name, key := range keysMap {
+		for name, key := range keys {
 			if key.N.Cmp(b.PublicKey().N) == 0 {
 				name := name
 				keyNames[i] = &name
@@ -1218,7 +1218,7 @@ func testNewKeyshareResponse(
 		ChallengeInput:     hashInput,
 	}
 
-	proofP, err := KeyshareResponseNew(ourSecret, ourRandomizer, req, res, keysMap)
+	proofP, err := KeyshareResponseNew(ourSecret, ourRandomizer, req, res, keys)
 	require.NoError(t, err)
 	require.Equal(t, challenge, proofP.C)
 
@@ -1264,80 +1264,69 @@ func TestKeyshareResponse(t *testing.T) {
 	require.NoError(t, err)
 	userSecret.Div(userSecret, big.NewInt(2))
 
-	t.Run("Disclosure", func(t *testing.T) {
-		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{
+	tests := map[string]ProofBuilderList{
+		"Disclosure": {
 			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK)),
-		})
-	})
-
-	t.Run("DoubleDisclosureSameKeys", func(t *testing.T) {
-		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{
+		},
+		"DoubleDisclosureSameKeys": {
 			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK)),
 			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK)),
-		})
-	})
-
-	t.Run("DoubleDisclosureDistinctKeys", func(t *testing.T) {
-		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{
+		},
+		"DoubleDisclosureDistinctKeys": {
 			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK)),
 			newDisclosureBuilder(t, testPrivK1, testPubK1, userSecret, ourP(ourSecret, testPubK1)),
-		})
-	})
-
-	t.Run("DoubleDisclosureMixed", func(t *testing.T) {
-		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{
+		},
+		"DoubleDisclosureMixed": {
 			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK)),
 			newDisclosureBuilder(t, testPrivK2, testPubK2, userSecret, nil),
-		})
-	})
-
-	t.Run("Issuance", func(t *testing.T) {
-		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{
+		},
+		"Issuance": {
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
-		})
-	})
-
-	t.Run("DoubleIssuanceSameKeys", func(t *testing.T) {
-		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{
+		},
+		"DoubleIssuanceSameKeys": {
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
-		})
-	})
-
-	t.Run("DoubleIssuanceDistinctKeys", func(t *testing.T) {
-		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{
+		},
+		"DoubleIssuanceDistinctKeys": {
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
 			newCredbuilder(t, testPubK1, userSecret, ourP(ourSecret, testPubK1)),
-		})
-	})
-
-	t.Run("DoubleIssuanceMixed", func(t *testing.T) {
-		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{
+		},
+		"DoubleIssuanceMixed": {
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
 			newCredbuilder(t, testPubK2, userSecret, nil),
-		})
-	})
-
-	t.Run("IssuanceAndDisclosureSameKeys", func(t *testing.T) {
-		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{
+		},
+		"IssuanceAndDisclosureSameKeys": {
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
 			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK)),
-		})
-	})
-
-	t.Run("IssuanceAndDisclosureDistinctKeys", func(t *testing.T) {
-		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{
+		},
+		"IssuanceAndDisclosureDistinctKeys": {
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
 			newDisclosureBuilder(t, testPrivK1, testPubK1, userSecret, ourP(ourSecret, testPubK1)),
-		})
-	})
-
-	t.Run("IssuanceAndDisclosureMixed", func(t *testing.T) {
-		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{
+		},
+		"IssuanceAndDisclosureMixed": {
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
 			newDisclosureBuilder(t, testPrivK2, testPubK2, userSecret, nil),
+		},
+		"IssuanceAndDisclosureSameAndDisclosureMixed": {
+			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
+			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK)),
+			newDisclosureBuilder(t, testPrivK2, testPubK2, userSecret, nil),
+		},
+		"IssuanceAndDisclosureMixedAndDisclosureMixed": {
+			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
+			newDisclosureBuilder(t, testPrivK1, testPubK1, userSecret, ourP(ourSecret, testPubK1)),
+			newDisclosureBuilder(t, testPrivK2, testPubK2, userSecret, nil),
+		},
+	}
+
+	// Perform keyshare protocol for these keys
+	keys := map[string]*gabikeys.PublicKey{"testPubK": testPubK, "testPubK1": testPubK1}
+
+	for testname, builders := range tests {
+		t.Run(testname, func(t *testing.T) {
+			testNewKeyshareResponse(t, keys, ourSecret, userSecret, builders)
 		})
-	})
+	}
 }
 
 func newCredbuilder(t *testing.T, pk *gabikeys.PublicKey, secret, ourP *big.Int) *CredentialBuilder {
