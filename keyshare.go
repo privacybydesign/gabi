@@ -17,7 +17,7 @@ type KeyshareCommitmentRequest struct {
 	HashedUserCommitments []byte `json:"hashedComms"`
 }
 
-type KeyshareResponseRequest[T comparable] struct {
+type KeyshareResponseRequest[T any] struct {
 	Context            *big.Int `json:"context,omitempty"`
 	Nonce              *big.Int `json:"nonce"`
 	UserResponse       *big.Int `json:"resp"`
