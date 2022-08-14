@@ -592,14 +592,14 @@ func TestGenerateKeyPair(t *testing.T) {
 	//testPublicKey(t, pubk, privk)
 }
 
-func createCredential(t *testing.T, context, secret *big.Int, issuer *Issuer) *Credential {
+func createKeyshareCredential(t *testing.T, context, secret, keyshareP *big.Int, issuer *Issuer) *Credential {
 	// First create a credential
 	keylength := 1024
 	nonce1, err := common.RandomBigInt(gabikeys.DefaultSystemParameters[keylength].Lstatzk)
 	assert.NoError(t, err)
 	nonce2, err := common.RandomBigInt(gabikeys.DefaultSystemParameters[keylength].Lstatzk)
 	assert.NoError(t, err)
-	cb, err := NewCredentialBuilder(issuer.Pk, context, secret, nonce2, nil, nil)
+	cb, err := NewCredentialBuilder(issuer.Pk, context, secret, nonce2, keyshareP, nil)
 	assert.NoError(t, err)
 	commitMsg, err := cb.CommitToSecretAndProve(nonce1)
 	assert.NoError(t, err)
@@ -610,6 +610,10 @@ func createCredential(t *testing.T, context, secret *big.Int, issuer *Issuer) *C
 	cred, err := cb.ConstructCredential(ism, testAttributes1)
 	assert.NoError(t, err, "error creating credential")
 	return cred
+}
+
+func createCredential(t *testing.T, context, secret *big.Int, issuer *Issuer) *Credential {
+	return createKeyshareCredential(t, context, secret, nil, issuer)
 }
 
 var squaresTable = rangeproof.GenerateSquaresTable(65535)
@@ -1195,7 +1199,9 @@ func testNewKeyshareResponse(
 
 	// Process keyshare server commitment into builders
 	for i, builder := range builders {
-		builder.MergeProofPCommitment(ourComm[i])
+		if keyNames[i] != nil {
+			builder.MergeProofPCommitment(ourComm[i])
+		}
 	}
 
 	// Compute challenge and user response
@@ -1230,7 +1236,13 @@ func testNewKeyshareResponse(
 	// Verify the proofs
 	proofs, err := builders.BuildDistributedProofList(challenge, nil)
 	require.NoError(t, err)
-	for _, proof := range proofs {
+	var kss []string
+	for i, proof := range proofs {
+		if keyNames[i] == nil {
+			kss = append(kss, "")
+			continue
+		}
+		kss = append(kss, *keyNames[i])
 		switch p := proof.(type) {
 		case *ProofD:
 			p.AResponses[0] = proofP.SResponse
@@ -1238,7 +1250,7 @@ func testNewKeyshareResponse(
 			p.SResponse = proofP.SResponse
 		}
 	}
-	require.True(t, proofs.Verify(keysSlice, context, nonce, false, nil))
+	require.True(t, proofs.Verify(keysSlice, context, nonce, false, kss))
 }
 
 var context = bigOne
@@ -1251,31 +1263,37 @@ func TestKeyshareResponse(t *testing.T) {
 	userSecret, err := GenerateSecretAttribute()
 	require.NoError(t, err)
 	userSecret.Div(userSecret, big.NewInt(2))
-	totalSecret := new(big.Int).Add(ourSecret, userSecret)
 
 	t.Run("Disclosure", func(t *testing.T) {
 		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{
-			newDisclosureBuilder(t, testPrivK, testPubK, totalSecret),
+			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK)),
+		})
+	})
+
+	t.Run("DoubleDisclosureSameKeys", func(t *testing.T) {
+		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{
+			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK)),
+			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK)),
+		})
+	})
+
+	t.Run("DoubleDisclosureDistinctKeys", func(t *testing.T) {
+		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{
+			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK)),
+			newDisclosureBuilder(t, testPrivK1, testPubK1, userSecret, ourP(ourSecret, testPubK1)),
+		})
+	})
+
+	t.Run("DoubleDisclosureMixed", func(t *testing.T) {
+		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{
+			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK)),
+			newDisclosureBuilder(t, testPrivK2, testPubK2, userSecret, nil),
 		})
 	})
 
 	t.Run("Issuance", func(t *testing.T) {
 		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
-		})
-	})
-
-	t.Run("DoubleDisclosureSameKeys", func(t *testing.T) {
-		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{
-			newDisclosureBuilder(t, testPrivK, testPubK, totalSecret),
-			newDisclosureBuilder(t, testPrivK, testPubK, totalSecret),
-		})
-	})
-
-	t.Run("DoubleDisclosureDistinctKeys", func(t *testing.T) {
-		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{
-			newDisclosureBuilder(t, testPrivK, testPubK, totalSecret),
-			newDisclosureBuilder(t, testPrivK1, testPubK1, totalSecret),
 		})
 	})
 
@@ -1293,31 +1311,45 @@ func TestKeyshareResponse(t *testing.T) {
 		})
 	})
 
+	t.Run("DoubleIssuanceMixed", func(t *testing.T) {
+		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{
+			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
+			newCredbuilder(t, testPubK2, userSecret, nil),
+		})
+	})
+
 	t.Run("IssuanceAndDisclosureSameKeys", func(t *testing.T) {
 		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
-			newDisclosureBuilder(t, testPrivK, testPubK, totalSecret),
+			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK)),
 		})
 	})
 
 	t.Run("IssuanceAndDisclosureDistinctKeys", func(t *testing.T) {
 		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
-			newDisclosureBuilder(t, testPrivK1, testPubK1, totalSecret),
+			newDisclosureBuilder(t, testPrivK1, testPubK1, userSecret, ourP(ourSecret, testPubK1)),
+		})
+	})
+
+	t.Run("IssuanceAndDisclosureMixed", func(t *testing.T) {
+		testNewKeyshareResponse(t, ourSecret, userSecret, ProofBuilderList{
+			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
+			newDisclosureBuilder(t, testPrivK2, testPubK2, userSecret, nil),
 		})
 	})
 }
 
-func newCredbuilder(t *testing.T, pk *gabikeys.PublicKey, userSecret, ourP *big.Int) *CredentialBuilder {
+func newCredbuilder(t *testing.T, pk *gabikeys.PublicKey, secret, ourP *big.Int) *CredentialBuilder {
 	nonce2, err := common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].Lstatzk)
 	require.NoError(t, err)
-	credBuilder, err := NewCredentialBuilder(pk, context, userSecret, nonce2, ourP, nil)
+	credBuilder, err := NewCredentialBuilder(pk, context, secret, nonce2, ourP, nil)
 	require.NoError(t, err)
 	return credBuilder
 }
 
-func newDisclosureBuilder(t *testing.T, sk *gabikeys.PrivateKey, pk *gabikeys.PublicKey, totalSecret *big.Int) *DisclosureProofBuilder {
-	cred := createCredential(t, context, totalSecret, NewIssuer(sk, pk, context))
+func newDisclosureBuilder(t *testing.T, sk *gabikeys.PrivateKey, pk *gabikeys.PublicKey, secret, ourP *big.Int) *DisclosureProofBuilder {
+	cred := createKeyshareCredential(t, context, secret, ourP, NewIssuer(sk, pk, context))
 	disclosureBuilder, err := cred.CreateDisclosureProofBuilder([]int{1}, nil, false)
 	require.NoError(t, err)
 	return disclosureBuilder
