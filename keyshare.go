@@ -27,9 +27,10 @@ type KeyshareResponseRequest[T any] struct {
 }
 
 type KeyshareChallengeInput[T any] struct {
-	KeyID      *T       `json:"key,omitempty"`
-	Value      *big.Int `json:"val"`
-	Commitment *big.Int `json:"comm"`
+	KeyID            *T         `json:"key,omitempty"`
+	Value            *big.Int   `json:"val"`
+	Commitment       *big.Int   `json:"comm"`
+	OtherCommitments []*big.Int `json:"otherComms,omitempty"`
 }
 
 func KeyshareUserCommitmentsHash[T any](i []KeyshareChallengeInput[T]) ([]byte, error) {
@@ -65,6 +66,7 @@ func KeyshareResponseNew[T comparable](
 		hashContribs = append(hashContribs, data)
 		if data.KeyID == nil {
 			challengeContribs = append(challengeContribs, data.Value, data.Commitment)
+			challengeContribs = append(challengeContribs, data.OtherCommitments...)
 			continue
 		}
 
@@ -73,6 +75,7 @@ func KeyshareResponseNew[T comparable](
 		totalW := new(big.Int)
 		totalW.Mul(data.Commitment, new(big.Int).Exp(pk.R[0], randomizer, pk.N)).Mod(totalW, pk.N)
 		challengeContribs = append(challengeContribs, data.Value, totalW)
+		challengeContribs = append(challengeContribs, data.OtherCommitments...)
 	}
 
 	// Check that h_W sent in the commitment request equals the hash over the expected values
