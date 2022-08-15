@@ -1248,7 +1248,7 @@ func testNewKeyshareResponse(
 			kss = append(kss, "")
 			continue
 		}
-		kss = append(kss, *keyNames[i])
+		kss = append(kss, "keyshare server")
 		proof.MergeProofP(proofP, nil) // public key is not used for new protocol version
 	}
 	require.True(t, proofs.Verify(keysSlice, context, nonce, false, kss))
