@@ -44,11 +44,15 @@ type ProofU struct {
 }
 
 func (p *ProofU) MergeProofP(proofP *ProofP, pk *gabikeys.PublicKey) {
-	p.U.Mod(
-		p.U.Mul(p.U, proofP.P),
-		pk.N,
-	)
-	p.SResponse.Add(p.SResponse, proofP.SResponse)
+	if proofP.P == nil { // new keyshare protocol version
+		p.SResponse.Set(proofP.SResponse)
+	} else {
+		p.U.Mod(
+			p.U.Mul(p.U, proofP.P),
+			pk.N,
+		)
+		p.SResponse.Add(p.SResponse, proofP.SResponse)
+	}
 }
 
 // Verify verifies whether the proof is correct.
@@ -166,7 +170,11 @@ type ProofD struct {
 
 // MergeProofP merges a ProofP into the ProofD.
 func (p *ProofD) MergeProofP(proofP *ProofP, _ *gabikeys.PublicKey) {
-	p.SecretKeyResponse().Add(p.SecretKeyResponse(), proofP.SResponse)
+	if proofP.P == nil { // new protocol version
+		p.SecretKeyResponse().Set(proofP.SResponse)
+	} else {
+		p.SecretKeyResponse().Add(p.SecretKeyResponse(), proofP.SResponse)
+	}
 }
 
 func (p *ProofD) reconstructRangeProofStructures(pk *gabikeys.PublicKey) error {

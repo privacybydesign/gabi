@@ -1243,12 +1243,7 @@ func testNewKeyshareResponse(
 			continue
 		}
 		kss = append(kss, *keyNames[i])
-		switch p := proof.(type) {
-		case *ProofD:
-			p.AResponses[0] = proofP.SResponse
-		case *ProofU:
-			p.SResponse = proofP.SResponse
-		}
+		proof.MergeProofP(proofP, nil) // public key is not used for new protocol version
 	}
 	require.True(t, proofs.Verify(keysSlice, context, nonce, false, kss))
 }
