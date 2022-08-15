@@ -143,6 +143,7 @@ func setupParameters() error {
 	if err != nil {
 		return err
 	}
+	testPubK.Issuer = "testPubK"
 
 	testPrivK1, err = gabikeys.NewPrivateKeyFromXML(xmlPrivKey1, false)
 	if err != nil {
@@ -152,6 +153,7 @@ func setupParameters() error {
 	if err != nil {
 		return err
 	}
+	testPubK1.Issuer = "testPubK1"
 	testPrivK2, err = gabikeys.NewPrivateKeyFromXML(xmlPrivKey2, false)
 	if err != nil {
 		return err
@@ -160,6 +162,7 @@ func setupParameters() error {
 	if err != nil {
 		return err
 	}
+	testPubK2.Issuer = "testPubK2"
 	return nil
 }
 
@@ -1156,7 +1159,7 @@ func TestConstructCredentialNonZeroRandomBlindAttributes(t *testing.T) {
 
 func testNewKeyshareResponse(
 	t *testing.T,
-	keys map[string]*gabikeys.PublicKey,
+	keys map[string]*gabikeys.PublicKey, // the keys for which the keyshare protocol is done
 	ourSecret, userSecret *big.Int,
 	builders ProofBuilderList,
 ) {
@@ -1166,11 +1169,9 @@ func testNewKeyshareResponse(
 	var keysSlice []*gabikeys.PublicKey
 	for i, b := range builders {
 		keysSlice = append(keysSlice, b.PublicKey())
-		for name, key := range keys {
-			if key.N.Cmp(b.PublicKey().N) == 0 {
-				name := name
-				keyNames[i] = &name
-			}
+		keyname := b.PublicKey().Issuer
+		if pk := keys[keyname]; pk != nil {
+			keyNames[i] = &pk.Issuer
 		}
 	}
 
@@ -1246,6 +1247,22 @@ func testNewKeyshareResponse(
 		proof.MergeProofP(proofP, nil) // public key is not used for new protocol version
 	}
 	require.True(t, proofs.Verify(keysSlice, context, nonce, false, kss))
+
+	// In case of issuance, check that we can construct valid credentials
+	privkeys := map[string]*gabikeys.PrivateKey{
+		"testPubK": testPrivK, "testPubK1": testPrivK1, "testPubK2": testPrivK2,
+	}
+	for i, proof := range proofs {
+		if proofU, ok := proof.(*ProofU); ok {
+			builder := builders[i].(*CredentialBuilder)
+			issuer := NewIssuer(privkeys[builder.pk.Issuer], builder.pk, context)
+			ism, err := issuer.IssueSignature(proofU.U, testAttributes1, nil, builder.nonce2, nil)
+			require.NoError(t, err, "error creating Issue Signature")
+			cred, err := builder.ConstructCredential(ism, testAttributes1)
+			require.NoError(t, err, "error creating credential")
+			cred.Signature.Verify(builder.pk, cred.Attributes)
+		}
+	}
 }
 
 var context = bigOne
