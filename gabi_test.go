@@ -1163,6 +1163,7 @@ func testNewKeyshareResponse(
 	keys map[string]*gabikeys.PublicKey, // the keys for which the keyshare protocol is done
 	ourSecret, userSecret *big.Int,
 	builders ProofBuilderList,
+	signature bool,
 ) {
 	// The default value of this var is gabikeys.DefaultSystemParameters[2048].Lstatzk,
 	// but all test keys used here are 1024 bits, which use a smaller size for the secret key
@@ -1222,7 +1223,7 @@ func testNewKeyshareResponse(
 	}
 
 	// User computes challenge and user response
-	challenge, err := builders.ChallengeWithRandomizers(context, nonce, map[string]*big.Int{"secretkey": userRandomizer}, false)
+	challenge, err := builders.ChallengeWithRandomizers(context, nonce, map[string]*big.Int{"secretkey": userRandomizer}, signature)
 	require.NoError(t, err)
 	userResponse := new(big.Int).Add(userRandomizer, new(big.Int).Mul(challenge, userSecret))
 
@@ -1230,7 +1231,7 @@ func testNewKeyshareResponse(
 	res := KeyshareResponseRequest[string]{
 		Nonce:              nonce,
 		UserResponse:       userResponse,
-		IsSignatureSession: false,
+		IsSignatureSession: signature,
 		ChallengeInput:     hashInput,
 	}
 	proofP, err := KeyshareResponse(ourSecret, ourRandomizer, req, res, keys)
@@ -1261,7 +1262,7 @@ func testNewKeyshareResponse(
 	}
 	proofs, err := builders.BuildDistributedProofList(challenge, proofPs)
 	require.NoError(t, err)
-	require.True(t, proofs.Verify(keysSlice, context, nonce, false, kss))
+	require.True(t, proofs.Verify(keysSlice, context, nonce, signature, kss))
 
 	// In case of issuance, check that we can construct valid credentials
 	privkeys := map[string]*gabikeys.PrivateKey{
@@ -1305,84 +1306,87 @@ func TestKeyshareResponse(t *testing.T) {
 		2: {statement},
 	}
 
-	tests := map[string]ProofBuilderList{
-		"Disclosure": {
-			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), false, nil),
+	tests := map[string]struct {
+		builders  ProofBuilderList
+		signature bool
+	}{
+		"Disclosure": {builders: ProofBuilderList{
+			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), false, nil)},
 		},
-		"DisclosureRevocation": {
+		"DisclosureRevocation": {builders: ProofBuilderList{
 			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), true, nil),
-		},
-		"DisclosureRangeProof": {
+		}},
+		"DisclosureRangeProof": {builders: ProofBuilderList{
 			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), false, rangeStatements),
-		},
-		"DisclosureRevocationRangeProof": {
+		}},
+		"DisclosureRevocationRangeProof": {builders: ProofBuilderList{
 			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), true, rangeStatements),
-		},
-		"DoubleDisclosureSameKeys": {
+		}},
+		"DoubleDisclosureSameKeys": {builders: ProofBuilderList{
 			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), false, nil),
 			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), false, nil),
-		},
-		"DoubleDisclosureDistinctKeys": {
+		}},
+		"DoubleDisclosureDistinctKeys": {builders: ProofBuilderList{
 			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), false, nil),
 			newDisclosureBuilder(t, testPrivK1, testPubK1, userSecret, ourP(ourSecret, testPubK1), false, nil),
-		},
-		"DoubleDisclosureRevocation": {
+		}},
+		"DoubleDisclosureRevocation": {builders: ProofBuilderList{
 			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), false, nil),
 			newDisclosureBuilder(t, testPrivK1, testPubK1, userSecret, ourP(ourSecret, testPubK1), true, nil),
-		},
-		"DoubleDisclosureMixed": {
+		}},
+		"DoubleDisclosureMixed": {builders: ProofBuilderList{
 			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), false, nil),
 			newDisclosureBuilder(t, testPrivK2, testPubK2, userSecret, nil, false, nil),
-		},
-		"Issuance": {
+		}},
+		"Issuance": {builders: ProofBuilderList{
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
-		},
-		"IssuanceRandomblind": {
+		}},
+		"IssuanceRandomblind": {builders: ProofBuilderList{
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), []int{2}),
-		},
-		"DoubleIssuanceSameKeys": {
+		}},
+		"DoubleIssuanceSameKeys": {builders: ProofBuilderList{
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
-		},
-		"DoubleIssuanceDistinctKeys": {
+		}},
+		"DoubleIssuanceDistinctKeys": {builders: ProofBuilderList{
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
 			newCredbuilder(t, testPubK1, userSecret, ourP(ourSecret, testPubK1), nil),
-		},
-		"DoubleIssuanceRandomblind": {
+		}},
+		"DoubleIssuanceRandomblind": {builders: ProofBuilderList{
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
 			newCredbuilder(t, testPubK1, userSecret, ourP(ourSecret, testPubK1), []int{2}),
-		},
-		"DoubleIssuanceMixed": {
+		}},
+		"DoubleIssuanceMixed": {builders: ProofBuilderList{
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
 			newCredbuilder(t, testPubK2, userSecret, nil, nil),
-		},
-		"IssuanceAndDisclosureSameKeys": {
+		}},
+		"IssuanceAndDisclosureSameKeys": {builders: ProofBuilderList{
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
 			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), false, nil),
-		},
-		"IssuanceAndDisclosureDistinctKeys": {
+		}},
+		"IssuanceAndDisclosureDistinctKeys": {builders: ProofBuilderList{
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
 			newDisclosureBuilder(t, testPrivK1, testPubK1, userSecret, ourP(ourSecret, testPubK1), false, nil),
-		},
-		"IssuanceAndDisclosureRevocation": {
+		}},
+		"IssuanceAndDisclosureRevocation": {builders: ProofBuilderList{
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
 			newDisclosureBuilder(t, testPrivK1, testPubK1, userSecret, ourP(ourSecret, testPubK1), true, nil),
-		},
-		"IssuanceAndDisclosureMixed": {
+		}},
+		"IssuanceAndDisclosureMixed": {builders: ProofBuilderList{
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
 			newDisclosureBuilder(t, testPrivK2, testPubK2, userSecret, nil, false, nil),
-		},
-		"IssuanceAndDisclosureSameAndDisclosureMixed": {
+		}},
+		"IssuanceAndDisclosureSameAndDisclosureMixed": {builders: ProofBuilderList{
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
 			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), false, nil),
 			newDisclosureBuilder(t, testPrivK2, testPubK2, userSecret, nil, false, nil),
-		},
-		"IssuanceAndDisclosureMixedAndDisclosureMixed": {
+		}},
+		"IssuanceAndDisclosureMixedAndDisclosureMixed": {builders: ProofBuilderList{
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
 			newDisclosureBuilder(t, testPrivK1, testPubK1, userSecret, ourP(ourSecret, testPubK1), false, nil),
 			newDisclosureBuilder(t, testPrivK2, testPubK2, userSecret, nil, false, nil),
-		},
-		"Everything": {
+		}},
+		"Everything": {builders: ProofBuilderList{
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
 			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), []int{2}),
 			newCredbuilder(t, testPubK1, userSecret, ourP(ourSecret, testPubK1), nil),
@@ -1397,15 +1401,43 @@ func TestKeyshareResponse(t *testing.T) {
 			newDisclosureBuilder(t, testPrivK2, testPubK2, userSecret, nil, true, nil),
 			newDisclosureBuilder(t, testPrivK2, testPubK2, userSecret, nil, false, rangeStatements),
 			newDisclosureBuilder(t, testPrivK2, testPubK2, userSecret, nil, true, rangeStatements),
+		}},
+		"Signature": {signature: true, builders: ProofBuilderList{
+			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), false, nil)},
 		},
+		"SignatureRevocation": {signature: true, builders: ProofBuilderList{
+			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), true, nil),
+		}},
+		"SignatureRangeProof": {signature: true, builders: ProofBuilderList{
+			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), false, rangeStatements),
+		}},
+		"SignatureRevocationRangeProof": {signature: true, builders: ProofBuilderList{
+			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), true, rangeStatements),
+		}},
+		"DoubleSignatureSameKeys": {signature: true, builders: ProofBuilderList{
+			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), false, nil),
+			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), false, nil),
+		}},
+		"DoubleSignatureDistinctKeys": {signature: true, builders: ProofBuilderList{
+			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), false, nil),
+			newDisclosureBuilder(t, testPrivK1, testPubK1, userSecret, ourP(ourSecret, testPubK1), false, nil),
+		}},
+		"DoubleSignatureRevocation": {signature: true, builders: ProofBuilderList{
+			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), false, nil),
+			newDisclosureBuilder(t, testPrivK1, testPubK1, userSecret, ourP(ourSecret, testPubK1), true, nil),
+		}},
+		"DoubleSignatureMixed": {signature: true, builders: ProofBuilderList{
+			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), false, nil),
+			newDisclosureBuilder(t, testPrivK2, testPubK2, userSecret, nil, false, nil),
+		}},
 	}
 
 	// Perform keyshare protocol for these keys
 	keys := map[string]*gabikeys.PublicKey{"testPubK": testPubK, "testPubK1": testPubK1}
 
-	for testname, builders := range tests {
+	for testname, testcase := range tests {
 		t.Run(testname, func(t *testing.T) {
-			testNewKeyshareResponse(t, keys, ourSecret, userSecret, builders)
+			testNewKeyshareResponse(t, keys, ourSecret, userSecret, testcase.builders, testcase.signature)
 		})
 	}
 }
