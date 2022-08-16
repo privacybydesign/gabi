@@ -948,7 +948,7 @@ func TestKeyshare(t *testing.T) {
 	require.NoError(t, err)
 	require.LessOrEqual(t, uint(commit.BitLen()), gabikeys.DefaultSystemParameters[2048].LmCommit)
 
-	response := KeyshareResponse(secret, commit, big.NewInt(123), testPubK)
+	response := KeyshareResponseLegacy(secret, commit, big.NewInt(123), testPubK)
 	assert.Equal(t, new(big.Int).Exp(testPubK.R[0], response.SResponse, testPubK.N),
 		new(big.Int).Mod(
 			new(big.Int).Mul(
@@ -1224,7 +1224,7 @@ func testNewKeyshareResponse(
 		ChallengeInput:     hashInput,
 	}
 
-	proofP, err := KeyshareResponseNew(ourSecret, ourRandomizer, req, res, keys)
+	proofP, err := KeyshareResponse(ourSecret, ourRandomizer, req, res, keys)
 	require.NoError(t, err)
 	require.Equal(t, challenge, proofP.C)
 
@@ -1466,7 +1466,7 @@ func TestKeyshareResponseSingleBase(t *testing.T) {
 		}},
 	}
 
-	response, err := KeyshareResponseNew(ourSecret, ourRandomizer, req, res, keysMap)
+	response, err := KeyshareResponse(ourSecret, ourRandomizer, req, res, keysMap)
 	require.NoError(t, err)
 
 	lhs := new(big.Int).Exp(testPubK.R[0], response.SResponse, testPubK.N)
