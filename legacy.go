@@ -5,7 +5,8 @@ import (
 	"github.com/privacybydesign/gabi/gabikeys"
 )
 
-// KeyshareResponseLegacy generates the keyshare response for a given challenge and commit, given a secret
+// KeyshareResponseLegacy generates the keyshare response for a given challenge and commit, given a secret,
+// in the legacy keyshare protocol.
 func KeyshareResponseLegacy(secret, commit, challenge *big.Int, key *gabikeys.PublicKey) *ProofP {
 	return &ProofP{
 		P:         new(big.Int).Exp(key.R[0], secret, key.N),

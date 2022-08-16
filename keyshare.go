@@ -6,6 +6,7 @@ import (
 
 	"github.com/fxamacker/cbor"
 	"github.com/go-errors/errors"
+
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/internal/common"
@@ -13,26 +14,46 @@ import (
 
 var bigOne = big.NewInt(1)
 
-type KeyshareCommitmentRequest struct {
-	HashedUserCommitments []byte `json:"hashedComms"`
-}
+type (
+	// KeyshareCommitmentRequest contains the data the user must send to the keyshare server when it
+	// requests the keyshare server's contributions to the commitments, in the joint computation of
+	// the zero knowledge proof.
+	KeyshareCommitmentRequest struct {
+		HashedUserCommitments []byte `json:"hashedComms"`
+	}
 
-type KeyshareResponseRequest[T any] struct {
-	Context            *big.Int `json:"context,omitempty"`
-	Nonce              *big.Int `json:"nonce"`
-	UserResponse       *big.Int `json:"resp"`
-	IsSignatureSession bool     `json:"sig"`
+	// KeyshareResponseRequest contains the data the user must send to the keyshare server when it
+	// requests the keyshare server's contributions to the responses, in the joint computation of
+	// the zero knowledge proof.
+	KeyshareResponseRequest[T any] struct {
+		Context            *big.Int `json:"context,omitempty"`
+		Nonce              *big.Int `json:"nonce"`
+		UserResponse       *big.Int `json:"resp"`
+		IsSignatureSession bool     `json:"sig"`
 
-	ChallengeInput []KeyshareChallengeInput[T]
-}
+		// ChallengeInput contains the arguments used by the user to compute the
+		// HashedUserCommitments sent earlier in the commitment request.
+		ChallengeInput []KeyshareChallengeInput[T]
+	}
 
-type KeyshareChallengeInput[T any] struct {
-	KeyID            *T         `json:"key,omitempty"`
-	Value            *big.Int   `json:"val"`
-	Commitment       *big.Int   `json:"comm"`
-	OtherCommitments []*big.Int `json:"otherComms,omitempty"`
-}
+	// KeyshareChallengeInput contains the user's contributions to the challenge, in the joint
+	// computation of the zero knowledge proof.
+	KeyshareChallengeInput[T any] struct {
+		// KeyID identifies the public key for this value and commitment. If nil, the keyshare
+		// server does not participate for this value and commitment.
+		KeyID *T `json:"key,omitempty"`
 
+		Value      *big.Int `json:"val"`
+		Commitment *big.Int `json:"comm"`
+
+		// OtherCommitments contain commitments for non-revocation proofs and range proofs
+		// (if present).
+		OtherCommitments []*big.Int `json:"otherComms,omitempty"`
+	}
+)
+
+// KeyshareUserCommitmentsHash computes the value h_W; that is, the commitment of the user to
+// its contributions to the challenge, in the joint computation of the zero knowledge proof.
 func KeyshareUserCommitmentsHash[T any](i []KeyshareChallengeInput[T]) ([]byte, error) {
 	bts, err := cbor.Marshal(i, cbor.EncOptions{})
 	if err != nil {
@@ -42,6 +63,8 @@ func KeyshareUserCommitmentsHash[T any](i []KeyshareChallengeInput[T]) ([]byte, 
 	return h[:], nil
 }
 
+// KeyshareResponse generates the keyshare response, using the keyshare secret and the user's
+// input in the keyshare protocol so far.
 func KeyshareResponse[T comparable](
 	secret *big.Int,
 	randomizer *big.Int,
@@ -50,9 +73,9 @@ func KeyshareResponse[T comparable](
 	keys map[T]*gabikeys.PublicKey,
 ) (*ProofP, error) {
 	// Sanity checks
-	for _, k := range res.ChallengeInput {
+	for i, k := range res.ChallengeInput {
 		if k.KeyID != nil && keys[*k.KeyID] == nil {
-			return nil, errors.Errorf("missing public key for key %v", k)
+			return nil, errors.Errorf("missing public key for element %d of challenge input", i)
 		}
 	}
 	if res.Context == nil {
@@ -62,6 +85,7 @@ func KeyshareResponse[T comparable](
 	hashContribs := make([]KeyshareChallengeInput[T], 0, len(res.ChallengeInput))
 	challengeContribs := make([]*big.Int, 0, len(res.ChallengeInput)*2)
 
+	// Assemble the input for the computation of h_W
 	for _, data := range res.ChallengeInput {
 		hashContribs = append(hashContribs, data)
 		if data.KeyID == nil {
@@ -70,7 +94,6 @@ func KeyshareResponse[T comparable](
 			continue
 		}
 
-		// Compute challenge contributions
 		pk := keys[*data.KeyID]
 		totalW := new(big.Int)
 		totalW.Mul(data.Commitment, new(big.Int).Exp(pk.R[0], randomizer, pk.N)).Mod(totalW, pk.N)

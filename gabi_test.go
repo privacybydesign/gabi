@@ -1163,8 +1163,16 @@ func testNewKeyshareResponse(
 	ourSecret, userSecret *big.Int,
 	builders ProofBuilderList,
 ) {
-	// Prepare some vars used throughout
+	// The default value of this var is gabikeys.DefaultSystemParameters[2048].Lstatzk,
+	// but all test keys used here are 1024 bits, which use a smaller size for the secret key
+	// randomizer. So we lower this parameter because otherwise we exceed the maximum length of the
+	// secret key responses.
 	keyshareSecretRandomizerLength = gabikeys.DefaultSystemParameters[1024].Lstatzk
+
+	// Prepare some vars used throughout.
+	// We use keyNames below to keep track of the builders for which we need to do the keyshare
+	// protocol, as opposed to those for which we don't: if the index i of the i'th builder is in
+	// keyNames, we do the protocol, otherwise we don't.
 	keyNames := map[int]*string{}
 	var keysSlice []*gabikeys.PublicKey
 	for i, b := range builders {
@@ -1174,6 +1182,8 @@ func testNewKeyshareResponse(
 			keyNames[i] = &pk.Issuer
 		}
 	}
+	nonce, err := GenerateNonce()
+	require.NoError(t, err)
 
 	// User chooses randomizer and computes h_W
 	userRandomizer, err := common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].LmCommit)
@@ -1203,27 +1213,25 @@ func testNewKeyshareResponse(
 	ourRandomizer, ourComm, err := NewKeyshareCommitments(ourSecret, keysSlice)
 	require.NoError(t, err)
 
-	// Process keyshare server commitment into builders
+	// User processes keyshare server commitment into the builders
 	for i, builder := range builders {
 		if keyNames[i] != nil {
 			builder.MergeProofPCommitment(ourComm[i])
 		}
 	}
 
-	// Compute challenge and user response
-	nonce, err := GenerateNonce()
-	require.NoError(t, err)
+	// User computes challenge and user response
 	challenge, err := builders.ChallengeWithRandomizers(context, nonce, map[string]*big.Int{"secretkey": userRandomizer}, false)
 	require.NoError(t, err)
 	userResponse := new(big.Int).Add(userRandomizer, new(big.Int).Mul(challenge, userSecret))
 
+	// User requests keyshare response
 	res := KeyshareResponseRequest[string]{
 		Nonce:              nonce,
 		UserResponse:       userResponse,
 		IsSignatureSession: false,
 		ChallengeInput:     hashInput,
 	}
-
 	proofP, err := KeyshareResponse(ourSecret, ourRandomizer, req, res, keys)
 	require.NoError(t, err)
 	require.Equal(t, challenge, proofP.C)
@@ -1276,9 +1284,11 @@ func TestKeyshareResponse(t *testing.T) {
 	// Setup secrets and randomizer
 	ourSecret, err := GenerateSecretAttribute()
 	require.NoError(t, err)
-	ourSecret.Div(ourSecret, big.NewInt(2))
 	userSecret, err := GenerateSecretAttribute()
 	require.NoError(t, err)
+
+	// Ensure that the sum of these two is not larger than an ordinary secret key
+	ourSecret.Div(ourSecret, big.NewInt(2))
 	userSecret.Div(userSecret, big.NewInt(2))
 
 	statement, err := rangeproof.NewStatement(rangeproof.GreaterOrEqual, big.NewInt(1))
