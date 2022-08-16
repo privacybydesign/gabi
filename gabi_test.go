@@ -1248,18 +1248,19 @@ func testNewKeyshareResponse(
 	rhs.Mul(new(big.Int).Exp(totalP, challenge, testPubK.N), totalComm).Mod(rhs, testPubK.N)
 	require.Equal(t, 0, rhs.Cmp(lhs))
 
-	// Verify the proofs
-	proofs, err := builders.BuildDistributedProofList(challenge, nil)
-	require.NoError(t, err)
-	var kss []string
-	for i, proof := range proofs {
+	// Build and verify the proofs
+	proofPs := make([]*ProofP, len(builders))
+	var kss []string // specifies to Verify() below which proof uses which keyshare server
+	for i := range builders {
 		if keyNames[i] == nil {
 			kss = append(kss, "")
-			continue
+		} else {
+			proofPs[i] = proofP
+			kss = append(kss, "keyshare server")
 		}
-		kss = append(kss, "keyshare server")
-		proof.MergeProofP(proofP, nil) // public key is not used for new protocol version
 	}
+	proofs, err := builders.BuildDistributedProofList(challenge, proofPs)
+	require.NoError(t, err)
 	require.True(t, proofs.Verify(keysSlice, context, nonce, false, kss))
 
 	// In case of issuance, check that we can construct valid credentials
