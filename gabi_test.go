@@ -19,6 +19,7 @@ import (
 	"github.com/privacybydesign/gabi/safeprime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 )
 
 var (
@@ -1269,9 +1270,15 @@ func testNewKeyshareResponse(
 		if proofU, ok := proof.(*ProofU); ok {
 			builder := builders[i].(*CredentialBuilder)
 			issuer := NewIssuer(privkeys[builder.pk.Issuer], builder.pk, context)
-			ism, err := issuer.IssueSignature(proofU.U, testAttributes1, nil, builder.nonce2, nil)
+			attrs := slices.Clone(testAttributes1)
+			var randomblind []int
+			for i := range proofU.MUserResponses {
+				randomblind = append(randomblind, i-1)
+				attrs[i-1] = nil
+			}
+			ism, err := issuer.IssueSignature(proofU.U, attrs, nil, builder.nonce2, randomblind)
 			require.NoError(t, err, "error creating Issue Signature")
-			cred, err := builder.ConstructCredential(ism, testAttributes1)
+			cred, err := builder.ConstructCredential(ism, attrs)
 			require.NoError(t, err, "error creating credential")
 			cred.Signature.Verify(builder.pk, cred.Attributes)
 		}
@@ -1327,50 +1334,60 @@ func TestKeyshareResponse(t *testing.T) {
 			newDisclosureBuilder(t, testPrivK2, testPubK2, userSecret, nil, false, nil),
 		},
 		"Issuance": {
-			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
+			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
+		},
+		"IssuanceRandomblind": {
+			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), []int{2}),
 		},
 		"DoubleIssuanceSameKeys": {
-			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
-			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
+			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
+			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
 		},
 		"DoubleIssuanceDistinctKeys": {
-			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
-			newCredbuilder(t, testPubK1, userSecret, ourP(ourSecret, testPubK1)),
+			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
+			newCredbuilder(t, testPubK1, userSecret, ourP(ourSecret, testPubK1), nil),
+		},
+		"DoubleIssuanceRandomblind": {
+			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
+			newCredbuilder(t, testPubK1, userSecret, ourP(ourSecret, testPubK1), []int{2}),
 		},
 		"DoubleIssuanceMixed": {
-			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
-			newCredbuilder(t, testPubK2, userSecret, nil),
+			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
+			newCredbuilder(t, testPubK2, userSecret, nil, nil),
 		},
 		"IssuanceAndDisclosureSameKeys": {
-			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
+			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
 			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), false, nil),
 		},
 		"IssuanceAndDisclosureDistinctKeys": {
-			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
+			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
 			newDisclosureBuilder(t, testPrivK1, testPubK1, userSecret, ourP(ourSecret, testPubK1), false, nil),
 		},
 		"IssuanceAndDisclosureRevocation": {
-			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
+			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
 			newDisclosureBuilder(t, testPrivK1, testPubK1, userSecret, ourP(ourSecret, testPubK1), true, nil),
 		},
 		"IssuanceAndDisclosureMixed": {
-			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
+			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
 			newDisclosureBuilder(t, testPrivK2, testPubK2, userSecret, nil, false, nil),
 		},
 		"IssuanceAndDisclosureSameAndDisclosureMixed": {
-			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
+			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
 			newDisclosureBuilder(t, testPrivK, testPubK, userSecret, ourP(ourSecret, testPubK), false, nil),
 			newDisclosureBuilder(t, testPrivK2, testPubK2, userSecret, nil, false, nil),
 		},
 		"IssuanceAndDisclosureMixedAndDisclosureMixed": {
-			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
+			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
 			newDisclosureBuilder(t, testPrivK1, testPubK1, userSecret, ourP(ourSecret, testPubK1), false, nil),
 			newDisclosureBuilder(t, testPrivK2, testPubK2, userSecret, nil, false, nil),
 		},
 		"Everything": {
-			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK)),
-			newCredbuilder(t, testPubK1, userSecret, ourP(ourSecret, testPubK1)),
-			newCredbuilder(t, testPubK2, userSecret, nil),
+			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), nil),
+			newCredbuilder(t, testPubK, userSecret, ourP(ourSecret, testPubK), []int{2}),
+			newCredbuilder(t, testPubK1, userSecret, ourP(ourSecret, testPubK1), nil),
+			newCredbuilder(t, testPubK1, userSecret, ourP(ourSecret, testPubK1), []int{2}),
+			newCredbuilder(t, testPubK2, userSecret, nil, nil),
+			newCredbuilder(t, testPubK2, userSecret, nil, []int{2}),
 			newDisclosureBuilder(t, testPrivK1, testPubK1, userSecret, ourP(ourSecret, testPubK1), false, nil),
 			newDisclosureBuilder(t, testPrivK1, testPubK1, userSecret, ourP(ourSecret, testPubK1), true, nil),
 			newDisclosureBuilder(t, testPrivK1, testPubK1, userSecret, ourP(ourSecret, testPubK1), false, rangeStatements),
@@ -1392,10 +1409,10 @@ func TestKeyshareResponse(t *testing.T) {
 	}
 }
 
-func newCredbuilder(t *testing.T, pk *gabikeys.PublicKey, secret, ourP *big.Int) *CredentialBuilder {
+func newCredbuilder(t *testing.T, pk *gabikeys.PublicKey, secret, ourP *big.Int, randomblind []int) *CredentialBuilder {
 	nonce2, err := common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].Lstatzk)
 	require.NoError(t, err)
-	credBuilder, err := NewCredentialBuilder(pk, context, secret, nonce2, ourP, nil)
+	credBuilder, err := NewCredentialBuilder(pk, context, secret, nonce2, ourP, randomblind)
 	require.NoError(t, err)
 	return credBuilder
 }
