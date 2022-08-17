@@ -45,6 +45,7 @@ type ProofU struct {
 
 func (p *ProofU) MergeProofP(proofP *ProofP, pk *gabikeys.PublicKey) {
 	if proofP.P == nil { // new keyshare protocol version
+		p.C.Set(proofP.C)
 		p.SResponse.Set(proofP.SResponse)
 	} else {
 		p.U.Mod(
@@ -171,9 +172,10 @@ type ProofD struct {
 // MergeProofP merges a ProofP into the ProofD.
 func (p *ProofD) MergeProofP(proofP *ProofP, _ *gabikeys.PublicKey) {
 	if proofP.P == nil { // new protocol version
-		p.SecretKeyResponse().Set(proofP.SResponse)
+		p.C.Set(proofP.C)
+		p.AResponses[0].Set(proofP.SResponse)
 	} else {
-		p.SecretKeyResponse().Add(p.SecretKeyResponse(), proofP.SResponse)
+		p.AResponses[0].Add(p.AResponses[0], proofP.SResponse)
 	}
 }
 
