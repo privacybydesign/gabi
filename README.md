@@ -28,3 +28,9 @@ History
 -------
 
 `gabi` was originally created and developed by [Maarten Everts](https://github.com/mhe) in 2015 and 2016. Since 2017, the [Privacy by Design Foundation](https://privacybydesign.foundation/en) and [SIDN](https://sidn.nl/en) maintain and develop `gabi`.
+
+Contact
+-------
+Request access to our IRMA slack channel by mailing to [our support](mailto:support.irma@sidn.nl) if you want to become part of the community. In our slack channels, the latest news on IRMA are shared and technical details get discussed.
+
+For responsible disclosure mail to [our responsible disclosure mailbox](mailto:irma-responsibledisclosure@sidn.nl)
