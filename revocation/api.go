@@ -19,15 +19,15 @@ only if u^e = Nu mod N where N is the modulus of the (Idemix) public key of the 
 and e such that (1) u^e = Nu mod N (2) e equals the credential's nonrevocation attribute, from
 which the verifier concludes that the credential is not currently revoked.
 
-- The issuer can revoke a credential by removing its nonrevocation attribute e from the accumulator, by
-  (1) Updating the accumulator value as follows:
-         NewNu := Nu^(1/e mod (P-1)*(Q-1))
-      where P, Q is the issuer Idemix private key
-  (2) Broadcasting (NewNu, e) to all IRMA apps and verifiers
-  (3) All IRMA clients update their nonrevocation witness, using an algorithm taking the broadcast
-      message and the client's current witness, resulting in a new u which is such that
-      u^e = NewNu mod N. This algorithm is guaranteed to fail for the credential containing the
-      revoked nonrevocation attribute e.
+  - The issuer can revoke a credential by removing its nonrevocation attribute e from the accumulator, by
+    (1) Updating the accumulator value as follows:
+    NewNu := Nu^(1/e mod (P-1)*(Q-1))
+    where P, Q is the issuer Idemix private key
+    (2) Broadcasting (NewNu, e) to all IRMA apps and verifiers
+    (3) All IRMA clients update their nonrevocation witness, using an algorithm taking the broadcast
+    message and the client's current witness, resulting in a new u which is such that
+    u^e = NewNu mod N. This algorithm is guaranteed to fail for the credential containing the
+    revoked nonrevocation attribute e.
 
 To keep track of previous and current accumulators, each Accumulator has an index which is
 incremented each time a credential is revoked and the accumulator changes value.
@@ -37,7 +37,7 @@ All IRMA participants (client, verifier, issuer) require the latest revocation r
 to function. The client additionally needs to know the complete chain of all events to be able to
 update its witness to the latest accumulator.
 
-Notes
+# Notes
 
 By revoking, the issuer changes the value of the accumulator, of which all IRMA clients and
 verifiers need to be made aware before the client can prove to the verifier that its credential is

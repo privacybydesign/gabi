@@ -15,7 +15,9 @@ import (
 
 // RepresentToPublicKey returns a representation of the given exponents in terms of the R bases
 // from the public key. For example given exponents exps[1],...,exps[k] this function returns
-//   R[1]^{exps[1]}*...*R[k]^{exps[k]} (mod N)
+//
+//	R[1]^{exps[1]}*...*R[k]^{exps[k]} (mod N)
+//
 // with R and N coming from the public key. The exponents are hashed if their length
 // exceeds the maximum message length from the public key.
 func RepresentToPublicKey(pk *gabikeys.PublicKey, exps []*big.Int) (*big.Int, error) {

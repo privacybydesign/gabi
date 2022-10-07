@@ -448,7 +448,9 @@ func (p *Proof) Proves(statement *Statement) bool {
 
 // ProvenStatement returns the statement that this proof proves. Calling the second and third return
 // parameters "factor" and "bound" respectively, then
-//    factor*attribute - bound >= 0  or  <= 0
+//
+//	factor*attribute - bound >= 0  or  <= 0
+//
 // where the inequality type is returned as the first parameter.
 //
 // NB: this method does not verify the proof. Do not trust the output unless proof.Verify() has been
