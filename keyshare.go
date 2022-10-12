@@ -1,6 +1,7 @@
 package gabi
 
 import (
+	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/privacybydesign/gabi/internal/common"
@@ -26,6 +27,10 @@ func NewKeyshareCommitments(secret *big.Int, keys []*gabikeys.PublicKey) (*big.I
 	for _, key := range keys {
 		if key.N.BitLen() == 1024 {
 			randLength = gabikeys.DefaultSystemParameters[1024].LmCommit
+			if secret.BitLen() > int(gabikeys.DefaultSystemParameters[1024].Lm-1) {
+				// minus one to allow for the client's contribution
+				return nil, nil, errors.New("cannot commit: secret too big for 1024 bit keys")
+			}
 			break
 		}
 	}
