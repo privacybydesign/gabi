@@ -9,8 +9,13 @@ import (
 
 // NewKeyshareSecret generates keyshare secret
 func NewKeyshareSecret() (*big.Int, error) {
-	// This value should be 1 bit less than indicated by Lm, as it is combined with an equal-length value
-	// from the client, resulting in a combined value that should fit in Lm bits.
+	// During disclosure the client is required to prove that the secret is not larger in bits
+	// than an upper bound specified by the Lm parameter. So we must make the secret no larger than
+	// the smallest supported upper bound, i.e., that of 1024 bit keys, because otherwise the client
+	// won't be able to prove that its secret is smaller than params[1024].Lm bits, because it won't be.
+	// In practice this is fine because params[1024].Lm = 256 which is quite sufficient.
+	// Additionally, this value should be 1 bit less than indicated by Lm, as it is combined with an
+	// equal-length value from the client, resulting in a combined value that should fit in Lm bits.
 	return common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].Lm - 1)
 }
 
