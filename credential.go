@@ -412,5 +412,5 @@ func (d *DisclosureProofBuilder) TimestampRequestContributions() (*big.Int, []*b
 
 // GenerateSecretAttribute generates secret attribute used prove ownership and links between credentials from the same user.
 func GenerateSecretAttribute() (*big.Int, error) {
-	return common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].Lm)
+	return common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].Lm - 1)
 }

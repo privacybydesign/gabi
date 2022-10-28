@@ -1165,10 +1165,6 @@ func TestKeyshareResponse(t *testing.T) {
 	userSecret, err := GenerateSecretAttribute()
 	require.NoError(t, err)
 
-	// Ensure that the sum of these two is not larger than an ordinary secret key
-	kssSecret.Div(kssSecret, big.NewInt(2))
-	userSecret.Div(userSecret, big.NewInt(2))
-
 	statement, err := rangeproof.NewStatement(rangeproof.GreaterOrEqual, big.NewInt(1))
 	require.NoError(t, err)
 	rangeStatements := map[int][]*rangeproof.Statement{
