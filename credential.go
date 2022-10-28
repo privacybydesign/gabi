@@ -271,7 +271,7 @@ func (ic *Credential) NonrevIndex() (int, error) {
 	return -1, errors.New("revocation attribute not included in credential")
 }
 
-func (d *DisclosureProofBuilder) MergeProofPCommitment(commitment *ProofPCommitment) {
+func (d *DisclosureProofBuilder) SetProofPCommitment(commitment *ProofPCommitment) {
 	d.proofPcomm = commitment
 }
 

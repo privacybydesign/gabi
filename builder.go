@@ -243,7 +243,7 @@ type CredentialBuilder struct {
 	mUserCommit map[int]*big.Int
 }
 
-func (b *CredentialBuilder) MergeProofPCommitment(commitment *ProofPCommitment) {
+func (b *CredentialBuilder) SetProofPCommitment(commitment *ProofPCommitment) {
 	b.proofPcomm = commitment
 }
 

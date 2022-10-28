@@ -1371,7 +1371,7 @@ func testNewKeyshareResponse(
 	// User processes keyshare server commitment into the builders
 	for i, builder := range builders {
 		if keyNames[i] != nil {
-			builder.MergeProofPCommitment(ourComm[i])
+			builder.SetProofPCommitment(ourComm[i])
 		}
 	}
 

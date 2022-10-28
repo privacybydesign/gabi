@@ -17,7 +17,7 @@ type ProofBuilder interface {
 	Commit(randomizers map[string]*big.Int) ([]*big.Int, error)
 	CreateProof(challenge *big.Int) Proof
 	PublicKey() *gabikeys.PublicKey
-	MergeProofPCommitment(commitment *ProofPCommitment)
+	SetProofPCommitment(commitment *ProofPCommitment)
 }
 
 // ProofList represents a list of (typically bound) proofs.
