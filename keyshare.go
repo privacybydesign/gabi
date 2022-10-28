@@ -102,11 +102,11 @@ func KeyshareResponse[T comparable](
 	}
 
 	// Check that h_W sent in the commitment request equals the hash over the expected values
-	b, err := KeyshareUserCommitmentsHash(hashContribs)
+	recalculatedHash, err := KeyshareUserCommitmentsHash(hashContribs)
 	if err != nil {
 		return nil, err
 	}
-	if subtle.ConstantTimeCompare(b, req.HashedUserCommitments) != 1 {
+	if subtle.ConstantTimeCompare(recalculatedHash, req.HashedUserCommitments) != 1 {
 		return nil, errors.New("incorrect commitment hash sent in commitment request")
 	}
 
