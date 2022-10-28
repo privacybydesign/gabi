@@ -126,6 +126,9 @@ func MarshalSign(sk *ecdsa.PrivateKey, message interface{}) (Message, error) {
 
 	// marshal message to []byte
 	bts, err := cbor.Marshal(message, cbor.EncOptions{})
+	if err != nil {
+		return nil, err
+	}
 
 	// sign message []byte
 	signature, err := Sign(sk, bts)

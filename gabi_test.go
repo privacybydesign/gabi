@@ -1318,12 +1318,6 @@ func testNewKeyshareResponse(
 	builders ProofBuilderList,
 	signature bool,
 ) {
-	// The default value of this var is gabikeys.DefaultSystemParameters[2048].Lstatzk,
-	// but all test keys used here are 1024 bits, which use a smaller size for the secret key
-	// randomizer. So we lower this parameter because otherwise we exceed the maximum length of the
-	// secret key responses.
-	keyshareSecretRandomizerLength = gabikeys.DefaultSystemParameters[1024].Lstatzk
-
 	// Prepare some vars used throughout the test.
 	// We use keyNames below to keep track of the builders for which we need to do the keyshare
 	// protocol, as opposed to those for which we don't: if the index i of the i'th builder is in
