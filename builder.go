@@ -114,16 +114,17 @@ func NewCredentialBuilder(pk *gabikeys.PublicKey, context, secret *big.Int, nonc
 	}
 
 	return &CredentialBuilder{
-		pk:           pk,
-		context:      context,
-		secret:       secret,
+		pk:        pk,
+		context:   context,
+		secret:    secret,
+		u:         U,
+		nonce2:    nonce2,
+		keyshareP: keyshareP,
+
 		vPrime:       vPrime,
-		u:            U,
-		nonce2:       nonce2,
-		mUser:        mUser,
 		vPrimeCommit: vPrimeCommit,
+		mUser:        mUser,
 		mUserCommit:  mUserCommit,
-		keyshareP:    keyshareP,
 	}, nil
 }
 
