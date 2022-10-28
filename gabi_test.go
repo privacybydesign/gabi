@@ -1324,7 +1324,7 @@ func testNewKeyshareResponse(
 	// secret key responses.
 	keyshareSecretRandomizerLength = gabikeys.DefaultSystemParameters[1024].Lstatzk
 
-	// Prepare some vars used throughout.
+	// Prepare some vars used throughout the test.
 	// We use keyNames below to keep track of the builders for which we need to do the keyshare
 	// protocol, as opposed to those for which we don't: if the index i of the i'th builder is in
 	// keyNames, we do the protocol, otherwise we don't.
