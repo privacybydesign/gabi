@@ -43,7 +43,9 @@ type (
 		// server does not participate for this value and commitment.
 		KeyID *T `json:"key,omitempty"`
 
-		Value      *big.Int `json:"val"`
+		// Value of whose exponents the user proves knowledge; A' = AS^r (disclosure) or U (issuance).
+		Value *big.Int `json:"val"`
+		// Commitment is the user's contributions to the commitment of this proof of knowledge.
 		Commitment *big.Int `json:"comm"`
 
 		// OtherCommitments contain commitments for non-revocation proofs and range proofs
