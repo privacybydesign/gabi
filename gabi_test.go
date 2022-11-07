@@ -1330,29 +1330,12 @@ func testNewKeyshareResponse(
 	nonce, err := GenerateNonce()
 	require.NoError(t, err)
 
-	// User chooses randomizer and computes h_W
+	// User chooses randomizer, computes h_W, and sends that to the KSS
 	userRandomizer, err := common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].LmCommit)
 	require.NoError(t, err)
-	var hashInput []KeyshareUserChallengeInput[string]
-	for i, builder := range builders {
-		c, err := builder.Commit(map[string]*big.Int{"secretkey": userRandomizer})
-		require.NoError(t, err)
-		var otherComms []*big.Int
-		if len(c) > 2 {
-			otherComms = c[2:]
-		}
-		hashInput = append(hashInput, KeyshareUserChallengeInput[string]{
-			KeyID:            keyNames[i],
-			Value:            new(big.Int).Set(c[0]),
-			Commitment:       new(big.Int).Set(c[1]),
-			OtherCommitments: otherComms,
-		})
-	}
-	hashedComm, err := KeyshareUserCommitmentsHash(hashInput)
+	randomizers := map[string]*big.Int{"secretkey": userRandomizer}
+	req, hashInput, err := KeyshareUserCommitmentRequest(builders, randomizers, keys)
 	require.NoError(t, err)
-
-	// At this point, the user would send this to the KSS
-	req := KeyshareCommitmentRequest{HashedUserCommitments: hashedComm}
 
 	// The KSS responds with its commitments
 	kssRandomizer, kssComm, err := NewKeyshareCommitments(kssSecret, keysSlice)
@@ -1366,17 +1349,10 @@ func testNewKeyshareResponse(
 	}
 
 	// User computes challenge and user response
-	challenge, err := builders.ChallengeWithRandomizers(context, nonce, map[string]*big.Int{"secretkey": userRandomizer}, signature)
+	res, challenge, err := KeyshareUserResponseRequest(builders, randomizers, hashInput, context, nonce, signature)
 	require.NoError(t, err)
-	userResponse := new(big.Int).Add(userRandomizer, new(big.Int).Mul(challenge, userSecret))
 
 	// User requests keyshare response
-	res := KeyshareResponseRequest[string]{
-		Nonce:              nonce,
-		UserResponse:       userResponse,
-		IsSignatureSession: signature,
-		UserChallengeInput: hashInput,
-	}
 	proofP, err := KeyshareResponse(kssSecret, kssRandomizer, req, res, keys)
 	require.NoError(t, err)
 	require.Equal(t, challenge, proofP.C)
@@ -1496,7 +1472,7 @@ func TestKeyshareResponseSingleBase(t *testing.T) {
 	totalW.Mul(userComm[0].Pcommit, kssComm[0].Pcommit).Mod(totalW, testPubK.N)
 
 	keyID := "testPubK"
-	hashedComm, err := KeyshareUserCommitmentsHash([]KeyshareUserChallengeInput[string]{{
+	hashedComm, err := keyshareUserCommitmentsHash([]KeyshareUserChallengeInput[string]{{
 		KeyID:      &keyID,
 		Value:      totalP,
 		Commitment: userComm[0].Pcommit,
