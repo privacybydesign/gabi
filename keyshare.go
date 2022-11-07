@@ -31,14 +31,14 @@ type (
 		UserResponse       *big.Int `json:"resp"`
 		IsSignatureSession bool     `json:"sig"`
 
-		// ChallengeInput contains the arguments used by the user to compute the
+		// UserChallengeInput contains the arguments used by the user to compute the
 		// HashedUserCommitments sent earlier in the commitment request.
-		ChallengeInput []KeyshareChallengeInput[T]
+		UserChallengeInput []KeyshareUserChallengeInput[T]
 	}
 
-	// KeyshareChallengeInput contains the user's contributions to the challenge, in the joint
+	// KeyshareUserChallengeInput contains the user's contributions to the challenge, in the joint
 	// computation of the zero knowledge proof.
-	KeyshareChallengeInput[T any] struct {
+	KeyshareUserChallengeInput[T any] struct {
 		// KeyID identifies the public key for this value and commitment. If nil, the keyshare
 		// server does not participate for this value and commitment.
 		KeyID *T `json:"key,omitempty"`
@@ -56,7 +56,7 @@ type (
 
 // KeyshareUserCommitmentsHash computes the value h_W; that is, the commitment of the user to
 // its contributions to the challenge, in the joint computation of the zero knowledge proof.
-func KeyshareUserCommitmentsHash[T any](i []KeyshareChallengeInput[T]) ([]byte, error) {
+func KeyshareUserCommitmentsHash[T any](i []KeyshareUserChallengeInput[T]) ([]byte, error) {
 	bts, err := cbor.Marshal(i, cbor.EncOptions{})
 	if err != nil {
 		return nil, err
@@ -75,7 +75,7 @@ func KeyshareResponse[T comparable](
 	keys map[T]*gabikeys.PublicKey,
 ) (*ProofP, error) {
 	// Sanity checks
-	for i, k := range res.ChallengeInput {
+	for i, k := range res.UserChallengeInput {
 		if k.KeyID != nil && keys[*k.KeyID] == nil {
 			return nil, errors.Errorf("missing public key for element %d of challenge input", i)
 		}
@@ -84,11 +84,11 @@ func KeyshareResponse[T comparable](
 		res.Context = bigOne
 	}
 
-	hashContribs := make([]KeyshareChallengeInput[T], 0, len(res.ChallengeInput))
-	challengeContribs := make([]*big.Int, 0, len(res.ChallengeInput)*2)
+	hashContribs := make([]KeyshareUserChallengeInput[T], 0, len(res.UserChallengeInput))
+	challengeContribs := make([]*big.Int, 0, len(res.UserChallengeInput)*2)
 
 	// Assemble the input for the computation of h_W
-	for _, data := range res.ChallengeInput {
+	for _, data := range res.UserChallengeInput {
 		hashContribs = append(hashContribs, data)
 		if data.KeyID == nil {
 			challengeContribs = append(challengeContribs, data.Value, data.Commitment)

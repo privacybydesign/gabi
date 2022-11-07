@@ -1333,7 +1333,7 @@ func testNewKeyshareResponse(
 	// User chooses randomizer and computes h_W
 	userRandomizer, err := common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].LmCommit)
 	require.NoError(t, err)
-	var hashInput []KeyshareChallengeInput[string]
+	var hashInput []KeyshareUserChallengeInput[string]
 	for i, builder := range builders {
 		c, err := builder.Commit(map[string]*big.Int{"secretkey": userRandomizer})
 		require.NoError(t, err)
@@ -1341,7 +1341,7 @@ func testNewKeyshareResponse(
 		if len(c) > 2 {
 			otherComms = c[2:]
 		}
-		hashInput = append(hashInput, KeyshareChallengeInput[string]{
+		hashInput = append(hashInput, KeyshareUserChallengeInput[string]{
 			KeyID:            keyNames[i],
 			Value:            new(big.Int).Set(c[0]),
 			Commitment:       new(big.Int).Set(c[1]),
@@ -1375,7 +1375,7 @@ func testNewKeyshareResponse(
 		Nonce:              nonce,
 		UserResponse:       userResponse,
 		IsSignatureSession: signature,
-		ChallengeInput:     hashInput,
+		UserChallengeInput: hashInput,
 	}
 	proofP, err := KeyshareResponse(kssSecret, kssRandomizer, req, res, keys)
 	require.NoError(t, err)
@@ -1496,7 +1496,7 @@ func TestKeyshareResponseSingleBase(t *testing.T) {
 	totalW.Mul(userComm[0].Pcommit, kssComm[0].Pcommit).Mod(totalW, testPubK.N)
 
 	keyID := "testPubK"
-	hashedComm, err := KeyshareUserCommitmentsHash([]KeyshareChallengeInput[string]{{
+	hashedComm, err := KeyshareUserCommitmentsHash([]KeyshareUserChallengeInput[string]{{
 		KeyID:      &keyID,
 		Value:      totalP,
 		Commitment: userComm[0].Pcommit,
@@ -1509,7 +1509,7 @@ func TestKeyshareResponseSingleBase(t *testing.T) {
 		Nonce:              nonce,
 		UserResponse:       new(big.Int).Add(userRandomizer, new(big.Int).Mul(challenge, userSecret)),
 		IsSignatureSession: false,
-		ChallengeInput: []KeyshareChallengeInput[string]{{
+		UserChallengeInput: []KeyshareUserChallengeInput[string]{{
 			KeyID:      &keyID,
 			Value:      totalP,
 			Commitment: userComm[0].Pcommit,
