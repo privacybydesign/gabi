@@ -167,12 +167,9 @@ func KeyshareResponse[T comparable](
 		res.Context = bigOne
 	}
 
-	hashContribs := make([]KeyshareUserChallengeInput[T], 0, len(res.UserChallengeInput))
-	challengeContribs := make([]*big.Int, 0, len(res.UserChallengeInput)*2)
-
 	// Assemble the input for the computation of h_W
+	challengeContribs := make([]*big.Int, 0, len(res.UserChallengeInput)*2)
 	for _, data := range res.UserChallengeInput {
-		hashContribs = append(hashContribs, data)
 		if data.KeyID == nil {
 			challengeContribs = append(challengeContribs, data.Value, data.Commitment)
 			challengeContribs = append(challengeContribs, data.OtherCommitments...)
@@ -187,7 +184,7 @@ func KeyshareResponse[T comparable](
 	}
 
 	// Check that h_W sent in the commitment request equals the hash over the expected values
-	recalculatedHash, err := keyshareUserCommitmentsHash(hashContribs)
+	recalculatedHash, err := keyshareUserCommitmentsHash(res.UserChallengeInput)
 	if err != nil {
 		return nil, err
 	}
