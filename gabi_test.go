@@ -1334,7 +1334,7 @@ func testNewKeyshareResponse(
 	userRandomizer, err := common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].LmCommit)
 	require.NoError(t, err)
 	randomizers := map[string]*big.Int{"secretkey": userRandomizer}
-	req, hashInput, err := KeyshareUserCommitmentRequest(builders, randomizers, keys)
+	commRequest, hashInput, err := KeyshareUserCommitmentRequest(builders, randomizers, keys)
 	require.NoError(t, err)
 
 	// The KSS responds with its commitments
@@ -1349,11 +1349,11 @@ func testNewKeyshareResponse(
 	}
 
 	// User computes challenge and user response
-	res, challenge, err := KeyshareUserResponseRequest(builders, randomizers, hashInput, context, nonce, signature)
+	responseRequest, challenge, err := KeyshareUserResponseRequest(builders, randomizers, hashInput, context, nonce, signature)
 	require.NoError(t, err)
 
 	// User requests keyshare response
-	proofP, err := KeyshareResponse(kssSecret, kssRandomizer, req, res, keys)
+	proofP, err := KeyshareResponse(kssSecret, kssRandomizer, commRequest, responseRequest, keys)
 	require.NoError(t, err)
 	require.Equal(t, challenge, proofP.C)
 
@@ -1480,8 +1480,8 @@ func TestKeyshareResponseSingleBase(t *testing.T) {
 
 	challenge := createChallenge(bigOne, nonce, []*big.Int{totalP, totalW}, false)
 
-	req := KeyshareCommitmentRequest{HashedUserCommitments: hashedComm}
-	res := KeyshareResponseRequest[string]{
+	commRequest := KeyshareCommitmentRequest{HashedUserCommitments: hashedComm}
+	responseRequest := KeyshareResponseRequest[string]{
 		Nonce:              nonce,
 		UserResponse:       new(big.Int).Add(userRandomizer, new(big.Int).Mul(challenge, userSecret)),
 		IsSignatureSession: false,
@@ -1492,7 +1492,7 @@ func TestKeyshareResponseSingleBase(t *testing.T) {
 		}},
 	}
 
-	response, err := KeyshareResponse(kssSecret, kssRandomizer, req, res, keysMap)
+	response, err := KeyshareResponse(kssSecret, kssRandomizer, commRequest, responseRequest, keysMap)
 	require.NoError(t, err)
 
 	lhs := new(big.Int).Exp(testPubK.R[0], response.SResponse, testPubK.N)

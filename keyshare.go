@@ -153,23 +153,23 @@ func keyshareUserCommitmentsHash[T any](i []KeyshareUserChallengeInput[T]) ([]by
 func KeyshareResponse[T comparable](
 	secret *big.Int,
 	randomizer *big.Int,
-	req KeyshareCommitmentRequest,
-	res KeyshareResponseRequest[T],
+	commRequest KeyshareCommitmentRequest,
+	responseRequest KeyshareResponseRequest[T],
 	keys map[T]*gabikeys.PublicKey,
 ) (*ProofP, error) {
 	// Sanity checks
-	for i, k := range res.UserChallengeInput {
+	for i, k := range responseRequest.UserChallengeInput {
 		if k.KeyID != nil && keys[*k.KeyID] == nil {
 			return nil, errors.Errorf("missing public key for element %d of challenge input", i)
 		}
 	}
-	if res.Context == nil {
-		res.Context = bigOne
+	if responseRequest.Context == nil {
+		responseRequest.Context = bigOne
 	}
 
 	// Assemble the input for the computation of h_W
-	challengeContribs := make([]*big.Int, 0, len(res.UserChallengeInput)*2)
-	for _, data := range res.UserChallengeInput {
+	challengeContribs := make([]*big.Int, 0, len(responseRequest.UserChallengeInput)*2)
+	for _, data := range responseRequest.UserChallengeInput {
 		if data.KeyID == nil {
 			challengeContribs = append(challengeContribs, data.Value, data.Commitment)
 			challengeContribs = append(challengeContribs, data.OtherCommitments...)
@@ -184,19 +184,19 @@ func KeyshareResponse[T comparable](
 	}
 
 	// Check that h_W sent in the commitment request equals the hash over the expected values
-	recalculatedHash, err := keyshareUserCommitmentsHash(res.UserChallengeInput)
+	recalculatedHash, err := keyshareUserCommitmentsHash(responseRequest.UserChallengeInput)
 	if err != nil {
 		return nil, err
 	}
-	if subtle.ConstantTimeCompare(recalculatedHash, req.HashedUserCommitments) != 1 {
+	if subtle.ConstantTimeCompare(recalculatedHash, commRequest.HashedUserCommitments) != 1 {
 		return nil, errors.New("incorrect commitment hash sent in commitment request")
 	}
 
-	challenge := createChallenge(res.Context, res.Nonce, challengeContribs, res.IsSignatureSession)
+	challenge := createChallenge(responseRequest.Context, responseRequest.Nonce, challengeContribs, responseRequest.IsSignatureSession)
 
 	// Compute our response and return the total response
 	ourResponse := new(big.Int).Add(randomizer, new(big.Int).Mul(challenge, secret))
-	totalResponse := new(big.Int).Add(ourResponse, res.UserResponse)
+	totalResponse := new(big.Int).Add(ourResponse, responseRequest.UserResponse)
 	return &ProofP{C: challenge, SResponse: totalResponse}, nil
 }
 
