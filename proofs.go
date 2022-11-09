@@ -44,11 +44,16 @@ type ProofU struct {
 }
 
 func (p *ProofU) MergeProofP(proofP *ProofP, pk *gabikeys.PublicKey) {
-	p.U.Mod(
-		p.U.Mul(p.U, proofP.P),
-		pk.N,
-	)
-	p.SResponse.Add(p.SResponse, proofP.SResponse)
+	if proofP.P == nil { // new keyshare protocol version
+		p.C.Set(proofP.C)
+		p.SResponse.Set(proofP.SResponse)
+	} else {
+		p.U.Mod(
+			p.U.Mul(p.U, proofP.P),
+			pk.N,
+		)
+		p.SResponse.Add(p.SResponse, proofP.SResponse)
+	}
 }
 
 // Verify verifies whether the proof is correct.
@@ -166,7 +171,12 @@ type ProofD struct {
 
 // MergeProofP merges a ProofP into the ProofD.
 func (p *ProofD) MergeProofP(proofP *ProofP, _ *gabikeys.PublicKey) {
-	p.SecretKeyResponse().Add(p.SecretKeyResponse(), proofP.SResponse)
+	if proofP.P == nil { // new protocol version
+		p.C.Set(proofP.C)
+		p.AResponses[0].Set(proofP.SResponse)
+	} else {
+		p.AResponses[0].Add(p.AResponses[0], proofP.SResponse)
+	}
 }
 
 func (p *ProofD) reconstructRangeProofStructures(pk *gabikeys.PublicKey) error {
@@ -360,7 +370,7 @@ func (p *ProofD) Challenge() *big.Int {
 
 // ProofP is a keyshare server's knowledge of its part of the secret key.
 type ProofP struct {
-	P         *big.Int `json:"P"`
+	P         *big.Int `json:"P,omitempty"`
 	C         *big.Int `json:"c"`
 	SResponse *big.Int `json:"s_response"`
 }

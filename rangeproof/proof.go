@@ -130,6 +130,9 @@ type (
 
 		splitter SquareSplitter
 		ld       uint
+
+		commitments []*big.Int
+		randomizers *ProofCommit
 	}
 
 	Proof struct {
@@ -278,6 +281,10 @@ func (typ StatementType) Sign() (int, error) {
 }
 
 func (s *ProofStructure) CommitmentsFromSecrets(g *gabikeys.PublicKey, m, mRandomizer *big.Int) ([]*big.Int, *ProofCommit, error) {
+	if s.commitments != nil {
+		return s.commitments, s.randomizers, nil
+	}
+
 	var err error
 
 	d := new(big.Int).Mul(m, big.NewInt(int64(s.a)))
@@ -355,6 +362,9 @@ func (s *ProofStructure) CommitmentsFromSecrets(g *gabikeys.PublicKey, m, mRando
 	for i := range commit.d {
 		contributions = s.cRep[i].CommitmentsFromSecrets(g, contributions, &bases, commit)
 	}
+
+	s.commitments = contributions
+	s.randomizers = (*ProofCommit)(commit)
 
 	return contributions, (*ProofCommit)(commit), nil
 }

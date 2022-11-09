@@ -29,12 +29,12 @@ type DisclosureProofBuilder struct {
 	randomizedSignature   *CLSignature
 	eCommit, vCommit      *big.Int
 	attrRandomizers       map[int]*big.Int
-	z                     *big.Int
 	disclosedAttributes   []int
 	undisclosedAttributes []int
 	pk                    *gabikeys.PublicKey
 	attributes            []*big.Int
 	nonrevBuilder         *NonRevocationProofBuilder
+	proofPcomm            *ProofPCommitment
 
 	rpStructures map[int][]*rangeproof.ProofStructure
 	rpCommits    map[int][]*rangeproof.ProofCommit
@@ -133,7 +133,6 @@ func (ic *Credential) CreateDisclosureProofBuilder(
 	nonrev bool,
 ) (*DisclosureProofBuilder, error) {
 	d := &DisclosureProofBuilder{}
-	d.z = big.NewInt(1)
 	d.pk = ic.Pk
 	var err error
 	d.randomizedSignature, err = ic.Signature.Randomize(ic.Pk)
@@ -272,11 +271,8 @@ func (ic *Credential) NonrevIndex() (int, error) {
 	return -1, errors.New("revocation attribute not included in credential")
 }
 
-func (d *DisclosureProofBuilder) MergeProofPCommitment(commitment *ProofPCommitment) {
-	d.z.Mod(
-		d.z.Mul(d.z, commitment.Pcommit),
-		d.pk.N,
-	)
+func (d *DisclosureProofBuilder) SetProofPCommitment(commitment *ProofPCommitment) {
+	d.proofPcomm = commitment
 }
 
 // PublicKey returns the Idemix public key against which this disclosure proof will verify.
@@ -299,18 +295,22 @@ func (d *DisclosureProofBuilder) Commit(randomizers map[string]*big.Int) ([]*big
 	if err != nil {
 		return nil, err
 	}
-	d.z.Mul(d.z, Ae).Mul(d.z, Sv).Mod(d.z, d.pk.N)
+	z := big.NewInt(1)
+	if d.proofPcomm != nil {
+		z.Set(d.proofPcomm.Pcommit)
+	}
+	z.Mul(z, Ae).Mul(z, Sv).Mod(z, d.pk.N)
 
 	for _, v := range d.undisclosedAttributes {
 		t, err := common.ModPow(d.pk.R[v], d.attrRandomizers[v], d.pk.N)
 		if err != nil {
 			return nil, err
 		}
-		d.z.Mul(d.z, t)
-		d.z.Mod(d.z, d.pk.N)
+		z.Mul(z, t)
+		z.Mod(z, d.pk.N)
 	}
 
-	list := []*big.Int{d.randomizedSignature.A, d.z}
+	list := []*big.Int{d.randomizedSignature.A, z}
 
 	if d.nonrevBuilder != nil {
 		l, err := d.nonrevBuilder.Commit()
@@ -412,5 +412,5 @@ func (d *DisclosureProofBuilder) TimestampRequestContributions() (*big.Int, []*b
 
 // GenerateSecretAttribute generates secret attribute used prove ownership and links between credentials from the same user.
 func GenerateSecretAttribute() (*big.Int, error) {
-	return common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].Lm)
+	return common.RandomBigInt(gabikeys.DefaultSystemParameters[1024].Lm - 1)
 }
