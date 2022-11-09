@@ -64,7 +64,7 @@ type publicKeyIdentifier struct {
 func KeyshareUserCommitmentRequest[T comparable](
 	builders ProofBuilderList, randomizers map[string]*big.Int, keys map[T]*gabikeys.PublicKey,
 ) (KeyshareCommitmentRequest, []KeyshareUserChallengeInput[T], error) {
-	var hashInput []KeyshareUserChallengeInput[T]
+	hashInput := make([]KeyshareUserChallengeInput[T], 0, len(builders))
 
 	// Compute a lookup map for the iteration over `builders` below, to fetch the key ID of the
 	// public key of the builder (or nil if the key is not in `keys`, i.e., if it does not
