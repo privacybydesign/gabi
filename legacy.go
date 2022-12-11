@@ -14,3 +14,11 @@ func KeyshareResponseLegacy(secret, commit, challenge *big.Int, key *gabikeys.Pu
 		SResponse: new(big.Int).Add(commit, new(big.Int).Mul(challenge, secret)),
 	}
 }
+
+func (p *ProofU) RemoveKeyshareP(b *CredentialBuilder) {
+	if b.keyshareP == nil {
+		return
+	}
+	p.U.Mul(p.U, new(big.Int).ModInverse(b.keyshareP, b.pk.N))
+	p.U.Mod(p.U, b.pk.N)
+}
