@@ -8,8 +8,8 @@ require (
 	github.com/go-errors/errors v1.4.2
 	github.com/multiformats/go-multihash v0.0.14
 	github.com/sirupsen/logrus v1.9.0
-	github.com/stretchr/testify v1.8.1
-	golang.org/x/exp v0.0.0-20230213192124-5e25df0256eb
+	github.com/stretchr/testify v1.8.2
+	golang.org/x/exp v0.0.0-20230307190834-24139beb5833
 )
 
 require (
@@ -22,7 +22,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	golang.org/x/crypto v0.6.0 // indirect
-	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/crypto v0.7.0 // indirect
+	golang.org/x/sys v0.6.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
