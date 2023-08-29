@@ -133,7 +133,10 @@ func (builders ProofBuilderList) ChallengeWithRandomizers(context, nonce *big.In
 	return createChallenge(context, nonce, commitmentValues, issig), nil
 }
 
-func (builders ProofBuilderList) Challenge(context, nonce *big.Int, issig bool) (*big.Int, error) {
+// NewProofRandomizers constructs state necessary for constructing a zero-knowledge proof showing that
+// (alongside whatever else the proof shows) several non-disclosed numbers have the same value.
+// Currently used only for the secret key across multiple credentials.
+func NewProofRandomizers() (map[string]*big.Int, error) {
 	// The secret key may be used across credentials supporting different attribute sizes.
 	// So we should take it, and hence also its commitment, to fit within the smallest size -
 	// otherwise it will be too big so that we cannot perform the range proof showing
@@ -142,7 +145,15 @@ func (builders ProofBuilderList) Challenge(context, nonce *big.Int, issig bool) 
 	if err != nil {
 		return nil, err
 	}
-	return builders.ChallengeWithRandomizers(context, nonce, map[string]*big.Int{"secretkey": skRandomizer}, issig)
+	return map[string]*big.Int{"secretkey": skRandomizer}, nil
+}
+
+func (builders ProofBuilderList) Challenge(context, nonce *big.Int, issig bool) (*big.Int, error) {
+	randomizers, err := NewProofRandomizers()
+	if err != nil {
+		return nil, err
+	}
+	return builders.ChallengeWithRandomizers(context, nonce, randomizers, issig)
 }
 
 func (builders ProofBuilderList) BuildDistributedProofList(
