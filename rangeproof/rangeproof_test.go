@@ -45,7 +45,7 @@ func setupPubkey(t *testing.T) *gabikeys.PublicKey {
 
 type bruteForce3 struct{}
 
-func (_ *bruteForce3) Split(delta *big.Int) ([]*big.Int, error) {
+func (*bruteForce3) Split(delta *big.Int) ([]*big.Int, error) {
 	if !delta.IsInt64() {
 		panic("too big")
 	}
@@ -69,17 +69,17 @@ func (_ *bruteForce3) Split(delta *big.Int) ([]*big.Int, error) {
 	panic("Not found")
 }
 
-func (_ *bruteForce3) SquareCount() int {
+func (*bruteForce3) SquareCount() int {
 	return 3
 }
 
-func (_ *bruteForce3) Ld() uint {
+func (*bruteForce3) Ld() uint {
 	return 8
 }
 
 type bruteForce4 struct{}
 
-func (_ *bruteForce4) Split(delta *big.Int) ([]*big.Int, error) {
+func (*bruteForce4) Split(delta *big.Int) ([]*big.Int, error) {
 	if !delta.IsInt64() {
 		panic("too big")
 	}
@@ -105,11 +105,11 @@ func (_ *bruteForce4) Split(delta *big.Int) ([]*big.Int, error) {
 	panic("Not found")
 }
 
-func (_ *bruteForce4) SquareCount() int {
+func (*bruteForce4) SquareCount() int {
 	return 4
 }
 
-func (_ *bruteForce4) Ld() uint {
+func (*bruteForce4) Ld() uint {
 	return 8
 }
 
@@ -228,6 +228,7 @@ func TestRangeProofMisbehavingSplit(t *testing.T) {
 
 	m := big.NewInt(112)
 	mRandomizer, err := common.RandomBigInt(g.Params.Lm + g.Params.Lh + g.Params.Lstatzk)
+	require.NoError(t, err)
 
 	_, _, err = s.CommitmentsFromSecrets(g, m, mRandomizer)
 	assert.Error(t, err)

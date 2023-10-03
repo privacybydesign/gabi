@@ -37,19 +37,19 @@ func newExpStepAStructure(bitname, prename, postname string) expStepAStructure {
 	}
 	structure.bitRep = zkproof.RepresentationProofStructure{
 		Lhs: []zkproof.LhsContribution{
-			{bitname, big.NewInt(1)},
+			{Base: bitname, Power: big.NewInt(1)},
 		},
 		Rhs: []zkproof.RhsContribution{
-			{"h", strings.Join([]string{bitname, "hider"}, "_"), 1},
+			{Base: "h", Secret: strings.Join([]string{bitname, "hider"}, "_"), Power: 1},
 		},
 	}
 	structure.equalityRep = zkproof.RepresentationProofStructure{
 		Lhs: []zkproof.LhsContribution{
-			{prename, big.NewInt(1)},
-			{postname, big.NewInt(-1)},
+			{Base: prename, Power: big.NewInt(1)},
+			{Base: postname, Power: big.NewInt(-1)},
 		},
 		Rhs: []zkproof.RhsContribution{
-			{"h", strings.Join([]string{structure.myname, "eqhider"}, "_"), 1},
+			{Base: "h", Secret: strings.Join([]string{structure.myname, "eqhider"}, "_"), Power: 1},
 		},
 	}
 	return structure

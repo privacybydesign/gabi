@@ -136,7 +136,7 @@ func TestNewAccumulator(t *testing.T) {
 	require.Equal(t, 0, update.Events[0].E.Cmp(big.NewInt(1)))
 
 	require.Len(t, update.Events, 1)
-	initialhash := make([]byte, 32, 32) // construct initial SHA256 multihash
+	initialhash := make([]byte, 32) // construct initial SHA256 multihash
 	initialhash = append([]byte{18, 32}, initialhash...)
 	require.Equal(t, initialhash, []byte(update.Events[0].ParentHash))
 }
@@ -232,7 +232,9 @@ func TestWitnessUpdate(t *testing.T) {
 
 	// updating against old updates does nothing
 	firstupdate.SignedAccumulator.Accumulator = nil
-	acc, err = firstupdate.SignedAccumulator.UnmarshalVerify(pk)
+	_, err = firstupdate.SignedAccumulator.UnmarshalVerify(pk)
+	require.NoError(t, err)
+
 	i = witness.SignedAccumulator.Accumulator.Index
 	require.NoError(t, witness.Update(pk, &firstupdate))
 	require.NoError(t, witness.Verify(pk))
@@ -261,8 +263,8 @@ func TestUpdateVerification(t *testing.T) {
 	})
 
 	t.Run("InvalidSignature", func(t *testing.T) {
-		update, pk, _, _ := generateUpdate(t)
-		_, pk = generateKeys(t) // generate new random key to verify against
+		update, _, _, _ := generateUpdate(t)
+		_, pk := generateKeys(t) // generate new random key to verify against
 		update.SignedAccumulator.Accumulator = nil
 		_, err := update.Verify(pk)
 		require.Error(t, err)

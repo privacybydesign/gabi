@@ -51,11 +51,11 @@ func newIsSquareProofStructure(N *big.Int, Squares []*big.Int) isSquareProofStru
 		squaresPedersen: make([]pedersenStructure, len(Squares)),
 		nRep: zkproof.RepresentationProofStructure{
 			Lhs: []zkproof.LhsContribution{
-				{"N", big.NewInt(-1)},
-				{"g", new(big.Int).Set(N)},
+				{Base: "N", Power: big.NewInt(-1)},
+				{Base: "g", Power: new(big.Int).Set(N)},
 			},
 			Rhs: []zkproof.RhsContribution{
-				{"h", "N_hider", -1},
+				{Base: "h", Secret: "N_hider", Power: -1},
 			},
 		},
 		squaresRep: make([]zkproof.RepresentationProofStructure, len(Squares)),
@@ -74,11 +74,11 @@ func newIsSquareProofStructure(N *big.Int, Squares []*big.Int) isSquareProofStru
 	for i, val := range result.squares {
 		result.squaresRep[i] = zkproof.RepresentationProofStructure{
 			Lhs: []zkproof.LhsContribution{
-				{strings.Join([]string{"s", fmt.Sprintf("%v", i)}, "_"), big.NewInt(-1)},
-				{"g", new(big.Int).Set(val)},
+				{Base: strings.Join([]string{"s", fmt.Sprintf("%v", i)}, "_"), Power: big.NewInt(-1)},
+				{Base: "g", Power: new(big.Int).Set(val)},
 			},
 			Rhs: []zkproof.RhsContribution{
-				{"h", strings.Join([]string{"s", fmt.Sprintf("%v", i), "hider"}, "_"), -1},
+				{Base: "h", Secret: strings.Join([]string{"s", fmt.Sprintf("%v", i), "hider"}, "_"), Power: -1},
 			},
 		}
 	}
@@ -151,9 +151,9 @@ func (s *isSquareProofStructure) commitmentsFromSecrets(g zkproof.Group, list []
 
 	// Generate commitments
 	list = append(list, s.n)
-	for _, val := range s.squares {
-		list = append(list, val)
-	}
+
+	list = append(list, s.squares...)
+
 	list = s.nRep.CommitmentsFromSecrets(g, list, &bases, &secrets)
 	for i := range s.squaresRep {
 		list = s.squaresRep[i].CommitmentsFromSecrets(g, list, &bases, &secrets)
@@ -266,9 +266,9 @@ func (s *isSquareProofStructure) commitmentsFromProof(g zkproof.Group, list []*b
 	}
 	list = s.nPedersen.commitmentsFromProof(g, list, challenge, proof.NProof)
 	list = append(list, s.n)
-	for _, val := range s.squares {
-		list = append(list, val)
-	}
+
+	list = append(list, s.squares...)
+
 	list = s.nRep.CommitmentsFromProof(g, list, challenge, &bases, &proofs)
 	for i := range s.squares {
 		list = s.squaresRep[i].CommitmentsFromProof(g, list, challenge, &bases, &proofs)

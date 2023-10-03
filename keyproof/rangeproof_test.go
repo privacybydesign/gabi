@@ -62,10 +62,10 @@ func TestRangeProofBasic(t *testing.T) {
 
 	var s rangeProofStructure
 	s.Lhs = []zkproof.LhsContribution{
-		{"x", big.NewInt(1)},
+		{Base: "x", Power: big.NewInt(1)},
 	}
 	s.Rhs = []zkproof.RhsContribution{
-		{"g", "x", 1},
+		{Base: "g", Secret: "x", Power: 1},
 	}
 	s.rangeSecret = "x"
 	s.l1 = 3
@@ -110,11 +110,11 @@ func TestRangeProofComplex(t *testing.T) {
 
 	var s rangeProofStructure
 	s.Lhs = []zkproof.LhsContribution{
-		{"c", big.NewInt(1)},
+		{Base: "c", Power: big.NewInt(1)},
 	}
 	s.Rhs = []zkproof.RhsContribution{
-		{"g", "x", 1},
-		{"h", "xh", 1},
+		{Base: "g", Secret: "x", Power: 1},
+		{Base: "h", Secret: "xh", Power: 1},
 	}
 	s.l1 = 3
 	s.l2 = 2
@@ -159,11 +159,11 @@ func TestRangeProofVerifyStructureEmpty(t *testing.T) {
 	var proof RangeProof
 	var s rangeProofStructure
 	s.Lhs = []zkproof.LhsContribution{
-		{"c", big.NewInt(1)},
+		{Base: "c", Power: big.NewInt(1)},
 	}
 	s.Rhs = []zkproof.RhsContribution{
-		{"g", "x", 1},
-		{"h", "xh", 1},
+		{Base: "g", Secret: "x", Power: 1},
+		{Base: "h", Secret: "xh", Power: 1},
 	}
 	s.l1 = 3
 	s.l2 = 2
@@ -175,11 +175,11 @@ func TestRangeProofVerifyStructureMissingVar(t *testing.T) {
 	var proof RangeProof
 	var s rangeProofStructure
 	s.Lhs = []zkproof.LhsContribution{
-		{"c", big.NewInt(1)},
+		{Base: "c", Power: big.NewInt(1)},
 	}
 	s.Rhs = []zkproof.RhsContribution{
-		{"g", "x", 1},
-		{"h", "xh", 1},
+		{Base: "g", Secret: "x", Power: 1},
+		{Base: "h", Secret: "xh", Power: 1},
 	}
 	s.l1 = 3
 	s.l2 = 2
@@ -200,11 +200,11 @@ func TestRangeProofVerifyStructureTooShortVar(t *testing.T) {
 	var proof RangeProof
 	var s rangeProofStructure
 	s.Lhs = []zkproof.LhsContribution{
-		{"c", big.NewInt(1)},
+		{Base: "c", Power: big.NewInt(1)},
 	}
 	s.Rhs = []zkproof.RhsContribution{
-		{"g", "x", 1},
-		{"h", "xh", 1},
+		{Base: "g", Secret: "x", Power: 1},
+		{Base: "h", Secret: "xh", Power: 1},
 	}
 	s.l1 = 3
 	s.l2 = 2
@@ -232,11 +232,11 @@ func TestRangeProofVerifyStructureMissingNo(t *testing.T) {
 	var proof RangeProof
 	var s rangeProofStructure
 	s.Lhs = []zkproof.LhsContribution{
-		{"c", big.NewInt(1)},
+		{Base: "c", Power: big.NewInt(1)},
 	}
 	s.Rhs = []zkproof.RhsContribution{
-		{"g", "x", 1},
-		{"h", "xh", 1},
+		{Base: "g", Secret: "x", Power: 1},
+		{Base: "h", Secret: "xh", Power: 1},
 	}
 	s.l1 = 3
 	s.l2 = 2
@@ -267,11 +267,11 @@ func TestRangeProofFake(t *testing.T) {
 
 	var s rangeProofStructure
 	s.Lhs = []zkproof.LhsContribution{
-		{"c", big.NewInt(1)},
+		{Base: "c", Power: big.NewInt(1)},
 	}
 	s.Rhs = []zkproof.RhsContribution{
-		{"g", "x", 1},
-		{"h", "xh", 1},
+		{Base: "g", Secret: "x", Power: 1},
+		{Base: "h", Secret: "xh", Power: 1},
 	}
 	s.l1 = 3
 	s.l2 = 2
@@ -286,11 +286,11 @@ func TestRangeProofJSON(t *testing.T) {
 
 	var s rangeProofStructure
 	s.Lhs = []zkproof.LhsContribution{
-		{"c", big.NewInt(1)},
+		{Base: "c", Power: big.NewInt(1)},
 	}
 	s.Rhs = []zkproof.RhsContribution{
-		{"g", "x", 1},
-		{"h", "xh", 1},
+		{Base: "g", Secret: "x", Power: 1},
+		{Base: "h", Secret: "xh", Power: 1},
 	}
 	s.l1 = 3
 	s.l2 = 2

@@ -12,18 +12,18 @@ func TestCPRNG(t *testing.T) {
 		seed[i] = byte(i)
 	}
 	var buf [256]byte
-	rng, err := NewCPRNG(&seed)
+	_, err := NewCPRNG(&seed)
 	if err != nil {
 		t.Fatalf("NewCPRNG: %v", err)
 	}
 	for i := 0; i < 256; i++ {
-		rng, _ = NewCPRNG(&seed)
+		rng, _ := NewCPRNG(&seed)
 		rng.Read(buf[0:i])
 		if hex.EncodeToString(buf[:i]) != expected[:2*i] {
 			t.Fatalf("TestCPRNG (1): %d", i)
 		}
 	}
-	rng, _ = NewCPRNG(&seed)
+	rng, _ := NewCPRNG(&seed)
 	for i := 0; i < 16; i++ {
 		rng.Read(buf[i*16 : (i+1)*16])
 	}

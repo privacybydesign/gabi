@@ -104,7 +104,7 @@ func Sign(sk *ecdsa.PrivateKey, bts []byte) ([]byte, error) {
 }
 
 func Verify(pk *ecdsa.PublicKey, bts []byte, signature []byte) error {
-	ints := make([]*big.Int, 2, 2)
+	ints := make([]*big.Int, 2)
 	_, err := asn1.Unmarshal(signature, &ints)
 	if err != nil {
 		return err
