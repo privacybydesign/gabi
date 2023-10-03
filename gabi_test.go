@@ -822,6 +822,7 @@ func setupRevocation(t *testing.T, sk *gabikeys.PrivateKey, pk *gabikeys.PublicK
 	require.NoError(t, err)
 
 	acc, err := update.SignedAccumulator.UnmarshalVerify(pk)
+	require.NoError(t, err)
 
 	witness, err := revocation.RandomWitness(sk, acc)
 	require.NoError(t, err)
@@ -1477,6 +1478,7 @@ func TestKeyshareResponseSingleBase(t *testing.T) {
 		Value:      totalP,
 		Commitment: userComm[0].Pcommit,
 	}})
+	require.NoError(t, err)
 
 	challenge := createChallenge(bigOne, nonce, []*big.Int{totalP, totalW}, false)
 

@@ -97,13 +97,13 @@ func newPrimeProofStructure(name string, bitlen uint) primeProofStructure {
 	structure.halfP = newPedersenStructure(strings.Join([]string{structure.myname, "halfp"}, "_"))
 	structure.halfPRep = zkproof.RepresentationProofStructure{
 		Lhs: []zkproof.LhsContribution{
-			{name, big.NewInt(1)},
-			{strings.Join([]string{structure.myname, "halfp"}, "_"), big.NewInt(-2)},
-			{"g", big.NewInt(-1)},
+			{Base: name, Power: big.NewInt(1)},
+			{Base: strings.Join([]string{structure.myname, "halfp"}, "_"), Power: big.NewInt(-2)},
+			{Base: "g", Power: big.NewInt(-1)},
 		},
 		Rhs: []zkproof.RhsContribution{
-			{"h", strings.Join([]string{name, "hider"}, "_"), 1},
-			{"h", strings.Join([]string{structure.myname, "halfp", "hider"}, "_"), -2},
+			{Base: "h", Secret: strings.Join([]string{name, "hider"}, "_"), Power: 1},
+			{Base: "h", Secret: strings.Join([]string{structure.myname, "halfp", "hider"}, "_"), Power: -2},
 		},
 	}
 
@@ -120,30 +120,30 @@ func newPrimeProofStructure(name string, bitlen uint) primeProofStructure {
 	structure.anegRes = newPedersenStructure(strings.Join([]string{structure.myname, "anegres"}, "_"))
 	structure.aPlus1ResRep = zkproof.RepresentationProofStructure{
 		Lhs: []zkproof.LhsContribution{
-			{strings.Join([]string{structure.myname, "ares"}, "_"), big.NewInt(1)},
-			{"g", big.NewInt(-1)},
+			{Base: strings.Join([]string{structure.myname, "ares"}, "_"), Power: big.NewInt(1)},
+			{Base: "g", Power: big.NewInt(-1)},
 		},
 		Rhs: []zkproof.RhsContribution{
-			{"h", strings.Join([]string{structure.myname, "aresplus1hider"}, "_"), 1},
+			{Base: "h", Secret: strings.Join([]string{structure.myname, "aresplus1hider"}, "_"), Power: 1},
 		},
 	}
 	structure.aMin1ResRep = zkproof.RepresentationProofStructure{
 		Lhs: []zkproof.LhsContribution{
-			{strings.Join([]string{structure.myname, "ares"}, "_"), big.NewInt(1)},
-			{"g", big.NewInt(1)},
+			{Base: strings.Join([]string{structure.myname, "ares"}, "_"), Power: big.NewInt(1)},
+			{Base: "g", Power: big.NewInt(1)},
 		},
 		Rhs: []zkproof.RhsContribution{
-			{"h", strings.Join([]string{structure.myname, "aresmin1hider"}, "_"), 1},
+			{Base: "h", Secret: strings.Join([]string{structure.myname, "aresmin1hider"}, "_"), Power: 1},
 		},
 	}
 
 	structure.anegResRep = zkproof.RepresentationProofStructure{
 		Lhs: []zkproof.LhsContribution{
-			{strings.Join([]string{structure.myname, "anegres"}, "_"), big.NewInt(1)},
-			{"g", big.NewInt(1)},
+			{Base: strings.Join([]string{structure.myname, "anegres"}, "_"), Power: big.NewInt(1)},
+			{Base: "g", Power: big.NewInt(1)},
 		},
 		Rhs: []zkproof.RhsContribution{
-			{"h", strings.Join([]string{structure.myname, "anegres", "hider"}, "_"), 1},
+			{Base: "h", Secret: strings.Join([]string{structure.myname, "anegres", "hider"}, "_"), Power: 1},
 		},
 	}
 
@@ -237,13 +237,13 @@ func (s *primeProofStructure) commitmentsFromSecrets(g zkproof.Group, list []*bi
 	// Build structure for the a generation proofs
 	agenproof := zkproof.RepresentationProofStructure{
 		Lhs: []zkproof.LhsContribution{
-			{commit.prea.name, big.NewInt(1)},
-			{"g", new(big.Int).Mod(aAdd, g.Order)},
-			{commit.a.name, big.NewInt(-1)},
+			{Base: commit.prea.name, Power: big.NewInt(1)},
+			{Base: "g", Power: new(big.Int).Mod(aAdd, g.Order)},
+			{Base: commit.a.name, Power: big.NewInt(-1)},
 		},
 		Rhs: []zkproof.RhsContribution{
-			{s.primeName, commit.preaMod.name, 1},
-			{"h", commit.preaHider.name, 1},
+			{Base: s.primeName, Secret: commit.preaMod.name, Power: 1},
+			{Base: "h", Secret: commit.preaHider.name, Power: 1},
 		},
 	}
 	agenrange := rangeProofStructure{
@@ -302,13 +302,13 @@ func (s *primeProofStructure) buildProof(g zkproof.Group, challenge *big.Int, co
 	aAdd := common.GetHashNumber(commit.prea.commit, nil, 0, s.bitlen)
 	agenproof := zkproof.RepresentationProofStructure{
 		Lhs: []zkproof.LhsContribution{
-			{commit.prea.name, big.NewInt(1)},
-			{"g", new(big.Int).Mod(aAdd, g.Order)},
-			{commit.a.name, big.NewInt(-1)},
+			{Base: commit.prea.name, Power: big.NewInt(1)},
+			{Base: "g", Power: new(big.Int).Mod(aAdd, g.Order)},
+			{Base: commit.a.name, Power: big.NewInt(-1)},
 		},
 		Rhs: []zkproof.RhsContribution{
-			{s.primeName, commit.preaMod.name, 1},
-			{"h", commit.preaHider.name, 1},
+			{Base: s.primeName, Secret: commit.preaMod.name, Power: 1},
+			{Base: "h", Secret: commit.preaHider.name, Power: 1},
 		},
 	}
 	agenrange := rangeProofStructure{
@@ -378,13 +378,13 @@ func (s *primeProofStructure) fakeProof(g zkproof.Group, challenge *big.Int) Pri
 	aAdd := common.GetHashNumber(proof.PreaCommit.Commit, nil, 0, s.bitlen)
 	agenproof := zkproof.RepresentationProofStructure{
 		Lhs: []zkproof.LhsContribution{
-			{strings.Join([]string{s.myname, "prea"}, "_"), big.NewInt(1)},
-			{"g", new(big.Int).Mod(aAdd, g.Order)},
-			{strings.Join([]string{s.myname, "a"}, "_"), big.NewInt(-1)},
+			{Base: strings.Join([]string{s.myname, "prea"}, "_"), Power: big.NewInt(1)},
+			{Base: "g", Power: new(big.Int).Mod(aAdd, g.Order)},
+			{Base: strings.Join([]string{s.myname, "a"}, "_"), Power: big.NewInt(-1)},
 		},
 		Rhs: []zkproof.RhsContribution{
-			{s.primeName, strings.Join([]string{s.myname, "preamod"}, "_"), 1},
-			{"h", strings.Join([]string{s.myname, "preahider"}, "_"), 1},
+			{Base: s.primeName, Secret: strings.Join([]string{s.myname, "preamod"}, "_"), Power: 1},
+			{Base: "h", Secret: strings.Join([]string{s.myname, "preahider"}, "_"), Power: 1},
 		},
 	}
 	agenrange := rangeProofStructure{
@@ -429,14 +429,14 @@ func (s *primeProofStructure) verifyProofStructure(challenge *big.Int, proof Pri
 	aAdd := common.GetHashNumber(proof.PreaCommit.Commit, nil, 0, s.bitlen)
 	agenproof := zkproof.RepresentationProofStructure{
 		Lhs: []zkproof.LhsContribution{
-			{strings.Join([]string{s.myname, "prea"}, "_"), big.NewInt(1)},
+			{Base: strings.Join([]string{s.myname, "prea"}, "_"), Power: big.NewInt(1)},
 			// LhsContribution{"g", new(big.Int).Mod(aAdd, g.order)},
-			{"g", aAdd},
-			{strings.Join([]string{s.myname, "a"}, "_"), big.NewInt(-1)},
+			{Base: "g", Power: aAdd},
+			{Base: strings.Join([]string{s.myname, "a"}, "_"), Power: big.NewInt(-1)},
 		},
 		Rhs: []zkproof.RhsContribution{
-			{s.primeName, strings.Join([]string{s.myname, "preamod"}, "_"), 1},
-			{"h", strings.Join([]string{s.myname, "preahider"}, "_"), 1},
+			{Base: s.primeName, Secret: strings.Join([]string{s.myname, "preamod"}, "_"), Power: 1},
+			{Base: "h", Secret: strings.Join([]string{s.myname, "preahider"}, "_"), Power: 1},
 		},
 	}
 	agenrange := rangeProofStructure{
@@ -493,13 +493,13 @@ func (s *primeProofStructure) commitmentsFromProof(g zkproof.Group, list []*big.
 	aAdd := common.GetHashNumber(proof.PreaCommit.Commit, nil, 0, s.bitlen)
 	agenproof := zkproof.RepresentationProofStructure{
 		Lhs: []zkproof.LhsContribution{
-			{strings.Join([]string{s.myname, "prea"}, "_"), big.NewInt(1)},
-			{"g", new(big.Int).Mod(aAdd, g.Order)},
-			{strings.Join([]string{s.myname, "a"}, "_"), big.NewInt(-1)},
+			{Base: strings.Join([]string{s.myname, "prea"}, "_"), Power: big.NewInt(1)},
+			{Base: "g", Power: new(big.Int).Mod(aAdd, g.Order)},
+			{Base: strings.Join([]string{s.myname, "a"}, "_"), Power: big.NewInt(-1)},
 		},
 		Rhs: []zkproof.RhsContribution{
-			{s.primeName, strings.Join([]string{s.myname, "preamod"}, "_"), 1},
-			{"h", strings.Join([]string{s.myname, "preahider"}, "_"), 1},
+			{Base: s.primeName, Secret: strings.Join([]string{s.myname, "preamod"}, "_"), Power: 1},
+			{Base: "h", Secret: strings.Join([]string{s.myname, "preahider"}, "_"), Power: 1},
 		},
 	}
 	agenrange := rangeProofStructure{
@@ -550,10 +550,6 @@ func (s *primeProofStructure) commitmentsFromProof(g zkproof.Group, list []*big.
 	list = s.anegExp.commitmentsFromProof(g, list, challenge, &innerBases, &proofs, proof.AnegExpProof)
 
 	return list
-}
-
-func (s *primeProofStructure) isTrue(secretdata zkproof.SecretLookup) bool {
-	return secretdata.Secret(s.primeName).ProbablyPrime(40)
 }
 
 func (s *primeProofStructure) numRangeProofs() int {

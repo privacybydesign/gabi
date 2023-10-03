@@ -148,11 +148,11 @@ func newExpProofStructure(base, exponent, mod, result string, bitlen uint) expPr
 	structure.start = newPedersenStructure(strings.Join([]string{structure.myname, "start"}, "_"))
 	structure.startRep = zkproof.RepresentationProofStructure{
 		Lhs: []zkproof.LhsContribution{
-			{strings.Join([]string{structure.myname, "start"}, "_"), big.NewInt(1)},
-			{"g", big.NewInt(-1)},
+			{Base: strings.Join([]string{structure.myname, "start"}, "_"), Power: big.NewInt(1)},
+			{Base: "g", Power: big.NewInt(-1)},
 		},
 		Rhs: []zkproof.RhsContribution{
-			{"h", strings.Join([]string{structure.myname, "start", "hider"}, "_"), 1},
+			{Base: "h", Secret: strings.Join([]string{structure.myname, "start", "hider"}, "_"), Power: 1},
 		},
 	}
 
