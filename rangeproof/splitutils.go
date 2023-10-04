@@ -76,15 +76,15 @@ func (t *SquaresTable) Ld() uint {
 	return ld + 1 // compensate for extra bit due to 3-square correction
 }
 
-func (_ *FourSquaresSplitter) Split(delta *big.Int) ([]*big.Int, error) {
+func (*FourSquaresSplitter) Split(delta *big.Int) ([]*big.Int, error) {
 	a, b, c, d := common.SumFourSquares(delta)
 	return []*big.Int{a, b, c, d}, nil
 }
 
-func (_ *FourSquaresSplitter) SquareCount() int {
+func (*FourSquaresSplitter) SquareCount() int {
 	return 4
 }
 
-func (_ *FourSquaresSplitter) Ld() uint {
+func (*FourSquaresSplitter) Ld() uint {
 	return 128
 }

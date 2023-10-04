@@ -55,7 +55,7 @@ probabilistic polynomial-time algorithm that acts as follows:
    * C2 = R^d2 S^v2
    * C3 = R^d3 S^v3
    * C1^d1 C2^d2 C3^d3 R^k = R^m' S^v5,
-  with success probability at least epsilon, where epsilon is a non-neglible function of log(n).
+  with success probability at least epsilon, where epsilon is a non-negligible function of log(n).
 
 Theorem: the existence of Adversary A contradicts the strong RSA assumption.
 
@@ -69,9 +69,9 @@ Proof: From A we can derive two probabilistic polynomial-time algorithms F and G
 By construction at least one of F, G will succeed with probability at least epsilon/2.
 
 By theorem 1 of "A Signature Scheme with Efficient Protocols" by Camenisch and Lysyanskaya (CL03),
-the existence of F with non-neglible success probability contradicts the strong RSA assumption.
+the existence of F with non-negligible success probability contradicts the strong RSA assumption.
 
-Next, let us show that existence of G with non-neglible success probability also contradicts the
+Next, let us show that existence of G with non-negligible success probability also contradicts the
 strong RSA assumption. Let (n, u) be a flexible RSA problem. We choose random prime e > 4, random
 integers r1, r2, k, and m>k, and random element v in QRn. We then let
 - S = u^e
@@ -95,7 +95,7 @@ components is proven to be smaller than a bound during the ZKP), we can take r1 
 guarantee r1*a > b. Then r1*a-b > 0, and by multiplication by u^-b, we get u^(r1*a-b) = 1, hence
 phi(n) | r1*a-b, which means we can factor n and use that to solve the flexible RSA problem.
 
-This shows that the existence of algorithm G with non-neglible success probability also contradicts
+This shows that the existence of algorithm G with non-negligible success probability also contradicts
 strong RSA, hence the existence of algorithm A contradicts the strong RSA assumption.
 
 Notes:

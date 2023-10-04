@@ -312,7 +312,7 @@ func (w *Witness) Update(pk *gabikeys.PublicKey, update *Update) error {
 		return errors.New("nonrevocation witness invalidated by update")
 	}
 
-	// Update witness state only now after all possible errors have not occured
+	// Update witness state only now after all possible errors have not occurred
 	w.U = newU
 	w.SignedAccumulator = update.SignedAccumulator
 	w.Updated = time.Unix(newAcc.Time, 0)

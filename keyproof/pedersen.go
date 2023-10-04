@@ -36,11 +36,11 @@ func newPedersenStructure(name string) pedersenStructure {
 		name,
 		zkproof.RepresentationProofStructure{
 			Lhs: []zkproof.LhsContribution{
-				{name, big.NewInt(1)},
+				{Base: name, Power: big.NewInt(1)},
 			},
 			Rhs: []zkproof.RhsContribution{
-				{"g", name, 1},
-				{"h", strings.Join([]string{name, "hider"}, "_"), 1},
+				{Base: "g", Secret: name, Power: 1},
+				{Base: "h", Secret: strings.Join([]string{name, "hider"}, "_"), Power: 1},
 			},
 		},
 	}
@@ -50,11 +50,11 @@ func newPedersenRangeProofStructure(name string, l1 uint, l2 uint) rangeProofStr
 	structure := rangeProofStructure{
 		RepresentationProofStructure: zkproof.RepresentationProofStructure{
 			Lhs: []zkproof.LhsContribution{
-				{name, big.NewInt(1)},
+				{Base: name, Power: big.NewInt(1)},
 			},
 			Rhs: []zkproof.RhsContribution{
-				{"g", name, 1},
-				{"h", strings.Join([]string{name, "hider"}, "_"), 1},
+				{Base: "g", Secret: name, Power: 1},
+				{Base: "h", Secret: strings.Join([]string{name, "hider"}, "_"), Power: 1},
 			},
 		},
 		rangeSecret: name,

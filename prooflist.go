@@ -36,10 +36,10 @@ var (
 func (pl ProofList) GetProofU(n int) (*ProofU, error) {
 	count := 0
 	for _, proof := range pl {
-		switch proof.(type) {
+		switch p := proof.(type) {
 		case *ProofU:
 			if count == n {
-				return proof.(*ProofU), nil
+				return p, nil
 			}
 			count++
 		}

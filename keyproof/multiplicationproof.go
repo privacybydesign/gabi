@@ -43,12 +43,12 @@ func newMultiplicationProofStructure(m1, m2, mod, result string, l uint) multipl
 	}
 	structure.multRepresentation = zkproof.RepresentationProofStructure{
 		Lhs: []zkproof.LhsContribution{
-			{result, big.NewInt(1)},
+			{Base: result, Power: big.NewInt(1)},
 		},
 		Rhs: []zkproof.RhsContribution{
-			{m2, m1, 1},
-			{mod, strings.Join([]string{structure.myname, "mod"}, "_"), -1},
-			{"h", strings.Join([]string{structure.myname, "hider"}, "_"), 1},
+			{Base: m2, Secret: m1, Power: 1},
+			{Base: mod, Secret: strings.Join([]string{structure.myname, "mod"}, "_"), Power: -1},
+			{Base: "h", Secret: strings.Join([]string{structure.myname, "hider"}, "_"), Power: 1},
 		},
 	}
 	structure.modMultPedersen = newPedersenStructure(strings.Join([]string{structure.myname, "mod"}, "_"))

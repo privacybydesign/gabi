@@ -53,35 +53,35 @@ func NewValidKeyProofStructure(N *big.Int, Bases []*big.Int) ValidKeyProofStruct
 
 	structure.pPprimeRel = zkproof.RepresentationProofStructure{
 		Lhs: []zkproof.LhsContribution{
-			{"p", big.NewInt(1)},
-			{"pprime", big.NewInt(-2)},
-			{"g", big.NewInt(-1)},
+			{Base: "p", Power: big.NewInt(1)},
+			{Base: "pprime", Power: big.NewInt(-2)},
+			{Base: "g", Power: big.NewInt(-1)},
 		},
 		Rhs: []zkproof.RhsContribution{
-			{"h", "p_hider", 1},
-			{"h", "pprime_hider", -2},
+			{Base: "h", Secret: "p_hider", Power: 1},
+			{Base: "h", Secret: "pprime_hider", Power: -2},
 		},
 	}
 
 	structure.qQprimeRel = zkproof.RepresentationProofStructure{
 		Lhs: []zkproof.LhsContribution{
-			{"q", big.NewInt(1)},
-			{"qprime", big.NewInt(-2)},
-			{"g", big.NewInt(-1)},
+			{Base: "q", Power: big.NewInt(1)},
+			{Base: "qprime", Power: big.NewInt(-2)},
+			{Base: "g", Power: big.NewInt(-1)},
 		},
 		Rhs: []zkproof.RhsContribution{
-			{"h", "q_hider", 1},
-			{"h", "qprime_hider", -2},
+			{Base: "h", Secret: "q_hider", Power: 1},
+			{Base: "h", Secret: "qprime_hider", Power: -2},
 		},
 	}
 
 	structure.pQNRel = zkproof.RepresentationProofStructure{
 		Lhs: []zkproof.LhsContribution{
-			{"g", new(big.Int).Set(N)},
+			{Base: "g", Power: new(big.Int).Set(N)},
 		},
 		Rhs: []zkproof.RhsContribution{
-			{"p", "q", 1},
-			{"h", "pqnrel", -1},
+			{Base: "p", Secret: "q", Power: 1},
+			{Base: "h", Secret: "pqnrel", Power: -1},
 		},
 	}
 

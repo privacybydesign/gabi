@@ -26,7 +26,7 @@ func TestSigned(t *testing.T) {
 	require.NoError(t, err)
 
 	var (
-		before test = test{X: "hello", Y: i, Z: 12, T: &test{X: "world"}}
+		before = test{X: "hello", Y: i, Z: 12, T: &test{X: "world"}}
 		after  test
 	)
 

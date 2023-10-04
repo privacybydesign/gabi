@@ -6,7 +6,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"time"
@@ -121,7 +120,7 @@ func NewPrivateKeyFromFile(filename string, demo bool) (*PrivateKey, error) {
 	}
 	defer common.Close(f)
 
-	b, err := ioutil.ReadAll(f)
+	b, err := io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}
@@ -271,7 +270,7 @@ func NewPublicKeyFromBytes(bts []byte) (*PublicKey, error) {
 	if sysparam, ok := DefaultSystemParameters[keylength]; ok {
 		pubk.Params = sysparam
 	} else {
-		return nil, fmt.Errorf("Unknown keylength %d", keylength)
+		return nil, fmt.Errorf("unknown keylength %d", keylength)
 	}
 	if err = pubk.parseRevocationKey(); err != nil {
 		return nil, err
@@ -292,7 +291,7 @@ func NewPublicKeyFromFile(filename string) (*PublicKey, error) {
 	defer common.Close(f)
 	pubk := &PublicKey{}
 
-	b, err := ioutil.ReadAll(f)
+	b, err := io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}

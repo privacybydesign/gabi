@@ -41,13 +41,13 @@ func newAdditionProofStructure(a1, a2, mod, result string, l uint) additionProof
 	}
 	structure.addRepresentation = zkproof.RepresentationProofStructure{
 		Lhs: []zkproof.LhsContribution{
-			{result, big.NewInt(1)},
-			{a1, big.NewInt(-1)},
-			{a2, big.NewInt(-1)},
+			{Base: result, Power: big.NewInt(1)},
+			{Base: a1, Power: big.NewInt(-1)},
+			{Base: a2, Power: big.NewInt(-1)},
 		},
 		Rhs: []zkproof.RhsContribution{
-			{mod, strings.Join([]string{structure.myname, "mod"}, "_"), 1},
-			{"h", strings.Join([]string{structure.myname, "hider"}, "_"), 1},
+			{Base: mod, Secret: strings.Join([]string{structure.myname, "mod"}, "_"), Power: 1},
+			{Base: "h", Secret: strings.Join([]string{structure.myname, "hider"}, "_"), Power: 1},
 		},
 	}
 	structure.addRange = rangeProofStructure{

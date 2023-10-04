@@ -5,7 +5,7 @@ INTRODUCTION
 ------------
 This sublibrary implements functionality for creating and verifying zero
 knowledge attestations of proper generation of idemix keys. It implements the
-proof layed out in "Proving in Zero-Knowledge that a Number is the Product of
+proof laid out in "Proving in Zero-Knowledge that a Number is the Product of
 Two Safe Primes, Camenisch et. al. BRICS RS-98-29" section 5.2, using the
 quasi-safe prime product proofs described in "An efficient non-interactive
 statistical zero-knowledge proof system for quasi-safe prime products, Gennaro
