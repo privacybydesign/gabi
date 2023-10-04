@@ -17,7 +17,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version-file: go.mod
+        go-version: ^1.18
 
     - name: Run gofmt
       # gofmt does not return non-zero exit codes on failure, so we have to check that there are no issues using grep.
@@ -53,7 +53,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version-file: go.mod
+          go-version: ^1.18
 
       - name: Run all unit tests
         run: go test -v ./...
