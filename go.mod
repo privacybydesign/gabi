@@ -1,6 +1,6 @@
 module github.com/privacybydesign/gabi
 
-go 1.24
+go 1.24.0
 
 require (
 	github.com/bwesterb/go-exptable v1.0.0
@@ -21,8 +21,8 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	golang.org/x/crypto v0.32.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.1.6 // indirect
 )
