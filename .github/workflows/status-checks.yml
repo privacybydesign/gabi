@@ -17,12 +17,12 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v5
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v6
       with:
-        go-version: 1.21 # staticcheck does not support Go 1.22 yet.
+        go-version: "1.24"
 
     - name: Run gofmt
       # gofmt does not return non-zero exit codes on failure, so we have to check that there are no issues using grep.
@@ -45,7 +45,7 @@ jobs:
       run: misspell -error -i witn .
 
     - name: Install staticcheck
-      run: go install honnef.co/go/tools/cmd/staticcheck@2023.1.3
+      run: go install honnef.co/go/tools/cmd/staticcheck@2025.1.1
       
     - name: Run staticcheck
       run: staticcheck ./...
@@ -53,12 +53,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v6
         with:
-          go-version: ^1.18
+          go-version: "1.24"
 
       - name: Run all unit tests
         run: go test -v ./...
@@ -74,18 +74,18 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v2
+        uses: github/codeql-action/init@v4
         with:
           languages: go
           queries: +security-and-quality
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
+        uses: github/codeql-action/analyze@v4
