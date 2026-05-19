@@ -1,6 +1,6 @@
 module github.com/privacybydesign/gabi
 
-go 1.18
+go 1.24
 
 require (
 	github.com/bwesterb/go-exptable v1.0.0
