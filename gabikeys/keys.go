@@ -173,7 +173,17 @@ func (privk *PrivateKey) WriteToFile(filename string, forceOverwrite bool) (int6
 	var f *os.File
 	var err error
 	if forceOverwrite {
-		f, err = os.Create(filename)
+		// Pin perms to 0600: os.Create would yield 0666 & ^umask (typically 0644),
+		// which is world-readable for a private key. Regression guard for issue #7.
+		f, err = os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+		if err == nil {
+			// open(2) ignores the mode argument when the file already exists,
+			// so tighten the mode via fchmod on the open fd to handle the rotate path.
+			if chmodErr := f.Chmod(0600); chmodErr != nil {
+				common.Close(f)
+				return 0, chmodErr
+			}
+		}
 	} else {
 		// This should return an error if the file already exists
 		f, err = os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
@@ -356,7 +366,8 @@ func (pubk *PublicKey) WriteToFile(filename string, forceOverwrite bool) (int64,
 	var f *os.File
 	var err error
 	if forceOverwrite {
-		f, err = os.Create(filename)
+		// Pin perms to 0644 explicitly (matches the non-overwrite branch and avoids umask surprises).
+		f, err = os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	} else {
 		// This should return an error if the file already exists
 		f, err = os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0644)
