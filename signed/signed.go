@@ -56,6 +56,9 @@ func UnmarshalPublicKey(bts []byte) (*ecdsa.PublicKey, error) {
 
 func UnmarshalPemPublicKey(bts []byte) (*ecdsa.PublicKey, error) {
 	block, _ := pem.Decode(bts)
+	if block == nil {
+		return nil, errors.New("no PEM block found")
+	}
 	return UnmarshalPublicKey(block.Bytes)
 }
 
@@ -77,6 +80,9 @@ func UnmarshalPrivateKey(bts []byte) (*ecdsa.PrivateKey, error) {
 
 func UnmarshalPemPrivateKey(bts []byte) (*ecdsa.PrivateKey, error) {
 	block, _ := pem.Decode(bts)
+	if block == nil {
+		return nil, errors.New("no PEM block found")
+	}
 	return UnmarshalPrivateKey(block.Bytes)
 }
 
