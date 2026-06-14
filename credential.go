@@ -315,7 +315,7 @@ func (d *DisclosureProofBuilder) Commit(randomizers map[string]*big.Int) ([]*big
 	if d.nonrevBuilder != nil {
 		l, err := d.nonrevBuilder.Commit()
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		list = append(list, l...)
 	}
