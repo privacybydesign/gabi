@@ -2,6 +2,7 @@ package gabikeys
 
 import (
 	"encoding/xml"
+	"fmt"
 	"strconv"
 
 	"github.com/privacybydesign/gabi/big"
@@ -39,9 +40,17 @@ func (bl *Bases) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 		return err
 	}
 
+	if t.Num != len(t.Bases) {
+		return fmt.Errorf("Bases num attribute (%d) does not match number of base elements (%d)", t.Num, len(t.Bases))
+	}
+
 	arr := make([]*big.Int, t.Num)
 	for i := range arr {
-		arr[i], _ = new(big.Int).SetString(t.Bases[i].Bigint, 10)
+		b, ok := new(big.Int).SetString(t.Bases[i].Bigint, 10)
+		if !ok {
+			return fmt.Errorf("Bases element %d was not a base 10 integer", i)
+		}
+		arr[i] = b
 	}
 
 	*bl = arr
