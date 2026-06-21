@@ -20,7 +20,7 @@ func primePowerProductBuildProof(P *big.Int, Q *big.Int, challenge *big.Int, ind
 
 	// Generate the challenges and responses
 	var proof PrimePowerProductProof
-	for i := 0; i < primePowerProductIters; i++ {
+	for i := range primePowerProductIters {
 		// Generate the challenge
 		curc := common.GetHashNumber(challenge, index, i, uint(N.BitLen()))
 		curc.Mod(curc, N)
@@ -67,7 +67,7 @@ func primePowerProductVerifyStructure(proof PrimePowerProductProof) bool {
 
 func primePowerProductVerifyProof(N *big.Int, challenge *big.Int, index *big.Int, proof PrimePowerProductProof) bool {
 	// Generate the challenges and responses
-	for i := 0; i < primePowerProductIters; i++ {
+	for i := range primePowerProductIters {
 		// Generate the challenge
 		curc := common.GetHashNumber(challenge, index, i, uint(N.BitLen()))
 		curc.Mod(curc, N)

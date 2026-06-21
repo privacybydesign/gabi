@@ -16,7 +16,7 @@ func testFastMod(t *testing.T, p *big.Int) {
 		return
 	}
 	fm.Set(p)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		l.Set(p)
 		iBi.SetUint64(uint64(i))
 		l.Mul(&l, &iBi)
@@ -35,7 +35,7 @@ func TestFastModFast(t *testing.T) {
 	for j := 1; j < 12; j++ {
 		l.SetUint64(1)
 		l.Lsh(&l, 1<<uint(j))
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			p.Rand(rnd, &l)
 			p.And(&p, &m)
 			p.Sub(&l, &p)
@@ -49,7 +49,7 @@ func TestFastModSlow(t *testing.T) {
 	for j := 1; j < 12; j++ {
 		l.SetUint64(1)
 		l.Lsh(&l, 1<<uint(j))
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			p.Rand(rnd, &l)
 			testFastMod(t, &p)
 		}

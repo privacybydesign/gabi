@@ -5,6 +5,8 @@
 package gabi
 
 import (
+	"slices"
+
 	"github.com/go-errors/errors"
 	"github.com/privacybydesign/gabi/big"
 	"github.com/privacybydesign/gabi/gabikeys"
@@ -97,12 +99,7 @@ func getUndisclosedAttributes(disclosedAttributes []int, numAttributes int) []in
 // isUndisclosedAttribute computes, given the list of disclosed attributes, whether
 // attribute stays hidden
 func isUndisclosedAttribute(disclosedAttributes []int, attribute int) bool {
-	for _, v := range disclosedAttributes {
-		if v == attribute {
-			return false
-		}
-	}
-	return true
+	return !slices.Contains(disclosedAttributes, attribute)
 }
 
 // CreateDisclosureProof creates a disclosure proof (ProofD) for the provided

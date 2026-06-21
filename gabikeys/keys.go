@@ -490,7 +490,7 @@ func GenerateKeyPair(param *SystemParameters, numAttributes int, counter uint, e
 
 	// Derive R_i for i = 0...numAttributes from S
 	pubk.R = make([]*big.Int, numAttributes)
-	for i := 0; i < numAttributes; i++ {
+	for i := range numAttributes {
 		pubk.R[i] = new(big.Int)
 
 		var x *big.Int

@@ -1,5 +1,4 @@
 //go:build !android && !ios
-// +build !android,!ios
 
 // Package safeprime computes safe primes, i.e. primes of the form 2p+1 where p is also prime.
 package safeprime
@@ -37,7 +36,7 @@ func GenerateConcurrent(bitsize int, stop chan struct{}) (<-chan *big.Int, <-cha
 	}()
 
 	// Start safe prime generation goroutines
-	for i := 0; i < count; i++ {
+	for range count {
 		go func() {
 			for {
 				// Pass stopped chan along; if closed, Generate() returns nil, nil

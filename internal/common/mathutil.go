@@ -78,7 +78,7 @@ func ModPow(x, y, m *big.Int) (*big.Int, error) {
 func RepresentToBases(bases, exps []*big.Int, modulus *big.Int, maxMessageLength uint) *big.Int {
 	r := big.NewInt(1)
 	tmp := new(big.Int)
-	for i := 0; i < len(exps); i++ {
+	for i := range exps {
 		exp := exps[i]
 		if exp.BitLen() > int(maxMessageLength) {
 			exp = IntHashSha256(exp.Bytes())
