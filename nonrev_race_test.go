@@ -45,7 +45,7 @@ func TestSharedCredentialConcurrentNonrevDisclosure(t *testing.T) {
 	errs := make([]error, goroutines)
 	proofs := make([]*ProofD, goroutines)
 	wg.Add(goroutines)
-	for i := 0; i < goroutines; i++ {
+	for i := range goroutines {
 		go func(i int) {
 			defer wg.Done()
 			proofs[i], errs[i] = cred.CreateDisclosureProof([]int{1, 2}, nil, true, context, nonce)
@@ -55,7 +55,7 @@ func TestSharedCredentialConcurrentNonrevDisclosure(t *testing.T) {
 
 	// Every concurrently produced proof must be well-formed and verify. A racing
 	// randomizer would otherwise corrupt the non-revocation proof for some goroutines.
-	for i := 0; i < goroutines; i++ {
+	for i := range goroutines {
 		require.NoErrorf(t, errs[i], "goroutine %d failed to create proof", i)
 		require.NotNilf(t, proofs[i], "goroutine %d produced nil proof", i)
 		require.NotNilf(t, proofs[i].NonRevocationProof, "goroutine %d produced no nonrevocation proof", i)
