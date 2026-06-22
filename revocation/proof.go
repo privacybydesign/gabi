@@ -176,17 +176,26 @@ func RandomWitness(sk *gabikeys.PrivateKey, acc *Accumulator) (*Witness, error) 
 func NewProofCommit(key *gabikeys.PublicKey, witn *Witness, randomizer *big.Int) ([]*big.Int, *ProofCommit, error) {
 	Logger.Tracef("revocation.NewProofCommit()")
 	defer Logger.Tracef("revocation.NewProofCommit() done")
-	witn.randomizer = randomizer
 	if randomizer == nil {
-		witn.randomizer = NewProofRandomizer()
+		randomizer = NewProofRandomizer()
 	}
-	if !proofstructure.isTrue((*witness)(witn), witn.SignedAccumulator.Accumulator.Nu, key.N) {
+
+	// Work on a shallow copy of the witness so that this per-proof randomizer is not
+	// written to the (possibly shared) Witness. A single Credential's non-revocation
+	// witness is shared between concurrent CreateDisclosureProof calls (via the
+	// get-or-build nonrevCache fallback), so mutating witn.randomizer here would race.
+	// The copy shares the underlying big.Int / SignedAccumulator pointers, which are
+	// only read on this path.
+	local := *witn
+	local.randomizer = randomizer
+
+	if !proofstructure.isTrue((*witness)(&local), local.SignedAccumulator.Accumulator.Nu, key.N) {
 		return nil, nil, errors.New("non-revocation relation does not hold")
 	}
 
-	bases := zkproof.NewBaseMerge(key, &accumulator{Nu: witn.SignedAccumulator.Accumulator.Nu})
-	list, commit := proofstructure.commitmentsFromSecrets(key, []*big.Int{}, &bases, (*witness)(witn))
-	commit.sacc = witn.SignedAccumulator
+	bases := zkproof.NewBaseMerge(key, &accumulator{Nu: local.SignedAccumulator.Accumulator.Nu})
+	list, commit := proofstructure.commitmentsFromSecrets(key, []*big.Int{}, &bases, (*witness)(&local))
+	commit.sacc = local.SignedAccumulator
 	return list, (*ProofCommit)(&commit), nil
 }
 
