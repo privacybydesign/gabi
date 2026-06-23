@@ -185,7 +185,7 @@ func TestRangeProofVerifyStructureMissingVar(t *testing.T) {
 	s.l2 = 2
 
 	var tlist []*big.Int
-	for i := 0; i < rangeProofIters; i++ {
+	for range rangeProofIters {
 		tlist = append(tlist, big.NewInt(1))
 	}
 
@@ -210,7 +210,7 @@ func TestRangeProofVerifyStructureTooShortVar(t *testing.T) {
 	s.l2 = 2
 
 	var tlist []*big.Int
-	for i := 0; i < rangeProofIters; i++ {
+	for range rangeProofIters {
 		tlist = append(tlist, big.NewInt(1))
 	}
 
@@ -242,12 +242,12 @@ func TestRangeProofVerifyStructureMissingNo(t *testing.T) {
 	s.l2 = 2
 
 	var tlist []*big.Int
-	for i := 0; i < rangeProofIters; i++ {
+	for range rangeProofIters {
 		tlist = append(tlist, big.NewInt(1))
 	}
 
 	var hlist []*big.Int
-	for i := 0; i < rangeProofIters; i++ {
+	for range rangeProofIters {
 		hlist = append(hlist, big.NewInt(2))
 	}
 

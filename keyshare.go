@@ -71,7 +71,6 @@ func KeyshareUserCommitmentRequest[T comparable](
 	// participate in the keyshare protocol).
 	keyIDs := map[publicKeyIdentifier]*T{}
 	for keyID, key := range keys {
-		keyID := keyID
 		keyIDs[publicKeyIdentifier{issuer: key.Issuer, counter: key.Counter}] = &keyID
 	}
 

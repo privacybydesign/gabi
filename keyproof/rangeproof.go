@@ -42,7 +42,7 @@ func (s *rangeProofStructure) commitmentsFromSecrets(g zkproof.Group, list []*bi
 	genOffset := new(big.Int).Lsh(big.NewInt(1), s.l2+rangeProofEpsilon)
 
 	// Build up the range proof randomizers
-	for i := 0; i < rangeProofIters; i++ {
+	for range rangeProofIters {
 		for name, clist := range commit.commits {
 			var rval *big.Int
 			if name == s.rangeSecret {
@@ -57,7 +57,7 @@ func (s *rangeProofStructure) commitmentsFromSecrets(g zkproof.Group, list []*bi
 
 	// Construct the commitments
 	secretMerge := zkproof.NewSecretMerge(&commit, secretdata)
-	for i := 0; i < rangeProofIters; i++ {
+	for i := range rangeProofIters {
 		commit.i = i
 		list = s.RepresentationProofStructure.CommitmentsFromSecrets(g, list, bases, &secretMerge)
 	}
@@ -79,7 +79,7 @@ func (s *rangeProofStructure) buildProof(g zkproof.Group, challenge *big.Int, co
 			// special treatment for range secret
 			resultOffset := new(big.Int).Lsh(big.NewInt(1), s.l2+rangeProofEpsilon+1)
 			l1Offset := new(big.Int).Lsh(big.NewInt(1), s.l1)
-			for i := 0; i < rangeProofIters; i++ {
+			for i := range rangeProofIters {
 				var res *big.Int
 				if challenge.Bit(i) == 1 {
 					res = new(big.Int).Sub(new(big.Int).Add(clist[i], l1Offset), secretdata.Secret(name))
@@ -90,7 +90,7 @@ func (s *rangeProofStructure) buildProof(g zkproof.Group, challenge *big.Int, co
 				rlist = append(rlist, res)
 			}
 		} else {
-			for i := 0; i < rangeProofIters; i++ {
+			for i := range rangeProofIters {
 				var res *big.Int
 				if challenge.Bit(i) == 1 {
 					res = new(big.Int).Mod(new(big.Int).Sub(clist[i], secretdata.Secret(name)), g.Order)
@@ -114,13 +114,13 @@ func (s *rangeProofStructure) fakeProof(g zkproof.Group) RangeProof {
 	for _, curRhs := range s.Rhs {
 		if curRhs.Secret == s.rangeSecret {
 			var rlist []*big.Int
-			for i := 0; i < rangeProofIters; i++ {
+			for range rangeProofIters {
 				rlist = append(rlist, common.FastRandomBigInt(genLimit))
 			}
 			proof.Results[curRhs.Secret] = rlist
 		} else {
 			var rlist []*big.Int
-			for i := 0; i < rangeProofIters; i++ {
+			for range rangeProofIters {
 				rlist = append(rlist, common.FastRandomBigInt(g.Order))
 			}
 			proof.Results[curRhs.Secret] = rlist
@@ -181,7 +181,7 @@ func (s *rangeProofStructure) commitmentsFromProof(g zkproof.Group, list []*big.
 	l1Offset := new(big.Int).Lsh(big.NewInt(1), s.l1)
 
 	// Iterate over all indices
-	for i := 0; i < rangeProofIters; i++ {
+	for i := range rangeProofIters {
 		// Build resultLookup
 		resultLookup := rangeProofResultLookup{map[string]*big.Int{}}
 		for name, rlist := range proof.Results {

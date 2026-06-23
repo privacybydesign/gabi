@@ -24,7 +24,7 @@ func disjointPrimeProductBuildProof(P *big.Int, Q *big.Int, challenge *big.Int, 
 
 	// Generate the challenges and responses
 	var proof DisjointPrimeProductProof
-	for i := 0; i < squareFreeIters; i++ {
+	for i := range squareFreeIters {
 		// Generate the challenge
 		curc := common.GetHashNumber(challenge, index, i, uint(N.BitLen()))
 		curc.Mod(curc, N)
@@ -67,7 +67,7 @@ func disjointPrimeProductVerifyProof(N *big.Int, challenge *big.Int, index *big.
 	}
 
 	// Generate the challenges and verify responses
-	for i := 0; i < squareFreeIters; i++ {
+	for i := range squareFreeIters {
 		// Generate the challenge
 		curc := common.GetHashNumber(challenge, index, i, uint(N.BitLen()))
 		curc.Mod(curc, N)
