@@ -144,6 +144,56 @@ func (privk *PrivateKey) Validate() error {
 	return nil
 }
 
+// wipeInt best-effort overwrites the words backing x with zeros and resets it to
+// zero, to shorten the time secret material lingers in process memory. Go's
+// garbage collector may already have copied the value elsewhere, so this is
+// defense-in-depth rather than a guarantee.
+func wipeInt(x *big.Int) {
+	if x == nil {
+		return
+	}
+	words := x.Bits()
+	for i := range words {
+		words[i] = 0
+	}
+	x.SetInt64(0)
+}
+
+// Destroy zeroes the secret material held by the private key: the prime factors
+// P and Q, the derived factors P' and Q', the group order (P'*Q'), and the
+// revocation (ECDSA) private key. After Destroy the key can no longer sign or be
+// serialized; callers should invoke it once the key has been persisted or is no
+// longer needed.
+//
+// This addresses the storage half of the timing side-channel concern in
+// https://github.com/privacybydesign/gabi/issues/8: the secret prime factors are
+// only required to derive N and the group order, so they need not be retained.
+// The order is itself secret material (together with the public N it reveals the
+// factorization), so it is wiped too. Destroy does not, and cannot, make Go's
+// non-constant-time math/big arithmetic constant-time; that requires replacing
+// the bignum implementation and is out of scope here.
+func (privk *PrivateKey) Destroy() {
+	if privk == nil {
+		return
+	}
+	wipeInt(privk.P)
+	wipeInt(privk.Q)
+	wipeInt(privk.PPrime)
+	wipeInt(privk.QPrime)
+	wipeInt(privk.Order)
+	privk.P = nil
+	privk.Q = nil
+	privk.PPrime = nil
+	privk.QPrime = nil
+	privk.Order = nil
+	if privk.ECDSA != nil {
+		if privk.ECDSA.D != nil {
+			privk.ECDSA.D.SetInt64(0)
+		}
+		privk.ECDSA = nil
+	}
+}
+
 // Print prints the key to stdout.
 func (privk *PrivateKey) Print() error {
 	_, err := privk.WriteTo(os.Stdout)
