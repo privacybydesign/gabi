@@ -6,6 +6,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	mbig "math/big"
 	"os"
 	"strconv"
 	"time"
@@ -159,6 +160,19 @@ func wipeInt(x *big.Int) {
 	x.SetInt64(0)
 }
 
+// wipeStdInt is wipeInt for a standard-library math/big.Int, as used by the
+// ECDSA revocation private key.
+func wipeStdInt(x *mbig.Int) {
+	if x == nil {
+		return
+	}
+	words := x.Bits()
+	for i := range words {
+		words[i] = 0
+	}
+	x.SetInt64(0)
+}
+
 // Destroy zeroes the secret material held by the private key: the prime factors
 // P and Q, the derived factors P' and Q', the group order (P'*Q'), and the
 // revocation (ECDSA) private key. After Destroy the key can no longer sign or be
@@ -187,11 +201,14 @@ func (privk *PrivateKey) Destroy() {
 	privk.QPrime = nil
 	privk.Order = nil
 	if privk.ECDSA != nil {
-		if privk.ECDSA.D != nil {
-			privk.ECDSA.D.SetInt64(0)
-		}
+		wipeStdInt(privk.ECDSA.D)
 		privk.ECDSA = nil
 	}
+	// ECDSAString holds the base64-encoded marshaled ECDSA private key; without
+	// clearing it RevocationSupported() stays true and parseRevocationKey() can
+	// fully reconstruct the private scalar, so the revocation key would remain
+	// re-signable after Destroy.
+	privk.ECDSAString = ""
 }
 
 // Print prints the key to stdout.

@@ -46,6 +46,11 @@ func TestPrivateKeyDestroy(t *testing.T) {
 	privk, _, err := GenerateKeyPair(toyParameters(), 3, 0, time.Now().AddDate(1, 0, 0))
 	require.NoError(t, err, "error generating key pair")
 
+	// GenerateKeyPair also generates a revocation (ECDSA) keypair, so we can
+	// verify Destroy wipes the revocation private key material too.
+	require.True(t, privk.RevocationSupported(), "revocation should be supported before Destroy")
+	require.NotNil(t, privk.ECDSA, "ECDSA key should be present before Destroy")
+
 	// Sanity: freshly generated key holds all secret material and the derived
 	// values are correct.
 	require.NotNil(t, privk.P)
@@ -82,6 +87,14 @@ func TestPrivateKeyDestroy(t *testing.T) {
 	assert.True(t, allZero(pPrimeWords), "PPrime memory should be wiped after Destroy")
 	assert.True(t, allZero(qPrimeWords), "QPrime memory should be wiped after Destroy")
 	assert.True(t, allZero(orderWords), "Order memory should be wiped after Destroy")
+
+	// The revocation (ECDSA) private key is fully removed: both the parsed key
+	// and the base64-encoded backing string, so it can no longer be
+	// reconstructed and re-signed.
+	assert.Empty(t, privk.ECDSAString, "ECDSAString should be cleared after Destroy")
+	assert.False(t, privk.RevocationSupported(), "revocation should not be supported after Destroy")
+	require.NoError(t, privk.parseRevocationKey(), "parseRevocationKey should not error after Destroy")
+	assert.Nil(t, privk.ECDSA, "ECDSA key should not be reconstructable after Destroy")
 
 	// The public modulus N is not secret and is retained.
 	assert.NotNil(t, privk.N, "N should be retained after Destroy")
