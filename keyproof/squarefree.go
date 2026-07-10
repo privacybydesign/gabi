@@ -18,7 +18,7 @@ func squareFreeBuildProof(N *big.Int, phiN *big.Int, challenge *big.Int, index *
 
 	// Generate the challenges and responses
 	var proof SquareFreeProof
-	for i := 0; i < squareFreeIters; i++ {
+	for i := range squareFreeIters {
 		// Generate the challenge
 		curc := common.GetHashNumber(challenge, index, i, uint(N.BitLen()))
 		curc.Mod(curc, N)
@@ -55,7 +55,7 @@ func squareFreeVerifyProof(N *big.Int, challenge *big.Int, index *big.Int, proof
 	}
 
 	// Generate the challenges and verify responses
-	for i := 0; i < squareFreeIters; i++ {
+	for i := range squareFreeIters {
 		// Generate the challenge
 		curc := common.GetHashNumber(challenge, index, i, uint(N.BitLen()))
 		curc.Mod(curc, N)
