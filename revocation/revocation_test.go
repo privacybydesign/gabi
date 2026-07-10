@@ -183,7 +183,7 @@ func generateUpdate(t *testing.T) (*Update, *gabikeys.PublicKey, *gabikeys.Priva
 
 	event := update.Events[0]
 	events := update.Events
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		acc, event = revoke(t, acc, event, sk)
 		events = append(events, event)
 	}
@@ -221,7 +221,7 @@ func TestWitnessUpdate(t *testing.T) {
 	require.NoError(t, witness.Verify(pk))
 
 	// updating against a too new update is an error
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		acc, event = revoke(t, acc, event, sk)
 		events = append(events, event)
 	}
@@ -255,7 +255,7 @@ func TestUpdateVerification(t *testing.T) {
 	t.Run("PartialEventChain", func(t *testing.T) {
 		update, pk, _, _ := generateUpdate(t)
 		count := len(update.Events)
-		for i := 0; i < count; i++ {
+		for range count {
 			update.Events = update.Events[1:]
 			_, err := update.Verify(pk)
 			require.NoError(t, err)

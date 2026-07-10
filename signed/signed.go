@@ -121,7 +121,7 @@ func Verify(pk *ecdsa.PublicKey, bts []byte, signature []byte) error {
 // MarshalSign marshals the message to bytes using either its MarshalBinary() method (c.f.
 // the encoding.BinaryMarshaler interface) or using gob, signs the resulting bytes, and returns
 // signed message bytes suitable for verifying with UnmarshalVerify.
-func MarshalSign(sk *ecdsa.PrivateKey, message interface{}) (Message, error) {
+func MarshalSign(sk *ecdsa.PrivateKey, message any) (Message, error) {
 	var err error
 
 	// marshal message to []byte
@@ -143,7 +143,7 @@ func MarshalSign(sk *ecdsa.PrivateKey, message interface{}) (Message, error) {
 // UnmarshalVerify verifies the signature a Message created by MarshalSign, and unmarshals the
 // message bytes into dst using either its UnmarshalBinary method (c.f. the
 // encoding.BinaryUnmarshaler interface) or using gob.
-func UnmarshalVerify(pk *ecdsa.PublicKey, signed Message, dst interface{}) error {
+func UnmarshalVerify(pk *ecdsa.PublicKey, signed Message, dst any) error {
 	var err error
 
 	// decode message-signature pair
