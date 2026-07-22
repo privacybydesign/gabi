@@ -89,17 +89,15 @@ func TestNonrevCacheConcurrent(t *testing.T) {
 	}
 }
 
-// TestNonrevCacheSharedCredentialConcurrent reproduces a data race in the
-// "realistic" call pattern described in the issue: a service issuing/disclosing
-// in parallel on the *same* Credential. It is skipped because it currently
-// fails under -race: revocation.NewProofCommit (revocation/proof.go) writes
-// witn.randomizer on the Credential's shared NonRevocationWitness, so multiple
-// goroutines building proof commitments concurrently race on that field (and on
-// the downstream witness reads). See issue #63. Remove the t.Skip once the
-// shared-witness mutation is fixed; this test then becomes the regression guard.
+// TestNonrevCacheSharedCredentialConcurrent is the regression guard for the
+// data race from issue #63: a service disclosing in parallel on the *same*
+// Credential. NewProofCommit used to write witn.randomizer onto the
+// Credential's shared NonRevocationWitness, so concurrent proof-commitment
+// builds raced on that field (and on the downstream witness reads). The fix
+// (revocation/proof.go) makes NewProofCommit work on a shallow copy of the
+// witness instead of mutating the shared one; issue #63 is closed. This test
+// exercises the shared-Credential path and must stay green under -race.
 func TestNonrevCacheSharedCredentialConcurrent(t *testing.T) {
-	t.Skip("known data race: concurrent disclosure on a shared Credential mutates NonRevocationWitness.randomizer (revocation.NewProofCommit); see issue #63")
-
 	cred := newRevocationCredential(t)
 
 	context, err := common.RandomBigInt(testPubK.Params.Lh)
