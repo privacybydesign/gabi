@@ -234,7 +234,7 @@ func TestClSignatureRandomize(t *testing.T) {
 
 	assert.True(t, sig.Verify(testPubK, m), "CLSignature did not verify, whereas it should.")
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		sigRandomized, err := sig.Randomize(testPubK)
 		assert.NoError(t, err)
 		assert.True(t, sigRandomized.Verify(testPubK, m), "Randomized CLSignature did not verify, whereas it should.")
@@ -582,7 +582,7 @@ func TestGenerateKeyPair(t *testing.T) {
 	}
 
 	// Using the toy parameters, generate a bunch of keys
-	for i := 0; i < 1; i++ {
+	for range 1 {
 		privk, pubk, err := gabikeys.GenerateKeyPair(gabikeys.DefaultSystemParameters[256], 6, 0, time.Now().AddDate(1, 0, 0))
 		assert.NoError(t, err, "error generating key pair")
 		testPrivateKey(t, privk, true)
