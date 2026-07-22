@@ -61,11 +61,11 @@ func TestNonrevCacheConcurrent(t *testing.T) {
 
 	var wg sync.WaitGroup
 	errs := make(chan error, goroutines*iterations)
-	for i := 0; i < goroutines; i++ {
+	for i := range goroutines {
 		wg.Add(1)
 		go func(cred *Credential) {
 			defer wg.Done()
-			for j := 0; j < iterations; j++ {
+			for range iterations {
 				proofd, err := cred.CreateDisclosureProof([]int{1, 2}, nil, true, context, nonce)
 				if err != nil {
 					errs <- err
@@ -110,10 +110,8 @@ func TestNonrevCacheSharedCredentialConcurrent(t *testing.T) {
 	const goroutines = 16
 	var wg sync.WaitGroup
 	errs := make(chan error, goroutines)
-	for i := 0; i < goroutines; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range goroutines {
+		wg.Go(func() {
 			proofd, err := cred.CreateDisclosureProof([]int{1, 2}, nil, true, context, nonce)
 			if err != nil {
 				errs <- err
@@ -122,7 +120,7 @@ func TestNonrevCacheSharedCredentialConcurrent(t *testing.T) {
 			if proofd.NonRevocationProof == nil {
 				errs <- errProofMissingNonrev
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	close(errs)

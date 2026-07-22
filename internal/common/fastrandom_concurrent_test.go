@@ -20,18 +20,16 @@ func TestFastRandomBigIntConcurrent(t *testing.T) {
 	const iterations = 100
 
 	var wg sync.WaitGroup
-	for i := 0; i < goroutines; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for j := 0; j < iterations; j++ {
+	for range goroutines {
+		wg.Go(func() {
+			for range iterations {
 				v := FastRandomBigInt(limit)
 				if v.Sign() < 0 || v.Cmp(limit) >= 0 {
 					t.Errorf("FastRandomBigInt returned out-of-range value: %s", v.String())
 					return
 				}
 			}
-		}()
+		})
 	}
 	wg.Wait()
 }
@@ -51,18 +49,16 @@ func TestRandomQRConcurrent(t *testing.T) {
 	const iterations = 25
 
 	var wg sync.WaitGroup
-	for i := 0; i < goroutines; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for j := 0; j < iterations; j++ {
+	for range goroutines {
+		wg.Go(func() {
+			for range iterations {
 				qr := RandomQR(n)
 				if qr.Sign() < 0 || qr.Cmp(n) >= 0 {
 					t.Errorf("RandomQR returned out-of-range value: %s", qr.String())
 					return
 				}
 			}
-		}()
+		})
 	}
 	wg.Wait()
 }

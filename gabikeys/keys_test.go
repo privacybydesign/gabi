@@ -348,10 +348,8 @@ func TestGenerateKeyPairConcurrent(t *testing.T) {
 
 	var wg sync.WaitGroup
 	errs := make(chan error, n)
-	for i := 0; i < n; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range n {
+		wg.Go(func() {
 			priv, pub, err := GenerateKeyPair(params, 2, 0, time.Now().AddDate(1, 0, 0))
 			if err != nil {
 				errs <- err
@@ -364,7 +362,7 @@ func TestGenerateKeyPairConcurrent(t *testing.T) {
 			if priv.N.Cmp(pub.N) != 0 {
 				errs <- errors.New("private/public modulus mismatch")
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	close(errs)
