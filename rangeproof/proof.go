@@ -244,7 +244,7 @@ func newWithParams(index, sign int, a uint, k *big.Int, split SquareSplitter, nS
 		ld:       ld,
 	}
 
-	for i := 0; i < nSplit; i++ {
+	for i := range nSplit {
 		result.cRep = append(result.cRep, zkproof.QrRepresentationProofStructure{
 			Lhs: []zkproof.LhsContribution{
 				{Base: fmt.Sprintf("C%d", i), Power: big.NewInt(1)},

@@ -14,14 +14,14 @@ import (
 // with that hash.
 func HashCommit(values []*big.Int, issig bool) *big.Int {
 	// The first element is the number of elements
-	var tmp []interface{}
+	var tmp []any
 	offset := 0
 	if issig {
-		tmp = make([]interface{}, len(values)+2)
+		tmp = make([]any, len(values)+2)
 		tmp[0] = true
 		offset++
 	} else {
-		tmp = make([]interface{}, len(values)+1)
+		tmp = make([]any, len(values)+1)
 	}
 	tmp[offset] = gobig.NewInt(int64(len(values)))
 	offset++

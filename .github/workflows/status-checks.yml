@@ -22,7 +22,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v6
       with:
-        go-version: "1.24"
+        go-version: "1.26"
 
     - name: Run gofmt
       # gofmt does not return non-zero exit codes on failure, so we have to check that there are no issues using grep.
@@ -50,6 +50,14 @@ jobs:
     - name: Run staticcheck
       run: staticcheck ./...
 
+    - name: Check go fix
+      run: |
+        go fix ./...
+        if ! git diff --exit-code; then
+          echo "::error::go fix produced changes - run 'go fix ./...' locally"
+          exit 1
+        fi
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -58,7 +66,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.24"
+          go-version: "1.26"
 
       - name: Run all unit tests
         run: go test -v ./...
