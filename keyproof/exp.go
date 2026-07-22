@@ -80,7 +80,7 @@ func newExpProofStructure(base, exponent, mod, result string, bitlen uint) expPr
 	}
 
 	// Bit representation proofs
-	for i := uint(0); i < bitlen; i++ {
+	for i := range bitlen {
 		structure.expBits = append(
 			structure.expBits,
 			newPedersenStructure(strings.Join([]string{structure.myname, "bit", fmt.Sprintf("%v", i)}, "_")))
@@ -95,7 +95,7 @@ func newExpProofStructure(base, exponent, mod, result string, bitlen uint) expPr
 			{Base: "h", Secret: strings.Join([]string{structure.myname, "biteqhider"}, "_"), Power: 1},
 		},
 	}
-	for i := uint(0); i < bitlen; i++ {
+	for i := range bitlen {
 		structure.expBitEq.Lhs = append(
 			structure.expBitEq.Lhs,
 			zkproof.LhsContribution{
@@ -105,7 +105,7 @@ func newExpProofStructure(base, exponent, mod, result string, bitlen uint) expPr
 	}
 
 	// Base representation proofs
-	for i := uint(0); i < bitlen; i++ {
+	for i := range bitlen {
 		structure.basePows = append(
 			structure.basePows,
 			newPedersenStructure(strings.Join([]string{structure.myname, "base", fmt.Sprintf("%v", i)}, "_")))
@@ -113,7 +113,7 @@ func newExpProofStructure(base, exponent, mod, result string, bitlen uint) expPr
 
 	// Base range proofs
 	structure.basePowRange = []rangeProofStructure{}
-	for i := uint(0); i < bitlen; i++ {
+	for i := range bitlen {
 		structure.basePowRange = append(
 			structure.basePowRange,
 			newPedersenRangeProofStructure(strings.Join([]string{structure.myname, "base", fmt.Sprintf("%v", i)}, "_"), 0, bitlen))
@@ -121,7 +121,7 @@ func newExpProofStructure(base, exponent, mod, result string, bitlen uint) expPr
 
 	// Base relations proofs
 	structure.basePowRels = []multiplicationProofStructure{}
-	for i := uint(0); i < bitlen; i++ {
+	for i := range bitlen {
 		if i == 0 {
 			// special case for start
 			structure.basePowRels = append(
@@ -173,7 +173,7 @@ func newExpProofStructure(base, exponent, mod, result string, bitlen uint) expPr
 
 	// step proofs
 	structure.interSteps = []expStepStructure{}
-	for i := uint(0); i < bitlen; i++ {
+	for i := range bitlen {
 		if i == 0 {
 			// special case for start
 			structure.interSteps = append(
@@ -364,7 +364,7 @@ func (s *expProofStructure) commitmentsFromSecrets(g zkproof.Group, list []*big.
 	workerCount := runtime.NumCPU()
 	wg := sync.WaitGroup{}
 	wg.Add(workerCount)
-	for worker := 0; worker < workerCount; worker++ {
+	for range workerCount {
 		go func() {
 			for {
 				offset := int(atomic.AddUint32(todoOffset, 1))
@@ -680,7 +680,7 @@ func (s *expProofStructure) commitmentsFromProof(g zkproof.Group, list []*big.In
 	workerCount := runtime.NumCPU()
 	wg := sync.WaitGroup{}
 	wg.Add(workerCount)
-	for worker := 0; worker < workerCount; worker++ {
+	for range workerCount {
 		go func() {
 			for {
 				offset := int(atomic.AddUint32(todoOffset, 1))
