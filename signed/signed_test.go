@@ -2,6 +2,8 @@ package signed
 
 import (
 	"crypto/rand"
+	"encoding/asn1"
+	stdbig "math/big"
 	"reflect"
 	"testing"
 
@@ -53,6 +55,46 @@ func TestUnmarshalPemKey_Malformed(t *testing.T) {
 		_, err := UnmarshalPemPublicKey(privPem)
 		require.Error(t, err)
 	})
+}
+
+// Verify processes untrusted input, so every malformed signature encoding must
+// be rejected with an error.
+func TestVerify_MalformedSignature(t *testing.T) {
+	sk, err := GenerateKey()
+	require.NoError(t, err)
+
+	valid, err := Sign(sk, []byte("hello"))
+	require.NoError(t, err)
+
+	empty, err := asn1.Marshal([]*stdbig.Int{})
+	require.NoError(t, err)
+	single, err := asn1.Marshal([]*stdbig.Int{stdbig.NewInt(1)})
+	require.NoError(t, err)
+	threeInts, err := asn1.Marshal([]*stdbig.Int{stdbig.NewInt(1), stdbig.NewInt(2), stdbig.NewInt(3)})
+	require.NoError(t, err)
+
+	cases := []struct {
+		name string
+		in   []byte
+	}{
+		{"empty bytes", []byte{}},
+		{"garbage", []byte("not asn1")},
+		{"empty sequence", empty},
+		{"single integer", single},
+		{"three integers", threeInts},
+		{"trailing garbage", append(append([]byte{}, valid...), 0x00, 0x01)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			require.NotPanics(t, func() {
+				err := Verify(&sk.PublicKey, []byte("hello"), tc.in)
+				require.Error(t, err)
+			})
+		})
+	}
+
+	// a genuine signature must still verify
+	require.NoError(t, Verify(&sk.PublicKey, []byte("hello"), valid))
 }
 
 func TestSigned(t *testing.T) {
