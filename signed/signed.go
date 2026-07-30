@@ -110,13 +110,19 @@ func Sign(sk *ecdsa.PrivateKey, bts []byte) ([]byte, error) {
 }
 
 func Verify(pk *ecdsa.PublicKey, bts []byte, signature []byte) error {
-	ints := make([]*big.Int, 2)
-	_, err := asn1.Unmarshal(signature, &ints)
+	// A signature is a SEQUENCE of exactly two integers. Unmarshaling into a
+	// fixed two-field struct makes asn1 enforce that shape, so R and S are
+	// always present once Unmarshal returns without error.
+	var sig struct{ R, S *big.Int }
+	rest, err := asn1.Unmarshal(signature, &sig)
 	if err != nil {
 		return err
 	}
+	if len(rest) != 0 {
+		return ErrInvalidSignature
+	}
 	hash := sha256.Sum256(bts)
-	if !ecdsa.Verify(pk, hash[:], ints[0], ints[1]) {
+	if !ecdsa.Verify(pk, hash[:], sig.R, sig.S) {
 		return ErrInvalidSignature
 	}
 	return nil
