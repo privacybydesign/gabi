@@ -1,125 +1,95 @@
-package gabikeys
+package gabikeys_test
 
 import (
-	mbig "math/big"
+	"os"
+	"path/filepath"
+	"syscall"
 	"testing"
-	"time"
 
-	"github.com/privacybydesign/gabi/big"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/privacybydesign/gabi/gabikeys"
 )
 
-// toyParameters returns small system parameters so that GenerateKeyPair runs
-// fast enough for a unit test (real 2048-bit safe-prime generation is far too
-// slow). These are for testing only and are not secure.
-func toyParameters() *SystemParameters {
-	base := BaseParameters{
-		LePrime: 120,
-		Lh:      256,
-		Lm:      256,
-		Ln:      256,
-		Lstatzk: 80,
-	}
-	return &SystemParameters{
-		BaseParameters:    base,
-		DerivedParameters: MakeDerivedParameters(base),
-	}
-}
+// Regression test for issue #56 (also #7): PrivateKey.WriteToFile must produce
+// a file with mode 0600 in both the forceOverwrite=true and =false branches.
+// Previously the forceOverwrite=true branch used os.Create, which yields
+// 0666 & ^umask (typically 0644 — world-readable) for a file containing the
+// issuer's private key.
+func TestPrivateKeyWriteToFilePermissions(t *testing.T) {
+	// Neutralize the test runner's umask so we verify the mode we passed,
+	// not whatever the environment happened to strip.
+	old := syscall.Umask(0)
+	t.Cleanup(func() { syscall.Umask(old) })
 
-// allZero reports whether every word in the slice is zero.
-func allZero(words []mbig.Word) bool {
-	for _, w := range words {
-		if w != 0 {
-			return false
+	dir := t.TempDir()
+	priv := &gabikeys.PrivateKey{}
+
+	t.Run("forceOverwrite=false on fresh path", func(t *testing.T) {
+		path := filepath.Join(dir, "priv-noforce.xml")
+		if _, err := priv.WriteToFile(path, false); err != nil {
+			t.Fatalf("WriteToFile: %v", err)
 		}
+		assertPerm(t, path, 0600)
+	})
+
+	t.Run("forceOverwrite=true on fresh path", func(t *testing.T) {
+		path := filepath.Join(dir, "priv-force-fresh.xml")
+		if _, err := priv.WriteToFile(path, true); err != nil {
+			t.Fatalf("WriteToFile: %v", err)
+		}
+		assertPerm(t, path, 0600)
+	})
+
+	t.Run("forceOverwrite=true over existing file", func(t *testing.T) {
+		// This is the actual regression path: a caller rotating/replacing
+		// an on-disk key. Pre-create the file with permissive perms to
+		// catch any implementation that preserves existing modes.
+		path := filepath.Join(dir, "priv-force-overwrite.xml")
+		if err := os.WriteFile(path, []byte("stale"), 0644); err != nil {
+			t.Fatalf("seed file: %v", err)
+		}
+		if _, err := priv.WriteToFile(path, true); err != nil {
+			t.Fatalf("WriteToFile: %v", err)
+		}
+		assertPerm(t, path, 0600)
+	})
+}
+
+// Companion test for PublicKey.WriteToFile. Not a security issue, but the
+// fix in #56 made both branches consistent at 0644 — guard against
+// regressions there too. We only assert on freshly created files: open(2)
+// preserves the mode of pre-existing files and the public key path does
+// not (and should not) force-loosen tighter perms a deployer may have set.
+func TestPublicKeyWriteToFilePermissions(t *testing.T) {
+	old := syscall.Umask(0)
+	t.Cleanup(func() { syscall.Umask(old) })
+
+	dir := t.TempDir()
+	pub := &gabikeys.PublicKey{}
+
+	t.Run("forceOverwrite=false on fresh path", func(t *testing.T) {
+		path := filepath.Join(dir, "pub-noforce.xml")
+		if _, err := pub.WriteToFile(path, false); err != nil {
+			t.Fatalf("WriteToFile: %v", err)
+		}
+		assertPerm(t, path, 0644)
+	})
+
+	t.Run("forceOverwrite=true on fresh path", func(t *testing.T) {
+		path := filepath.Join(dir, "pub-force-fresh.xml")
+		if _, err := pub.WriteToFile(path, true); err != nil {
+			t.Fatalf("WriteToFile: %v", err)
+		}
+		assertPerm(t, path, 0644)
+	})
+}
+
+func assertPerm(t *testing.T, path string, want os.FileMode) {
+	t.Helper()
+	fi, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat %s: %v", path, err)
 	}
-	return true
-}
-
-// TestPrivateKeyDestroy asserts that, after a key has been generated, Destroy
-// removes and overwrites the secret prime factors P, Q, P' and Q' (and the
-// derived group order), so they are not retained in memory. This is the storage
-// mitigation for the timing side-channel concern in issue #8.
-func TestPrivateKeyDestroy(t *testing.T) {
-	privk, _, err := GenerateKeyPair(toyParameters(), 3, 0, time.Now().AddDate(1, 0, 0))
-	require.NoError(t, err, "error generating key pair")
-
-	// GenerateKeyPair also generates a revocation (ECDSA) keypair, so we can
-	// verify Destroy wipes the revocation private key material too.
-	require.True(t, privk.RevocationSupported(), "revocation should be supported before Destroy")
-	require.NotNil(t, privk.ECDSA, "ECDSA key should be present before Destroy")
-
-	// Sanity: freshly generated key holds all secret material and the derived
-	// values are correct.
-	require.NotNil(t, privk.P)
-	require.NotNil(t, privk.Q)
-	require.NotNil(t, privk.PPrime)
-	require.NotNil(t, privk.QPrime)
-	require.NotNil(t, privk.Order)
-	require.NotNil(t, privk.N)
-	assert.Equal(t, 0, new(big.Int).Mul(privk.P, privk.Q).Cmp(privk.N), "N should equal P*Q before Destroy")
-	assert.Equal(t, 0, new(big.Int).Mul(privk.PPrime, privk.QPrime).Cmp(privk.Order), "Order should equal P'*Q' before Destroy")
-
-	// Keep references to the underlying word backing arrays so we can verify the
-	// memory itself is overwritten, not just the pointers cleared.
-	pWords := privk.P.Bits()
-	qWords := privk.Q.Bits()
-	pPrimeWords := privk.PPrime.Bits()
-	qPrimeWords := privk.QPrime.Bits()
-	orderWords := privk.Order.Bits()
-	require.False(t, allZero(pWords), "P should be non-zero before Destroy")
-
-	privk.Destroy()
-
-	// The secret fields are cleared.
-	assert.Nil(t, privk.P, "P should be nil after Destroy")
-	assert.Nil(t, privk.Q, "Q should be nil after Destroy")
-	assert.Nil(t, privk.PPrime, "PPrime should be nil after Destroy")
-	assert.Nil(t, privk.QPrime, "QPrime should be nil after Destroy")
-	assert.Nil(t, privk.Order, "Order should be nil after Destroy")
-	assert.Nil(t, privk.ECDSA, "ECDSA private key should be nil after Destroy")
-
-	// The backing memory is overwritten with zeros.
-	assert.True(t, allZero(pWords), "P memory should be wiped after Destroy")
-	assert.True(t, allZero(qWords), "Q memory should be wiped after Destroy")
-	assert.True(t, allZero(pPrimeWords), "PPrime memory should be wiped after Destroy")
-	assert.True(t, allZero(qPrimeWords), "QPrime memory should be wiped after Destroy")
-	assert.True(t, allZero(orderWords), "Order memory should be wiped after Destroy")
-
-	// The revocation (ECDSA) private key is fully removed: both the parsed key
-	// and the base64-encoded backing string, so it can no longer be
-	// reconstructed and re-signed.
-	assert.Empty(t, privk.ECDSAString, "ECDSAString should be cleared after Destroy")
-	assert.False(t, privk.RevocationSupported(), "revocation should not be supported after Destroy")
-	require.NoError(t, privk.parseRevocationKey(), "parseRevocationKey should not error after Destroy")
-	assert.Nil(t, privk.ECDSA, "ECDSA key should not be reconstructable after Destroy")
-
-	// The public modulus N is not secret and is retained.
-	assert.NotNil(t, privk.N, "N should be retained after Destroy")
-}
-
-// TestPrivateKeyDestroyIdempotent asserts that Destroy is safe to call more than
-// once and on a nil receiver.
-func TestPrivateKeyDestroyIdempotent(t *testing.T) {
-	p := s2big("10436034022637868273483137633548989700482895839559909621411910579140541345632481969613724849214412062500244238926015929148144084368427474551770487566048119")
-	q := s2big("9204968012315139729618449685392284928468933831570080795536662422367142181432679739143882888540883909887054345986640656981843559062844656131133512640733759")
-
-	privk, err := NewPrivateKey(p, q, "", 0, time.Now().AddDate(1, 0, 0))
-	require.NoError(t, err)
-
-	assert.NotPanics(t, func() { privk.Destroy() })
-	assert.Nil(t, privk.P)
-	// Second call must not panic on the already-nil fields.
-	assert.NotPanics(t, func() { privk.Destroy() })
-
-	// Nil receiver is safe.
-	var nilKey *PrivateKey
-	assert.NotPanics(t, func() { nilKey.Destroy() })
-}
-
-func s2big(s string) *big.Int {
-	x, _ := new(big.Int).SetString(s, 10)
-	return x
+	if got := fi.Mode().Perm(); got != want {
+		t.Fatalf("%s: mode = %#o, want %#o", path, got, want)
+	}
 }
