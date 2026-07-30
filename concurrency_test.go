@@ -37,11 +37,11 @@ func newRevocationCredential(t *testing.T) *Credential {
 // (including Credential.nonrevCache and the revocation proof machinery) from
 // many goroutines simultaneously, sharing the public key and the global CPRNG.
 //
-// Each goroutine operates on its OWN Credential (with its own witness). This is
-// deliberate: concurrent disclosure on a *single shared* Credential currently
-// races, because revocation.NewProofCommit mutates the shared
-// NonRevocationWitness.randomizer. That race is captured (and skipped) in
-// TestNonrevCacheSharedCredentialConcurrent below.
+// Each goroutine operates on its OWN Credential (with its own witness), so this
+// covers the multi-credential fan-out a verifier-side service sees. The
+// *single shared* Credential path — which used to race on
+// NonRevocationWitness.randomizer, issue #63 — is guarded separately by
+// TestSharedCredentialConcurrentNonrevDisclosure in nonrev_race_test.go.
 //
 // Run under `go test -race` to detect data races on the shared public key,
 // the revocation proof structures, and the global random generator.
@@ -81,44 +81,6 @@ func TestNonrevCacheConcurrent(t *testing.T) {
 				}
 			}
 		}(creds[i])
-	}
-	wg.Wait()
-	close(errs)
-	for err := range errs {
-		t.Error(err)
-	}
-}
-
-// TestNonrevCacheSharedCredentialConcurrent is the regression guard for the
-// data race from issue #63: a service disclosing in parallel on the *same*
-// Credential. NewProofCommit used to write witn.randomizer onto the
-// Credential's shared NonRevocationWitness, so concurrent proof-commitment
-// builds raced on that field (and on the downstream witness reads). The fix
-// (revocation/proof.go) makes NewProofCommit work on a shallow copy of the
-// witness instead of mutating the shared one; issue #63 is closed. This test
-// exercises the shared-Credential path and must stay green under -race.
-func TestNonrevCacheSharedCredentialConcurrent(t *testing.T) {
-	cred := newRevocationCredential(t)
-
-	context, err := common.RandomBigInt(testPubK.Params.Lh)
-	require.NoError(t, err)
-	nonce, err := common.RandomBigInt(testPubK.Params.Lstatzk)
-	require.NoError(t, err)
-
-	const goroutines = 16
-	var wg sync.WaitGroup
-	errs := make(chan error, goroutines)
-	for range goroutines {
-		wg.Go(func() {
-			proofd, err := cred.CreateDisclosureProof([]int{1, 2}, nil, true, context, nonce)
-			if err != nil {
-				errs <- err
-				return
-			}
-			if proofd.NonRevocationProof == nil {
-				errs <- errProofMissingNonrev
-			}
-		})
 	}
 	wg.Wait()
 	close(errs)

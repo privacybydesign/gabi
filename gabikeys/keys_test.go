@@ -1,8 +1,4 @@
-// Copyright 2016 Maarten Everts. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
-package gabikeys
+package gabikeys_test
 
 import (
 	"bytes"
@@ -10,10 +6,12 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/privacybydesign/gabi/big"
+	"github.com/privacybydesign/gabi/gabikeys"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -72,20 +70,23 @@ func s2big(s string) *big.Int {
 // smallSystemParameters returns system parameters for a tiny modulus so key
 // generation terminates near-instantly in tests. GenerateKeyPair only depends
 // on the base parameters, so we don't need an entry in DefaultSystemParameters.
-func smallSystemParameters(ln uint) *SystemParameters {
-	base := BaseParameters{
+func smallSystemParameters(ln uint) *gabikeys.SystemParameters {
+	base := gabikeys.BaseParameters{
 		LePrime: 120,
 		Lh:      256,
 		Lm:      256,
 		Ln:      ln,
 		Lstatzk: 80,
 	}
-	return &SystemParameters{BaseParameters: base, DerivedParameters: MakeDerivedParameters(base)}
+	return &gabikeys.SystemParameters{
+		BaseParameters:    base,
+		DerivedParameters: gabikeys.MakeDerivedParameters(base),
+	}
 }
 
 func TestNewPrivateKey(t *testing.T) {
 	p, q := s2big(p1), s2big(q1)
-	sk, err := NewPrivateKey(p, q, "", 0, time.Now().AddDate(1, 0, 0))
+	sk, err := gabikeys.NewPrivateKey(p, q, "", 0, time.Now().AddDate(1, 0, 0))
 	require.NoError(t, err)
 	require.NotNil(t, sk)
 
@@ -99,7 +100,7 @@ func TestNewPrivateKey(t *testing.T) {
 }
 
 func TestNewPrivateKeyFromXML(t *testing.T) {
-	sk, err := NewPrivateKeyFromXML(xmlPrivKey1, false)
+	sk, err := gabikeys.NewPrivateKeyFromXML(xmlPrivKey1, false)
 	require.NoError(t, err)
 	require.NotNil(t, sk)
 	assert.Equal(t, 0, sk.P.Cmp(s2big(p1)))
@@ -107,13 +108,13 @@ func TestNewPrivateKeyFromXML(t *testing.T) {
 	assert.NoError(t, sk.Validate())
 
 	// demo mode skips validation; should still parse.
-	sk2, err := NewPrivateKeyFromXML(xmlPrivKey1, true)
+	sk2, err := gabikeys.NewPrivateKeyFromXML(xmlPrivKey1, true)
 	require.NoError(t, err)
 	require.NotNil(t, sk2)
 }
 
 func TestNewPrivateKeyFromXMLMalformed(t *testing.T) {
-	_, err := NewPrivateKeyFromXML("this is not xml", false)
+	_, err := gabikeys.NewPrivateKeyFromXML("this is not xml", false)
 	assert.Error(t, err)
 
 	// well-formed XML but the primes do not satisfy p = 2p'+1, so Validate fails
@@ -126,10 +127,10 @@ func TestNewPrivateKeyFromXMLMalformed(t *testing.T) {
       <p>23</p><q>23</q><pPrime>3</pPrime><qPrime>3</qPrime>
    </Elements>
 </IssuerPrivateKey>`
-	_, err = NewPrivateKeyFromXML(bad, false)
+	_, err = gabikeys.NewPrivateKeyFromXML(bad, false)
 	assert.Error(t, err)
 	// In demo mode the same malformed key parses without validation.
-	_, err = NewPrivateKeyFromXML(bad, true)
+	_, err = gabikeys.NewPrivateKeyFromXML(bad, true)
 	assert.NoError(t, err)
 }
 
@@ -138,17 +139,17 @@ func TestNewPrivateKeyFromFile(t *testing.T) {
 	fname := filepath.Join(dir, "sk.xml")
 	require.NoError(t, os.WriteFile(fname, []byte(xmlPrivKey1), 0600))
 
-	sk, err := NewPrivateKeyFromFile(fname, false)
+	sk, err := gabikeys.NewPrivateKeyFromFile(fname, false)
 	require.NoError(t, err)
 	assert.Equal(t, 0, sk.P.Cmp(s2big(p1)))
 
-	_, err = NewPrivateKeyFromFile(filepath.Join(dir, "does-not-exist.xml"), false)
+	_, err = gabikeys.NewPrivateKeyFromFile(filepath.Join(dir, "does-not-exist.xml"), false)
 	assert.Error(t, err)
 }
 
 func TestPrivateKeyValidate(t *testing.T) {
 	// P and P' are inconsistent.
-	sk := &PrivateKey{
+	sk := &gabikeys.PrivateKey{
 		P:      big.NewInt(11),
 		Q:      big.NewInt(11),
 		PPrime: big.NewInt(99),
@@ -158,34 +159,34 @@ func TestPrivateKeyValidate(t *testing.T) {
 }
 
 func TestNewPublicKey(t *testing.T) {
-	parsed, err := NewPublicKeyFromXML(xmlPubKey1)
+	parsed, err := gabikeys.NewPublicKeyFromXML(xmlPubKey1)
 	require.NoError(t, err)
 
-	pk, err := NewPublicKey(parsed.N, parsed.Z, parsed.S, nil, nil, parsed.R, "", 0, time.Now().AddDate(1, 0, 0))
+	pk, err := gabikeys.NewPublicKey(parsed.N, parsed.Z, parsed.S, nil, nil, parsed.R, "", 0, time.Now().AddDate(1, 0, 0))
 	require.NoError(t, err)
 	require.NotNil(t, pk)
 	require.NotNil(t, pk.Params, "Params should be derived from the modulus bit length")
 	assert.Equal(t, 0, pk.N.Cmp(parsed.N))
-	assert.Equal(t, DefaultEpochLength, int(pk.EpochLength))
+	assert.Equal(t, gabikeys.DefaultEpochLength, int(pk.EpochLength))
 	assert.False(t, pk.RevocationSupported())
 }
 
 func TestNewPublicKeyFromBytes(t *testing.T) {
-	pk, err := NewPublicKeyFromBytes([]byte(xmlPubKey1))
+	pk, err := gabikeys.NewPublicKeyFromBytes([]byte(xmlPubKey1))
 	require.NoError(t, err)
 	require.NotNil(t, pk.Params)
 	assert.Len(t, pk.R, 6)
 
-	_, err = NewPublicKeyFromBytes([]byte("not xml at all"))
+	_, err = gabikeys.NewPublicKeyFromBytes([]byte("not xml at all"))
 	assert.Error(t, err)
 }
 
 func TestNewPublicKeyFromXML(t *testing.T) {
-	pk, err := NewPublicKeyFromXML(xmlPubKey1)
+	pk, err := gabikeys.NewPublicKeyFromXML(xmlPubKey1)
 	require.NoError(t, err)
 	require.NotNil(t, pk)
 
-	_, err = NewPublicKeyFromXML("<broken")
+	_, err = gabikeys.NewPublicKeyFromXML("<broken")
 	assert.Error(t, err)
 }
 
@@ -194,16 +195,16 @@ func TestNewPublicKeyFromFile(t *testing.T) {
 	fname := filepath.Join(dir, "pk.xml")
 	require.NoError(t, os.WriteFile(fname, []byte(xmlPubKey1), 0644))
 
-	pk, err := NewPublicKeyFromFile(fname)
+	pk, err := gabikeys.NewPublicKeyFromFile(fname)
 	require.NoError(t, err)
 	require.NotNil(t, pk.Params)
 
-	_, err = NewPublicKeyFromFile(filepath.Join(dir, "missing.xml"))
+	_, err = gabikeys.NewPublicKeyFromFile(filepath.Join(dir, "missing.xml"))
 	assert.Error(t, err)
 }
 
 func TestPrivateKeyWriteToRoundTrip(t *testing.T) {
-	sk, err := NewPrivateKeyFromXML(xmlPrivKey1, false)
+	sk, err := gabikeys.NewPrivateKeyFromXML(xmlPrivKey1, false)
 	require.NoError(t, err)
 
 	var buf bytes.Buffer
@@ -211,14 +212,14 @@ func TestPrivateKeyWriteToRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(buf.Len()), n)
 
-	sk2, err := NewPrivateKeyFromXML(buf.String(), false)
+	sk2, err := gabikeys.NewPrivateKeyFromXML(buf.String(), false)
 	require.NoError(t, err)
 	assert.Equal(t, 0, sk.P.Cmp(sk2.P))
 	assert.Equal(t, 0, sk.Q.Cmp(sk2.Q))
 }
 
 func TestPublicKeyWriteToRoundTrip(t *testing.T) {
-	pk, err := NewPublicKeyFromXML(xmlPubKey1)
+	pk, err := gabikeys.NewPublicKeyFromXML(xmlPubKey1)
 	require.NoError(t, err)
 
 	var buf bytes.Buffer
@@ -226,7 +227,7 @@ func TestPublicKeyWriteToRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(buf.Len()), n)
 
-	pk2, err := NewPublicKeyFromBytes(buf.Bytes())
+	pk2, err := gabikeys.NewPublicKeyFromBytes(buf.Bytes())
 	require.NoError(t, err)
 	assert.Equal(t, 0, pk.N.Cmp(pk2.N))
 	assert.Equal(t, 0, pk.Z.Cmp(pk2.Z))
@@ -242,9 +243,9 @@ func TestWriteToFile(t *testing.T) {
 	skFile := filepath.Join(dir, "sk.xml")
 	pkFile := filepath.Join(dir, "pk.xml")
 
-	sk, err := NewPrivateKeyFromXML(xmlPrivKey1, false)
+	sk, err := gabikeys.NewPrivateKeyFromXML(xmlPrivKey1, false)
 	require.NoError(t, err)
-	pk, err := NewPublicKeyFromXML(xmlPubKey1)
+	pk, err := gabikeys.NewPublicKeyFromXML(xmlPubKey1)
 	require.NoError(t, err)
 
 	_, err = sk.WriteToFile(skFile, false)
@@ -262,21 +263,106 @@ func TestWriteToFile(t *testing.T) {
 	require.NoError(t, err)
 
 	// Files round-trip back into equal keys.
-	sk2, err := NewPrivateKeyFromFile(skFile, false)
+	sk2, err := gabikeys.NewPrivateKeyFromFile(skFile, false)
 	require.NoError(t, err)
 	assert.Equal(t, 0, sk.P.Cmp(sk2.P))
-	pk2, err := NewPublicKeyFromFile(pkFile)
+	pk2, err := gabikeys.NewPublicKeyFromFile(pkFile)
 	require.NoError(t, err)
 	assert.Equal(t, 0, pk.N.Cmp(pk2.N))
 }
 
+// Regression test for issue #56 (also #7): PrivateKey.WriteToFile must produce
+// a file with mode 0600 in both the forceOverwrite=true and =false branches.
+// Previously the forceOverwrite=true branch used os.Create, which yields
+// 0666 & ^umask (typically 0644 — world-readable) for a file containing the
+// issuer's private key.
+func TestPrivateKeyWriteToFilePermissions(t *testing.T) {
+	// Neutralize the test runner's umask so we verify the mode we passed,
+	// not whatever the environment happened to strip.
+	old := syscall.Umask(0)
+	t.Cleanup(func() { syscall.Umask(old) })
+
+	dir := t.TempDir()
+	priv := &gabikeys.PrivateKey{}
+
+	t.Run("forceOverwrite=false on fresh path", func(t *testing.T) {
+		path := filepath.Join(dir, "priv-noforce.xml")
+		if _, err := priv.WriteToFile(path, false); err != nil {
+			t.Fatalf("WriteToFile: %v", err)
+		}
+		assertPerm(t, path, 0600)
+	})
+
+	t.Run("forceOverwrite=true on fresh path", func(t *testing.T) {
+		path := filepath.Join(dir, "priv-force-fresh.xml")
+		if _, err := priv.WriteToFile(path, true); err != nil {
+			t.Fatalf("WriteToFile: %v", err)
+		}
+		assertPerm(t, path, 0600)
+	})
+
+	t.Run("forceOverwrite=true over existing file", func(t *testing.T) {
+		// This is the actual regression path: a caller rotating/replacing
+		// an on-disk key. Pre-create the file with permissive perms to
+		// catch any implementation that preserves existing modes.
+		path := filepath.Join(dir, "priv-force-overwrite.xml")
+		if err := os.WriteFile(path, []byte("stale"), 0644); err != nil {
+			t.Fatalf("seed file: %v", err)
+		}
+		if _, err := priv.WriteToFile(path, true); err != nil {
+			t.Fatalf("WriteToFile: %v", err)
+		}
+		assertPerm(t, path, 0600)
+	})
+}
+
+// Companion test for PublicKey.WriteToFile. Not a security issue, but the
+// fix in #56 made both branches consistent at 0644 — guard against
+// regressions there too. We only assert on freshly created files: open(2)
+// preserves the mode of pre-existing files and the public key path does
+// not (and should not) force-loosen tighter perms a deployer may have set.
+func TestPublicKeyWriteToFilePermissions(t *testing.T) {
+	old := syscall.Umask(0)
+	t.Cleanup(func() { syscall.Umask(old) })
+
+	dir := t.TempDir()
+	pub := &gabikeys.PublicKey{}
+
+	t.Run("forceOverwrite=false on fresh path", func(t *testing.T) {
+		path := filepath.Join(dir, "pub-noforce.xml")
+		if _, err := pub.WriteToFile(path, false); err != nil {
+			t.Fatalf("WriteToFile: %v", err)
+		}
+		assertPerm(t, path, 0644)
+	})
+
+	t.Run("forceOverwrite=true on fresh path", func(t *testing.T) {
+		path := filepath.Join(dir, "pub-force-fresh.xml")
+		if _, err := pub.WriteToFile(path, true); err != nil {
+			t.Fatalf("WriteToFile: %v", err)
+		}
+		assertPerm(t, path, 0644)
+	})
+}
+
+func assertPerm(t *testing.T, path string, want os.FileMode) {
+	t.Helper()
+	fi, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat %s: %v", path, err)
+	}
+	if got := fi.Mode().Perm(); got != want {
+		t.Fatalf("%s: mode = %#o, want %#o", path, got, want)
+	}
+}
+
 func TestRevocationSupported(t *testing.T) {
-	sk := &PrivateKey{}
+	sk := &gabikeys.PrivateKey{}
 	assert.False(t, sk.RevocationSupported())
 	sk.ECDSAString = "non-empty"
 	assert.True(t, sk.RevocationSupported())
 
-	pk := &PublicKey{}
+	pk := &gabikeys.PublicKey{}
 	assert.False(t, pk.RevocationSupported())
 	pk.ECDSAString = "non-empty"
 	// G and H still nil: not supported.
@@ -287,7 +373,7 @@ func TestRevocationSupported(t *testing.T) {
 }
 
 func TestPublicKeyBaseAndNames(t *testing.T) {
-	pk, err := NewPublicKeyFromXML(xmlPubKey1)
+	pk, err := gabikeys.NewPublicKeyFromXML(xmlPubKey1)
 	require.NoError(t, err)
 
 	assert.Same(t, pk.Z, pk.Base("Z"))
@@ -304,7 +390,7 @@ func TestPublicKeyBaseAndNames(t *testing.T) {
 }
 
 func TestPublicKeyExp(t *testing.T) {
-	pk, err := NewPublicKeyFromXML(xmlPubKey1)
+	pk, err := gabikeys.NewPublicKeyFromXML(xmlPubKey1)
 	require.NoError(t, err)
 
 	exp := big.NewInt(3)
@@ -321,7 +407,7 @@ func TestPublicKeyExp(t *testing.T) {
 
 func TestGenerateKeyPair(t *testing.T) {
 	params := smallSystemParameters(256)
-	priv, pub, err := GenerateKeyPair(params, 2, 0, time.Now().AddDate(1, 0, 0))
+	priv, pub, err := gabikeys.GenerateKeyPair(params, 2, 0, time.Now().AddDate(1, 0, 0))
 	require.NoError(t, err)
 	require.NotNil(t, priv)
 	require.NotNil(t, pub)
@@ -350,7 +436,7 @@ func TestGenerateKeyPairConcurrent(t *testing.T) {
 	errs := make(chan error, n)
 	for range n {
 		wg.Go(func() {
-			priv, pub, err := GenerateKeyPair(params, 2, 0, time.Now().AddDate(1, 0, 0))
+			priv, pub, err := gabikeys.GenerateKeyPair(params, 2, 0, time.Now().AddDate(1, 0, 0))
 			if err != nil {
 				errs <- err
 				return
