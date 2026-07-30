@@ -201,6 +201,13 @@ func wipeStdInt(x *mbig.Int) {
 // return an error, and issuance and revocation operations that need P, Q or the
 // order will nil-dereference. Destroy is idempotent and safe on a nil receiver.
 //
+// Destroy is not safe to call concurrently with any other use of the key. It
+// mutates the key without synchronization, while Validate, WriteTo, WriteToFile
+// and the issuance and revocation paths read the same fields. A consumer that
+// shares one *PrivateKey across concurrent sessions (as the irma server does)
+// must therefore ensure the key is quiesced before destroying it; otherwise the
+// result is a data race, not merely a nil-dereference.
+//
 // This addresses the storage half of the timing side-channel concern in
 // https://github.com/privacybydesign/gabi/issues/8: the secret prime factors are
 // only required to derive N and the group order, so they need not be retained.
@@ -213,7 +220,9 @@ func wipeStdInt(x *mbig.Int) {
 // values elsewhere. It is therefore most useful right after GenerateKeyPair,
 // where the primes exist only as the big.Ints wiped here. On the load-from-disk
 // path (NewPrivateKeyFromFile) the primes also live in the heap as the decimal
-// text of the XML file, which Destroy does not reach.
+// text of the XML file, which Destroy does not reach. ECDSAString is a Go string
+// and so is immutable: clearing it drops the reference, but unlike the big.Ints
+// its base64 bytes are not overwritten and linger until the GC collects them.
 func (privk *PrivateKey) Destroy() {
 	if privk == nil {
 		return
