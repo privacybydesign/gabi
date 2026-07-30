@@ -1504,6 +1504,52 @@ func TestKeyshareResponseSingleBase(t *testing.T) {
 	require.Equal(t, 0, lhs.Cmp(rhs))
 }
 
+// TestDisclosureProofBuilderCommitNonrevError verifies that when the
+// non-revocation builder's Commit fails, DisclosureProofBuilder.Commit
+// propagates the error to its caller instead of panicking (regression test
+// for the panic at credential.go:316-320).
+func TestDisclosureProofBuilderCommitNonrevError(t *testing.T) {
+	witness, _, _ := setupRevocation(t, testPrivK, testPubK)
+
+	attrs := revocationAttrs(witness)
+	signature, err := SignMessageBlock(testPrivK, testPubK, attrs)
+	require.NoError(t, err)
+
+	cred := &Credential{
+		Signature:            signature,
+		Pk:                   testPubK,
+		Attributes:           attrs,
+		NonRevocationWitness: witness,
+	}
+	require.NoError(t, cred.NonrevPrepareCache())
+
+	b, err := cred.CreateDisclosureProofBuilder([]int{1, 2}, nil, true)
+	require.NoError(t, err)
+	require.NotNil(t, b.nonrevBuilder)
+
+	// Force the non-revocation builder to recompute its commitment, and make
+	// that recomputation fail by breaking the non-revocation relation (so that
+	// NewProofCommit returns "non-revocation relation does not hold").
+	b.nonrevBuilder.commitments = nil
+	b.nonrevBuilder.witness.U = big.NewInt(2)
+
+	// Sanity check: the non-revocation builder's Commit now returns an error.
+	b.nonrevBuilder.commitments = nil
+	_, nerr := b.nonrevBuilder.Commit()
+	require.Error(t, nerr)
+	b.nonrevBuilder.commitments = nil
+
+	secret, err := common.RandomBigInt(testPubK.Params.Lm)
+	require.NoError(t, err)
+	randomizers := map[string]*big.Int{"secretkey": secret}
+
+	// The disclosure proof builder must surface that error rather than panic.
+	require.NotPanics(t, func() {
+		_, err = b.Commit(randomizers)
+	})
+	require.Error(t, err)
+}
+
 func TestMain(m *testing.M) {
 	err := setupParameters()
 	if err != nil {
