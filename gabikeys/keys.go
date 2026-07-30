@@ -53,6 +53,10 @@ type (
 		N     *big.Int          `xml:"-"`
 		ECDSA *ecdsa.PrivateKey `xml:"-"`
 		Order *big.Int          `xml:"-"`
+
+		// destroyed is set by Destroy; it makes the methods that would otherwise
+		// operate on the wiped secret material fail instead.
+		destroyed bool
 	}
 
 	Bases []*big.Int
@@ -68,10 +72,12 @@ const (
 )
 
 // NewPrivateKey creates a new issuer private key using the provided parameters.
+// The primes p and q are copied, so that Destroy does not zero the caller's own
+// values.
 func NewPrivateKey(p, q *big.Int, ecdsa string, counter uint, expiryDate time.Time) (*PrivateKey, error) {
 	sk := PrivateKey{
-		P:           p,
-		Q:           q,
+		P:           new(big.Int).Set(p),
+		Q:           new(big.Int).Set(q),
 		N:           new(big.Int).Mul(p, q),
 		PPrime:      new(big.Int).Rsh(p, 1),
 		QPrime:      new(big.Int).Rsh(q, 1),
@@ -129,7 +135,20 @@ func NewPrivateKeyFromFile(filename string, demo bool) (*PrivateKey, error) {
 	return NewPrivateKeyFromXML(string(b), demo)
 }
 
+// errDestroyed reports that the key's secret material has been wiped by Destroy.
+// The methods below use it to fail loudly rather than nil-dereference or write a
+// key file with no key material in it.
+func (privk *PrivateKey) errDestroyed() error {
+	if privk.destroyed {
+		return errors.New("private key has been destroyed")
+	}
+	return nil
+}
+
 func (privk *PrivateKey) Validate() error {
+	if err := privk.errDestroyed(); err != nil {
+		return err
+	}
 	if new(big.Int).Rsh(new(big.Int).Sub(privk.P, big.NewInt(1)), 1).Cmp(privk.PPrime) != 0 {
 		return errors.New("Incompatible values for P and P'")
 	}
@@ -175,9 +194,12 @@ func wipeStdInt(x *mbig.Int) {
 
 // Destroy zeroes the secret material held by the private key: the prime factors
 // P and Q, the derived factors P' and Q', the group order (P'*Q'), and the
-// revocation (ECDSA) private key. After Destroy the key can no longer sign or be
-// serialized; callers should invoke it once the key has been persisted or is no
-// longer needed.
+// revocation (ECDSA) private key. The public modulus N is retained. Callers
+// should invoke it once the key has been persisted or is no longer needed.
+//
+// A destroyed key can no longer be used: Validate, Print, WriteTo and WriteToFile
+// return an error, and issuance and revocation operations that need P, Q or the
+// order will nil-dereference. Destroy is idempotent and safe on a nil receiver.
 //
 // This addresses the storage half of the timing side-channel concern in
 // https://github.com/privacybydesign/gabi/issues/8: the secret prime factors are
@@ -186,6 +208,12 @@ func wipeStdInt(x *mbig.Int) {
 // factorization), so it is wiped too. Destroy does not, and cannot, make Go's
 // non-constant-time math/big arithmetic constant-time; that requires replacing
 // the bignum implementation and is out of scope here.
+//
+// Wiping is best-effort: Go's garbage collector may already have copied the
+// values elsewhere. It is therefore most useful right after GenerateKeyPair,
+// where the primes exist only as the big.Ints wiped here. On the load-from-disk
+// path (NewPrivateKeyFromFile) the primes also live in the heap as the decimal
+// text of the XML file, which Destroy does not reach.
 func (privk *PrivateKey) Destroy() {
 	if privk == nil {
 		return
@@ -209,6 +237,7 @@ func (privk *PrivateKey) Destroy() {
 	// fully reconstruct the private scalar, so the revocation key would remain
 	// re-signable after Destroy.
 	privk.ECDSAString = ""
+	privk.destroyed = true
 }
 
 // Print prints the key to stdout.
@@ -219,6 +248,13 @@ func (privk *PrivateKey) Print() error {
 
 // WriteTo writes the XML-serialized public key to the given writer.
 func (privk *PrivateKey) WriteTo(writer io.Writer) (int64, error) {
+	// encoding/xml omits nil pointer fields rather than erroring, so without this
+	// check a destroyed key marshals into a structurally valid document holding no
+	// key material at all.
+	if err := privk.errDestroyed(); err != nil {
+		return 0, err
+	}
+
 	// Write the standard XML header
 	numHeaderBytes, err := writer.Write([]byte(XMLHeader))
 	if err != nil {
@@ -237,6 +273,12 @@ func (privk *PrivateKey) WriteTo(writer io.Writer) (int64, error) {
 // WriteToFile writes the private key to an XML file. If any existing file with
 // the same filename should be overwritten, set forceOverwrite to true.
 func (privk *PrivateKey) WriteToFile(filename string, forceOverwrite bool) (int64, error) {
+	// Check before opening the file: the forceOverwrite branch truncates, which
+	// would destroy an existing key file before WriteTo could refuse to write.
+	if err := privk.errDestroyed(); err != nil {
+		return 0, err
+	}
+
 	var f *os.File
 	var err error
 	if forceOverwrite {

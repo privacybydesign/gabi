@@ -1,7 +1,10 @@
 package gabikeys
 
 import (
+	"bytes"
 	mbig "math/big"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -103,10 +106,7 @@ func TestPrivateKeyDestroy(t *testing.T) {
 // TestPrivateKeyDestroyIdempotent asserts that Destroy is safe to call more than
 // once and on a nil receiver.
 func TestPrivateKeyDestroyIdempotent(t *testing.T) {
-	p := s2big("10436034022637868273483137633548989700482895839559909621411910579140541345632481969613724849214412062500244238926015929148144084368427474551770487566048119")
-	q := s2big("9204968012315139729618449685392284928468933831570080795536662422367142181432679739143882888540883909887054345986640656981843559062844656131133512640733759")
-
-	privk, err := NewPrivateKey(p, q, "", 0, time.Now().AddDate(1, 0, 0))
+	privk, err := NewPrivateKey(testPrime1(), testPrime2(), "", 0, time.Now().AddDate(1, 0, 0))
 	require.NoError(t, err)
 
 	assert.NotPanics(t, func() { privk.Destroy() })
@@ -117,6 +117,79 @@ func TestPrivateKeyDestroyIdempotent(t *testing.T) {
 	// Nil receiver is safe.
 	var nilKey *PrivateKey
 	assert.NotPanics(t, func() { nilKey.Destroy() })
+}
+
+// TestPrivateKeyDestroyDoesNotWipeCallerPrimes asserts that Destroy only touches
+// the key's own values. NewPrivateKey copies p and q, so a caller that keeps
+// using its primes afterwards does not find them zeroed.
+func TestPrivateKeyDestroyDoesNotWipeCallerPrimes(t *testing.T) {
+	p, q := testPrime1(), testPrime2()
+	pBefore, qBefore := p.String(), q.String()
+
+	privk, err := NewPrivateKey(p, q, "", 0, time.Now().AddDate(1, 0, 0))
+	require.NoError(t, err)
+
+	privk.Destroy()
+
+	assert.Equal(t, pBefore, p.String(), "Destroy should not zero the caller's p")
+	assert.Equal(t, qBefore, q.String(), "Destroy should not zero the caller's q")
+}
+
+// TestPrivateKeyDestroyBlocksSerialization asserts that a destroyed key fails
+// instead of serializing. encoding/xml omits nil pointer fields rather than
+// erroring, so without the guard WriteTo would return a structurally valid XML
+// document containing no key material and a nil error.
+func TestPrivateKeyDestroyBlocksSerialization(t *testing.T) {
+	privk, err := NewPrivateKey(testPrime1(), testPrime2(), "", 0, time.Now().AddDate(1, 0, 0))
+	require.NoError(t, err)
+
+	privk.Destroy()
+
+	var buf bytes.Buffer
+	n, err := privk.WriteTo(&buf)
+	assert.Error(t, err, "WriteTo should error on a destroyed key")
+	assert.Zero(t, n, "WriteTo should not write anything for a destroyed key")
+	assert.Zero(t, buf.Len(), "WriteTo should not write anything for a destroyed key")
+
+	assert.Error(t, privk.Print(), "Print should error on a destroyed key")
+	assert.Error(t, privk.Validate(), "Validate should error on a destroyed key")
+}
+
+// TestPrivateKeyDestroyDoesNotTruncateExistingFile is the WriteToFile half of the
+// above: the forceOverwrite branch truncates on open, so the check has to happen
+// before the file is opened or a destroyed key would wipe a key file on disk.
+func TestPrivateKeyDestroyDoesNotTruncateExistingFile(t *testing.T) {
+	privk, err := NewPrivateKey(testPrime1(), testPrime2(), "", 0, time.Now().AddDate(1, 0, 0))
+	require.NoError(t, err)
+
+	path := filepath.Join(t.TempDir(), "priv.xml")
+	n, err := privk.WriteToFile(path, false)
+	require.NoError(t, err)
+	require.NotZero(t, n)
+	existing, err := os.ReadFile(path)
+	require.NoError(t, err)
+
+	privk.Destroy()
+
+	for _, forceOverwrite := range []bool{false, true} {
+		n, err := privk.WriteToFile(path, forceOverwrite)
+		assert.Error(t, err, "WriteToFile(forceOverwrite=%v) should error on a destroyed key", forceOverwrite)
+		assert.Zero(t, n)
+	}
+
+	after, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, existing, after, "the key file on disk should be untouched")
+}
+
+// testPrime1 and testPrime2 are the safe primes gabi's own test suite uses, so
+// that these tests need no key generation.
+func testPrime1() *big.Int {
+	return s2big("10436034022637868273483137633548989700482895839559909621411910579140541345632481969613724849214412062500244238926015929148144084368427474551770487566048119")
+}
+
+func testPrime2() *big.Int {
+	return s2big("9204968012315139729618449685392284928468933831570080795536662422367142181432679739143882888540883909887054345986640656981843559062844656131133512640733759")
 }
 
 func s2big(s string) *big.Int {
