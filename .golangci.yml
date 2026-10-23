@@ -12,4 +12,7 @@ linters:
       ignore-rules:
         - witn
     staticcheck:
-      checks: ["all", "-ST1000"]
+      # QF1008 is off: keyproof/rangeproof.go calls
+      # s.RepresentationProofStructure.CommitmentsFrom* on purpose, so it is
+      # not mistaken for the outer type's own commitmentsFrom* methods.
+      checks: ["all", "-ST1000", "-QF1008"]
