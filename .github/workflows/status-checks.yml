@@ -18,9 +18,6 @@ jobs:
     uses: privacybydesign/github-workflows/.github/workflows/go-checks.yml@v1
     permissions:
       contents: read
-    with:
-      # Latest 1.26 patch release, as before; go.mod only sets the minimum.
-      go-version: "1.26"
 
   dependency-review:
     if: github.event_name == 'pull_request'
