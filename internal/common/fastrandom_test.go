@@ -18,21 +18,28 @@ func TestCPRNG(t *testing.T) {
 	}
 	for i := range 256 {
 		rng, _ := NewCPRNG(&seed)
-		rng.Read(buf[0:i])
+		if _, err := rng.Read(buf[0:i]); err != nil {
+			t.Fatalf("Read: %v", err)
+		}
+
 		if hex.EncodeToString(buf[:i]) != expected[:2*i] {
 			t.Fatalf("TestCPRNG (1): %d", i)
 		}
 	}
 	rng, _ := NewCPRNG(&seed)
 	for i := range 16 {
-		rng.Read(buf[i*16 : (i+1)*16])
+		if _, err := rng.Read(buf[i*16 : (i+1)*16]); err != nil {
+			t.Fatalf("Read: %v", err)
+		}
 	}
 	if hex.EncodeToString(buf[:]) != expected[:] {
 		t.Fatalf("TestCPRNG (2)")
 	}
 	rng, _ = NewCPRNG(&seed)
 	for i := range 8 {
-		rng.Read(buf[i*32 : (i+1)*32])
+		if _, err := rng.Read(buf[i*32 : (i+1)*32]); err != nil {
+			t.Fatalf("Read: %v", err)
+		}
 	}
 	if hex.EncodeToString(buf[:]) != expected[:] {
 		t.Fatalf("TestCPRNG (3)")
@@ -40,7 +47,10 @@ func TestCPRNG(t *testing.T) {
 	for j := 1; j < 16; j++ {
 		rng, _ = NewCPRNG(&seed)
 		for i := range 8 {
-			rng.Read(buf[:j])
+			if _, err := rng.Read(buf[:j]); err != nil {
+				t.Fatalf("Read: %v", err)
+			}
+
 			if hex.EncodeToString(buf[:j]) != expected[32*i:32*i+2*j] {
 				t.Fatalf("TestCPRNG (4)")
 			}
@@ -49,7 +59,10 @@ func TestCPRNG(t *testing.T) {
 	for j := 17; j < 31; j++ {
 		rng, _ = NewCPRNG(&seed)
 		for i := range 8 {
-			rng.Read(buf[:j])
+			if _, err := rng.Read(buf[:j]); err != nil {
+				t.Fatalf("Read: %v", err)
+			}
+
 			if hex.EncodeToString(buf[:j]) != expected[64*i:64*i+2*j] {
 				t.Fatalf("TestCPRNG (5)")
 			}
