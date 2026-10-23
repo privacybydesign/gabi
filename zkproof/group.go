@@ -49,11 +49,12 @@ func BuildGroup(prime *big.Int) (Group, bool) {
 
 func (g *Group) Exp(ret *big.Int, name string, exp, _ *big.Int) bool {
 	var table *exptable.Table
-	if name == "g" {
+	switch name {
+	case "g":
 		table = &g.GTable
-	} else if name == "h" {
+	case "h":
 		table = &g.HTable
-	} else {
+	default:
 		return false
 	}
 	var exp2 big.Int
