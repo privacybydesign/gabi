@@ -57,6 +57,7 @@ func (g *Group) Exp(ret *big.Int, name string, exp, _ *big.Int) bool {
 	default:
 		return false
 	}
+
 	var exp2 big.Int
 	if exp.Sign() == -1 {
 		exp2.Add(exp, g.Order)
