@@ -1,0 +1,18 @@
+# golangci-lint v2 config, used by the shared go-checks workflow.
+# Carries over the checks of the old lint job: misspell and staticcheck
+# (with the same checks as staticcheck.conf) on top of the defaults.
+version: "2"
+
+linters:
+  enable:
+    - misspell
+  settings:
+    misspell:
+      # "witn" is short for witness.
+      ignore-rules:
+        - witn
+    staticcheck:
+      # QF1008 is off: keyproof/rangeproof.go calls
+      # s.RepresentationProofStructure.CommitmentsFrom* on purpose, so it is
+      # not mistaken for the outer type's own commitmentsFrom* methods.
+      checks: ["all", "-ST1000", "-QF1008"]
