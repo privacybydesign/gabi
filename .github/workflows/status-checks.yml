@@ -1,99 +1,60 @@
-# Workflow to check whether changes to master fulfill all requirements.
+# Status checks, using the shared workflows from privacybydesign/github-workflows.
+# The gate job "Status checks passed" is the one check to require.
 name: Status checks
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+  merge_group:
   schedule:
-    # Run every monday on 9:00 in the morning (UTC).
-    - cron: "0 9 * * 1"
-  # Make it possible to trigger the checks manually.
+    - cron: "17 6 * * 1" # Mondays 06:17 UTC
   workflow_dispatch:
 
+permissions: {}
+
 jobs:
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v5
-
-    - name: Set up Go
-      uses: actions/setup-go@v6
-      with:
-        go-version-file: go.mod
-
-    - name: Run gofmt
-      # gofmt does not return non-zero exit codes on failure, so we have to check that there are no issues using grep.
-      run: gofmt -d -e . | (! grep ^)
-
-    - name: Run go vet
-      run: go vet ./...
-
-    - name: Install ineffassign
-      run: go install github.com/gordonklaus/ineffassign@latest
-
-    - name: Run ineffassign
-      run: ineffassign ./...
-
-    - name: Install misspell
-      run: go install github.com/client9/misspell/cmd/misspell@latest
-
-    - name: Run misspell
-    # misspel is set to ignore false positive 'witn' which stands for witness in gabi.
-      run: misspell -error -i witn .
-
-    - name: Install staticcheck
-      run: go install honnef.co/go/tools/cmd/staticcheck@2025.1.1
-      
-    - name: Run staticcheck
-      run: staticcheck ./...
-
-    - name: Check go fix
-      run: |
-        go fix ./...
-        if ! git diff --exit-code; then
-          echo "::error::go fix produced changes - run 'go fix ./...' locally"
-          exit 1
-        fi
-
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-
-      - name: Run all unit tests
-        run: go test -v ./...
-
-  analyze:
-    # Require successful test to make sure analysis does not fail on syntax errors.
-    needs: test
-    runs-on: ubuntu-latest
+  go:
+    uses: privacybydesign/github-workflows/.github/workflows/go-checks.yml@v1
     permissions:
-      actions: read
+      contents: read
+    with:
+      # Latest 1.26 patch release, as before; go.mod only sets the minimum.
+      go-version: "1.26"
+
+  codeql:
+    uses: privacybydesign/github-workflows/.github/workflows/codeql.yml@v1
+    permissions:
       contents: read
       security-events: write
+      actions: read
+    with:
+      languages: '["go", "actions"]'
+      queries: security-and-quality
 
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    uses: privacybydesign/github-workflows/.github/workflows/dependency-review.yml@v1
+    permissions:
+      contents: read
+      pull-requests: write
+
+  workflow-lint:
+    uses: privacybydesign/github-workflows/.github/workflows/workflow-lint.yml@v1
+    permissions:
+      contents: read
+
+  passed:
+    name: Status checks passed
+    if: always()
+    needs: [go, codeql, dependency-review, workflow-lint]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
-        with:
-          languages: go
-          queries: +security-and-quality
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
+      - name: All required jobs succeeded
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          echo "$RESULTS"
+          if grep -qE '"(failure|cancelled)"' <<< "$RESULTS"; then exit 1; fi
