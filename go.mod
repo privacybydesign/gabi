@@ -1,6 +1,6 @@
 module github.com/privacybydesign/gabi
 
-go 1.26.4
+go 1.26.10
 
 require (
 	github.com/bwesterb/go-exptable v1.0.0
@@ -9,7 +9,6 @@ require (
 	github.com/multiformats/go-multihash v0.2.3
 	github.com/sirupsen/logrus v1.9.4
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/exp v0.0.0-20260611194520-c48552f49976
 )
 
 require (

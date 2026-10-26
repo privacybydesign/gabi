@@ -174,7 +174,8 @@ func newExpProofStructure(base, exponent, mod, result string, bitlen uint) expPr
 	// step proofs
 	structure.interSteps = []expStepStructure{}
 	for i := range bitlen {
-		if i == 0 {
+		switch i {
+		case 0:
 			// special case for start
 			structure.interSteps = append(
 				structure.interSteps,
@@ -185,7 +186,7 @@ func newExpProofStructure(base, exponent, mod, result string, bitlen uint) expPr
 					strings.Join([]string{structure.myname, "base", fmt.Sprintf("%v", i)}, "_"),
 					mod,
 					bitlen))
-		} else if i == bitlen-1 {
+		case bitlen - 1:
 			// special case for end
 			structure.interSteps = append(
 				structure.interSteps,
@@ -196,7 +197,7 @@ func newExpProofStructure(base, exponent, mod, result string, bitlen uint) expPr
 					strings.Join([]string{structure.myname, "base", fmt.Sprintf("%v", i)}, "_"),
 					mod,
 					bitlen))
-		} else {
+		default:
 			structure.interSteps = append(
 				structure.interSteps,
 				newExpStepStructure(
