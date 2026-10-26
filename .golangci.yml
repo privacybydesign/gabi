@@ -1,6 +1,6 @@
 # golangci-lint v2 config, used by the shared go-checks workflow.
 # Carries over the checks of the old lint job: misspell and staticcheck
-# (with the same checks as staticcheck.conf) on top of the defaults.
+# (all checks but ST1000 and QF1008) on top of the defaults.
 version: "2"
 
 linters:
